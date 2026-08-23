@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="flex justify-between items-center mb-4">
+    <h2 class="text-xl font-bold">Exercise Library</h2>
+    <a href="{{ url_for('add_new_exercise') }}" class="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-1.5 rounded-xl font-bold hover:bg-emerald-500/20 transition">
+        + Create New
+    </a>
+</div>
+
+<!-- Controls: Search Input -->
+<div class="relative mb-4">
+    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+    <input type="text" id="exerciseSearch" placeholder="Search exercise name or instructions..." 
+           class="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition">
+</div>
+
+<div id="exerciseList" class="space-y-3 mb-6">
+    {% for ex in all_exercises %}
+    <a href="{{ url_for('display_exercise', id=ex.id) }}" class="exercise-card block glass-card p-3.5 rounded-2xl bg-slate-900/60 border border-slate-800 hover:border-slate-700 transition duration-200"
+       data-name="{{ ex.name|lower }}"
+       data-instructions="{{ ex.instructions|lower if ex.instructions else '' }}">
+        <div class="flex items-center justify-between">
+            <div class="flex-1 min-w-0 pr-3">
+                <h4 class="font-bold text-slate-100 text-sm truncate">{{ ex.name }}</h4>
+                <p class="text-xs text-slate-400 truncate mt-0.5">
+                    {% if ex.muscles %}
+                        {{ ex.muscles|join(', ') }}
+                    {% else %}
+                        General
+                    {% endif %}
+                </p>
+            </div>
+            <div class="flex items-center gap-3 text-slate-400 text-xs">
+                <span><strong class="text-slate-200">{{ ex.sets }}</strong> sets</span>
+                <span><strong class="text-slate-200">{{ ex.reps }}</strong> reps</span>
+                <i class="fa-solid fa-chevron-right text-[10px] text-slate-500"></i>
+            </div>
+        </div>
+    </a>
+    {% else %}
+    <p class="text-center py-8 text-xs text-slate-500">No exercises created yet.</p>
+    {% endfor %}
+
+    <p id="noResultsMsg" class="hidden text-center py-8 text-xs text-slate-500">
+        No exercises match your search filter.
+    </p>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const searchInput = document.getElementById('exerciseSearch');
+    const cards = document.querySelectorAll('.exercise-card');
+    const noResultsMsg = document.getElementById('noResultsMsg');
+
+    function filterExercises() {
+        const query = searchInput.value.trim().toLowerCase();
+        let visibleCount = 0;
+
+        cards.forEach(card => {
+            const name = card.dataset.name || '';
+            const instructions = card.dataset.instructions || '';
+            const matches = !query || name.includes(query) || instructions.includes(query);
+
+            if (matches) {
+                card.classList.remove('hidden');
+                visibleCount++;
+            } else {
+                card.classList.add('hidden');
+            }
+        });
+
+        if (visibleCount === 0 && cards.length > 0) {
+            noResultsMsg.classList.remove('hidden');
+        } else {
+            noResultsMsg.classList.add('hidden');
+        }
+    }
+
+    searchInput.addEventListener('input', filterExercises);
+});
+</script>
+{% endblock %}

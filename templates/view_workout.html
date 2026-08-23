@@ -1,102 +1,134 @@
 {% extends 'base.html' %}
 {% block content %}
 <div class="glass-card p-5 rounded-2xl mb-6">
+    <!-- Top Navigation -->
     <div class="flex items-center justify-between mb-4">
-        <div>
-            <span class="text-xs text-emerald-400 font-bold uppercase tracking-wider">Routine</span>
-            <h2 class="text-2xl font-black text-white">{{ workout.name }}</h2>
-        </div>
-        <a href="{{ url_for('add_exercise_to_workout', workout_id=workout.id) }}" class="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-2 rounded-xl font-bold hover:bg-emerald-500/20 transition">
-            + Add / Manage
+        <a href="{{ url_for('workout_list') }}" class="text-xs text-slate-400 hover:text-white flex items-center gap-1 font-semibold transition">
+            <i class="fa-solid fa-chevron-left text-[10px]"></i>
+            Back to Workouts
+        </a>
+        <a href="{{ url_for('add_exercise', workout_id=workout.id) }}" class="text-xs font-bold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 px-3 py-1.5 rounded-lg border border-emerald-500/20 transition">
+            + Edit / Add Exercises
         </a>
     </div>
 
-    {% if workout_exercises %}
-    <p class="text-xs text-slate-400 mb-3 flex items-center gap-1.5">
-        <i class="fa-solid fa-hand-pointer text-emerald-400"></i>
-        <span>Drag <i class="fa-solid fa-grip-vertical text-slate-500"></i> to re-order exercises</span>
-    </p>
+    <!-- Title & Description -->
+    <h2 class="text-xl font-bold text-slate-100 mb-1">{{ workout.title }}</h2>
+    {% if workout.description %}
+    <p class="text-xs text-slate-400 mb-4">{{ workout.description }}</p>
+    {% endif %}
 
-    <!-- Sortable List Container -->
-    <div id="exerciseList" class="space-y-3 mb-6">
-        {% for ex in workout_exercises %}
-        <div data-id="{{ ex.id }}" class="exercise-item glass-card p-3.5 rounded-2xl flex items-center justify-between gap-3 bg-slate-900/60 border border-slate-800">
-            <!-- Drag Handle -->
-            <div class="drag-handle touch-none cursor-grab active:cursor-grabbing p-2 text-slate-500 hover:text-emerald-400 transition">
-                <i class="fa-solid fa-grip-vertical text-lg"></i>
-            </div>
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="mb-4 p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs rounded-xl font-medium">
+            {{ message }}
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
 
-            <!-- Exercise Info -->
-            <div class="flex-1 min-w-0">
-                <h4 class="font-bold text-slate-100 text-sm truncate">{{ ex.name }}</h4>
-                <div class="flex items-center gap-3 text-xs text-slate-400 mt-0.5">
-                    <span>{{ ex.sets }} sets × {{ ex.reps }} reps</span>
-                    <span>•</span>
-                    <span>{{ ex.rest }}s rest</span>
+    <!-- Reorderable Exercise List -->
+    <div id="exercise-list" class="space-y-3 mb-6">
+        {% for item in sorted_exercises %}
+        <div data-we-id="{{ item.id }}" class="exercise-item p-3.5 bg-slate-900 border border-slate-800/80 rounded-xl flex items-center justify-between hover:border-slate-700 hover:bg-slate-800/50 transition cursor-grab active:cursor-grabbing group">
+            
+            <!-- Left Side: Handle & Details -->
+            <div class="flex items-center gap-3">
+                <!-- Mobile-friendly Drag Handle -->
+                <div class="reorder-handle p-1 text-slate-600 group-hover:text-slate-400 touch-none">
+                    <i class="fa-solid fa-grip-vertical text-sm"></i>
+                </div>
+                <div>
+                    <a href="{{ url_for('display_exercise', id=item.exercise.id) }}" class="text-sm font-bold text-slate-100 group-hover:text-emerald-400 transition">
+                        {{ item.exercise.name }}
+                    </a>
+                    <div class="text-[10px] text-slate-400 mt-0.5">
+                        {{ item.custom_sets or item.exercise.sets }} sets × {{ item.custom_reps or item.exercise.reps }} reps ({{ item.custom_rest or item.exercise.rest }}s rest)
+                    </div>
                 </div>
             </div>
 
-            <!-- Delete Button -->
-            <button onclick="deleteExercise('{{ ex.id }}')" class="p-2 text-slate-500 hover:text-rose-400 transition">
-                <i class="fa-solid fa-trash-can text-sm"></i>
-            </button>
+            <!-- Right Side: Delete Action -->
+            <form action="{{ url_for('remove_exercise_from_workout', workout_id=workout.id, we_id=item.id) }}" method="POST" onsubmit="return confirm('Remove {{ item.exercise.name }} from this workout?');" class="ml-2">
+                <button type="submit" class="text-slate-500 hover:text-red-400 p-1.5 rounded-lg transition" title="Remove exercise">
+                    <i class="fa-regular fa-trash-can text-xs"></i>
+                </button>
+            </form>
+        </div>
+        {% else %}
+        <div class="text-center py-6 text-xs text-slate-500">
+            No exercises added to this workout yet.
         </div>
         {% endfor %}
     </div>
 
-    <a href="{{ url_for('start_workout', workout_id=workout.id) }}" class="block w-full text-center bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black py-4 rounded-2xl transition shadow-lg shadow-emerald-500/20 text-base">
-        START WORKOUT
+    <!-- Start Button -->
+    <a href="{{ url_for('start_workout', workout_id=workout.id) }}" class="block text-center w-full bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold py-3 rounded-xl transition shadow-lg shadow-emerald-500/10">
+        Start Workout
     </a>
-    {% else %}
-    <div class="text-center py-8 text-slate-400">
-        <i class="fa-solid fa-dumbbell text-3xl mb-2 text-slate-600 block"></i>
-        <p class="text-sm font-medium mb-4">No exercises added to this workout yet.</p>
-        <a href="{{ url_for('add_exercise_to_workout', workout_id=workout.id) }}" class="inline-block bg-emerald-500 text-slate-950 px-4 py-2 rounded-xl text-xs font-bold">
-            Add Exercises
-        </a>
-    </div>
-    {% endif %}
 </div>
 
-<!-- SortableJS CDN -->
-<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<!-- Simple Drag-and-Drop Script -->
 <script>
-    const workoutId = "{{ workout.id }}";
-    const el = document.getElementById('exerciseList');
+document.addEventListener('DOMContentLoaded', () => {
+    const list = document.getElementById('exercise-list');
+    let draggedItem = null;
 
-    if (el) {
-        // Initialize Touch-Friendly Drag & Drop
-        const sortable = new Sortable(el, {
-            handle: '.drag-handle',
-            animation: 150,
-            ghostClass: 'opacity-40',
-            onEnd: function () {
-                // Collect ordered exercise IDs
-                const order = Array.from(el.querySelectorAll('.exercise-item')).map(item => item.getAttribute('data-id'));
-                
-                // Persist order to Flask API
-                fetch(`/workout/${workoutId}/reorder`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ exercise_ids: order })
-                });
+    list.querySelectorAll('.exercise-item').forEach(item => {
+        item.setAttribute('draggable', 'true');
+
+        item.addEventListener('dragstart', (e) => {
+            draggedItem = item;
+            item.classList.add('opacity-40');
+        });
+
+        item.addEventListener('dragend', () => {
+            draggedItem.classList.remove('opacity-40');
+            draggedItem = null;
+            saveOrder();
+        });
+
+        item.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            const afterElement = getDragAfterElement(list, e.clientY);
+            if (afterElement == null) {
+                list.appendChild(draggedItem);
+            } else {
+                list.insertBefore(draggedItem, afterElement);
             }
         });
+    });
+
+    function getDragAfterElement(container, y) {
+        const draggableElements = [...container.querySelectorAll('.exercise-item:not(.opacity-40)')];
+        return draggableElements.reduce((closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offset = y - box.top - box.height / 2;
+            if (offset < 0 && offset > closest.offset) {
+                return { offset: offset, element: child };
+            } else {
+                return closest;
+            }
+        }, { offset: Number.NEGATIVE_INFINITY }).element;
     }
 
-    // Delete Exercise from Workout
-    function deleteExercise(exerciseId) {
-        if (!confirm("Remove this exercise from the workout?")) return;
+    function saveOrder() {
+        const orderData = [];
+        list.querySelectorAll('.exercise-item').forEach((el, index) => {
+            orderData.push({
+                id: parseInt(el.getAttribute('data-we-id')),
+                order: index
+            });
+        });
 
-        fetch(`/workout/${workoutId}/remove-exercise/${exerciseId}`, {
-            method: 'POST'
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                window.location.reload();
-            }
+        fetch("{{ url_for('reorder_workout_exercises', workout_id=workout.id) }}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ order: orderData })
         });
     }
+});
 </script>
 {% endblock %}

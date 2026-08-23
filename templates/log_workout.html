@@ -1,0 +1,210 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-6 relative">
+
+    <!-- Floating Sticky Rest Timer Widget -->
+    <div id="timer-card" class="hidden sticky top-4 z-50 bg-slate-900/95 backdrop-blur-md border border-emerald-500/50 p-4 rounded-2xl flex items-center justify-between shadow-2xl transition-all">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-lg animate-pulse">
+                ⏱️
+            </div>
+            <div>
+                <p class="text-xs font-semibold uppercase text-slate-400 tracking-wider">Rest Timer</p>
+                <div id="timer-display" class="text-2xl font-black text-emerald-400 font-mono">00:00</div>
+            </div>
+        </div>
+        <button onclick="stopRestTimer()" class="text-xs text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg border border-slate-700 transition">
+            Skip Rest
+        </button>
+    </div>
+
+    <!-- Header -->
+    <div class="glass-card p-6 rounded-2xl flex justify-between items-center relative overflow-hidden">
+        <div>
+            <h1 class="text-2xl font-black text-white">{{ log.workout.title }}</h1>
+            <p class="text-xs text-slate-400">Active Workout Session</p>
+        </div>
+        <form action="{{ url_for('finish_workout', log_id=log.id) }}" method="POST">
+            <button type="submit" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-4 py-2 rounded-xl text-sm transition">
+                Finish Workout
+            </button>
+        </form>
+    </div>
+
+    <!-- Exercise List from DB -->
+    {% for item in log.workout.exercises %}
+    {% set target_rest = item.custom_rest if item.custom_rest is not none else item.exercise.rest %}
+    {% set target_sets = item.custom_sets if item.custom_sets is not none else item.exercise.sets %}
+    {% set target_reps = item.custom_reps if item.custom_reps is not none else item.exercise.reps %}
+    
+    <div class="glass-card p-6 rounded-2xl space-y-4">
+        <div class="flex justify-between items-start">
+            <div>
+                <h3 class="text-lg font-bold text-white">{{ item.exercise.name }}</h3>
+                <p class="text-xs text-slate-400">
+                    Target: {{ target_sets }} sets × {{ target_reps }} reps | Rest: <span class="text-slate-300 font-semibold">{{ target_rest }}s</span>
+                </p>
+            </div>
+            {% if item.exercise.image %}
+                <img src="{{ url_for('static', filename='uploads/' + item.exercise.image) }}" alt="{{ item.exercise.name }}" class="w-12 h-12 rounded-lg object-cover">
+            {% endif %}
+        </div>
+
+        <!-- Previously Logged Sets for this Exercise -->
+        {% set logged_sets = log.sets | selectattr("exercise_id", "equalto", item.exercise.id) | list %}
+        {% if logged_sets %}
+            <div class="space-y-2">
+                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Completed Sets</p>
+                <div class="grid grid-cols-3 gap-2">
+                    {% for set_item in logged_sets %}
+                        <div class="bg-slate-800/60 p-2 rounded-lg text-center text-xs text-slate-200 border border-slate-700/50">
+                            Set {{ set_item.set_number }}: <span class="font-bold text-emerald-400">{{ set_item.weight }} lbs</span> × {{ set_item.reps }}
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- Form to Log a New Set -->
+        <form action="{{ url_for('log_exercise', log_id=log.id) }}" method="POST" onsubmit="handleSetSubmit(event, this)" class="space-y-3 pt-2 border-t border-slate-700/40">
+            <input type="hidden" name="exercise_id" value="{{ item.exercise.id }}">
+            <input type="hidden" name="set_number" value="{{ logged_sets|length + 1 }}">
+            
+            <div class="grid grid-cols-3 gap-2">
+                <div>
+                    <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Weight (lbs)</label>
+                    <input type="number" step="0.5" name="weight" placeholder="0.0" required class="w-full bg-slate-900/80 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Reps</label>
+                    <input type="number" name="reps" value="{{ target_reps }}" required class="w-full bg-slate-900/80 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Rest (sec)</label>
+                    <input type="number" name="rest_timer_val" value="{{ target_rest }}" required class="rest-input w-full bg-slate-900/80 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+                </div>
+            </div>
+
+            <button type="submit" class="w-full bg-slate-800 hover:bg-slate-700 text-white font-semibold py-2.5 rounded-xl text-sm border border-slate-600 transition flex items-center justify-center space-x-2">
+                <span>+ Log Set {{ logged_sets|length + 1 }}</span>
+            </button>
+        </form>
+    </div>
+    {% endfor %}
+
+    <!-- Finish / Notes Form at Bottom -->
+    <div class="glass-card p-6 rounded-2xl space-y-3">
+        <h3 class="text-sm font-bold text-slate-300">Workout Summary & Notes</h3>
+        <form action="{{ url_for('finish_workout', log_id=log.id) }}" method="POST" class="space-y-3">
+            <textarea name="notes" placeholder="How did this workout feel? Notes..." class="w-full bg-slate-900/80 border border-slate-700 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-emerald-500 h-24 resize-none"></textarea>
+            <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-3 rounded-xl text-sm transition">
+                Complete Workout
+            </button>
+        </form>
+    </div>
+
+</div>
+
+<!-- Timer & Sound Script -->
+<script>
+let restInterval = null;
+let audioCtx = null;
+
+function initAudio() {
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+}
+
+function playBeep(freq = 600, duration = 0.2, type = 'sine') {
+    initAudio();
+    if (!audioCtx) return;
+
+    try {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+    } catch(e) {
+        console.error(e);
+    }
+}
+
+function startRestTimer(seconds) {
+    stopRestTimer();
+    
+    const card = document.getElementById('timer-card');
+    const display = document.getElementById('timer-display');
+    card.classList.remove('hidden');
+
+    let remaining = seconds;
+
+    function updateDisplay() {
+        const mins = Math.floor(remaining / 60);
+        const secs = remaining % 60;
+        display.innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    updateDisplay();
+
+    restInterval = setInterval(() => {
+        remaining--;
+        updateDisplay();
+
+        if (remaining === 5) {
+            playBeep(800, 0.25); // Warning tone at 5 seconds
+        } else if (remaining <= 0) {
+            playBeep(1200, 0.5); // Final completion tone at 0 seconds
+            stopRestTimer();
+        }
+    }, 1000);
+}
+
+function stopRestTimer() {
+    if (restInterval) {
+        clearInterval(restInterval);
+        restInterval = null;
+    }
+    const card = document.getElementById('timer-card');
+    card.classList.add('hidden');
+}
+
+function handleSetSubmit(event, form) {
+    initAudio();
+    const restInput = form.querySelector('.rest-input');
+    const restSeconds = parseInt(restInput.value, 10) || 0;
+
+    if (restSeconds > 0) {
+        localStorage.setItem('active_rest_seconds', restSeconds);
+        localStorage.setItem('active_rest_start', Date.now());
+    }
+}
+
+// On page refresh after POST submit, resume floating rest timer
+window.addEventListener('DOMContentLoaded', () => {
+    const savedSeconds = localStorage.getItem('active_rest_seconds');
+    const savedStart = localStorage.getItem('active_rest_start');
+
+    if (savedSeconds && savedStart) {
+        const elapsed = Math.floor((Date.now() - parseInt(savedStart, 10)) / 1000);
+        const remaining = parseInt(savedSeconds, 10) - elapsed;
+
+        localStorage.removeItem('active_rest_seconds');
+        localStorage.removeItem('active_rest_start');
+
+        if (remaining > 0) {
+            startRestTimer(remaining);
+        }
+    }
+});
+</script>
+{% endblock %}

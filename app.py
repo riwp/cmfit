@@ -1,505 +1,407 @@
 import os
-import json
-import uuid
 from datetime import datetime
-from flask import (
-    Flask, render_template, request, redirect, 
-    url_for, jsonify, flash
-)
+from dotenv import load_dotenv
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+from flask_sqlalchemy import SQLAlchemy
 from werkzeug.utils import secure_filename
 
+# 1. Load environment variables from .env file
+load_dotenv()
+
+# 2. Get absolute path to project root (~/cmfit)
+basedir = os.path.abspath(os.path.dirname(__file__))
+
 app = Flask(__name__)
-app.secret_key = "cmfit-secret-key-change-in-production"
 
-# Directory Configuration
-BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-DATA_DIR = os.path.join(BASE_DIR, 'data')
-UPLOAD_FOLDER = os.path.join(BASE_DIR, 'static', 'uploads')
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+# 3. Retrieve SECRET_KEY from environment (fallback for quick testing if .env isn't present)
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'default-dev-key-change-in-prod')
 
-os.makedirs(DATA_DIR, exist_ok=True)
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+# 4. Lock SQLite database location to absolute path (~/cmfit/data/cmfit.db)
+db_dir = os.path.join(basedir, 'data')
+os.makedirs(db_dir, exist_ok=True)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(db_dir, 'cmfit.db')
 
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['UPLOAD_FOLDER'] = os.path.join(basedir, 'static', 'uploads')
 
-WORKOUTS_FILE = os.path.join(DATA_DIR, 'workouts.json')
-EXERCISES_FILE = os.path.join(DATA_DIR, 'exercises.json')
-SESSIONS_FILE = os.path.join(DATA_DIR, 'sessions.json')
+db = SQLAlchemy(app)
 
-# Helper Utilities
-def load_json(filepath):
-    if not os.path.exists(filepath):
-        return []
-    try:
-        with open(filepath, 'r') as f:
-            return json.load(f)
-    except Exception:
-        return []
+# Ensure upload directory exists
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-def save_json(filepath, data):
-    with open(filepath, 'w') as f:
-        json.dump(data, f, indent=2)
 
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+# Models
+class Exercise(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    muscles = db.Column(db.JSON, nullable=True)
+    sets = db.Column(db.Integer, default=3)
+    reps = db.Column(db.Integer, default=10)
+    rest = db.Column(db.Integer, default=60)
+    image = db.Column(db.String(255), nullable=True)
+    link = db.Column(db.String(255), nullable=True)
+    instructions = db.Column(db.Text, nullable=True)
 
-def normalize_workout_exercises(workout, all_exercises_map):
-    """
-    Returns a list of dicts: [{'id': ex_id, 'sets': X, 'reps': Y, 'rest': Z, 'name': ...}, ...]
-    Merged with base exercise definitions while keeping workout overrides intact.
-    Handles both legacy string IDs ("ex_1") and override dict objects ({"id": "ex_1", "sets": 4}).
-    """
-    result = []
-    for item in workout.get('exercise_ids', []):
-        if isinstance(item, str):
-            eid = item
-            override_sets, override_reps, override_rest = None, None, None
-        else:
-            eid = item.get('id')
-            override_sets = item.get('sets')
-            override_reps = item.get('reps')
-            override_rest = item.get('rest')
 
-        if eid in all_exercises_map:
-            ex = dict(all_exercises_map[eid])  # Copy base defaults
-            if override_sets is not None:
-                ex['sets'] = int(override_sets)
-            if override_reps is not None:
-                ex['reps'] = int(override_reps)
-            if override_rest is not None:
-                ex['rest'] = int(override_rest)
-            result.append(ex)
-    return result
+class Workout(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    exercises = db.relationship(
+        'WorkoutExercise', backref='workout', cascade='all, delete-orphan'
+    )
 
-# Seed Data Initialization
-def init_db():
-    if not os.path.exists(EXERCISES_FILE):
-        default_exercises = [
-            {
-                "id": "ex_1",
-                "name": "Barbell Bench Press",
-                "muscles": ["Chest", "Triceps", "Shoulders"],
-                "image": "",
-                "link": "https://en.wikipedia.org/wiki/Bench_press",
-                "instructions": "Lie on bench, lower bar to mid-chest, press up explosively.",
-                "sets": 4,
-                "reps": 10,
-                "rest": 60
-            },
-            {
-                "id": "ex_2",
-                "name": "Bodyweight Squat",
-                "muscles": ["Upper Leg", "Glutes"],
-                "image": "",
-                "link": "",
-                "instructions": "Keep chest up, lower hips below knees, push through heels.",
-                "sets": 3,
-                "reps": 12,
-                "rest": 45
-            }
-        ]
-        save_json(EXERCISES_FILE, default_exercises)
-    
-    if not os.path.exists(WORKOUTS_FILE):
-        default_workouts = [
-            {
-                "id": "wk_1",
-                "name": "Full Body Starter",
-                "exercise_ids": ["ex_1", "ex_2"]
-            }
-        ]
-        save_json(WORKOUTS_FILE, default_workouts)
 
-init_db()
+class WorkoutExercise(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    workout_id = db.Column(
+        db.Integer, db.ForeignKey('workout.id'), nullable=False
+    )
+    exercise_id = db.Column(
+        db.Integer, db.ForeignKey('exercise.id'), nullable=False
+    )
+    custom_sets = db.Column(db.Integer, nullable=True)
+    custom_reps = db.Column(db.Integer, nullable=True)
+    custom_rest = db.Column(db.Integer, nullable=True)
+    order = db.Column(db.Integer, default=0, nullable=False)
 
-# Application Routes
+    exercise = db.relationship('Exercise')
+
+
+class WorkoutLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    workout_id = db.Column(
+        db.Integer, db.ForeignKey('workout.id'), nullable=False
+    )
+    start_time = db.Column(db.DateTime, default=datetime.utcnow)
+    end_time = db.Column(db.DateTime, nullable=True)
+    notes = db.Column(db.Text, nullable=True)
+
+    workout = db.relationship('Workout')
+    sets = db.relationship(
+        'SetLog', backref='workout_log', cascade='all, delete-orphan'
+    )
+
+
+class SetLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    workout_log_id = db.Column(
+        db.Integer, db.ForeignKey('workout_log.id'), nullable=False
+    )
+    exercise_id = db.Column(
+        db.Integer, db.ForeignKey('exercise.id'), nullable=False
+    )
+    set_number = db.Column(db.Integer, nullable=False)
+    reps = db.Column(db.Integer, nullable=False)
+    weight = db.Column(db.Float, nullable=False)
+
+    exercise = db.relationship('Exercise')
+
+
+# Helpers
+def save_image(file):
+    if file and file.filename != '':
+        filename = secure_filename(file.filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(filepath)
+        return filename
+    return None
+
+
+# Routes
 @app.route('/')
-def workout_list():
-    workouts = load_json(WORKOUTS_FILE)
-    exercises = {e['id']: e for e in load_json(EXERCISES_FILE)}
-    
-    workout_data = []
-    for w in workouts:
-        total_sec = 0
-        norm_exercises = normalize_workout_exercises(w, exercises)
-        ex_count = len(norm_exercises)
-        for ex in norm_exercises:
-            total_sec += (ex['sets'] * 45) + (ex['sets'] * ex['rest'])
-        
-        mins = round(total_sec / 60)
-        workout_data.append({
-            "id": w['id'],
-            "name": w['name'],
-            "count": ex_count,
-            "duration": mins
-        })
+def index():
+    return redirect(url_for('workout_list'))
 
-    return render_template('workout_list.html', workouts=workout_data, active_page='workouts')
+
+# Exercise Library Routes
+@app.route('/exercises')
+def exercise_list():
+    all_exercises = Exercise.query.order_by(Exercise.name.asc()).all()
+    return render_template('exercise_list.html', all_exercises=all_exercises)
+
+
+@app.route('/exercise/new', methods=['GET', 'POST'])
+def add_new_exercise():
+    return_workout_id = request.args.get('return_workout_id', '')
+
+    if request.method == 'POST':
+        return_workout_id = request.form.get('return_workout_id', '')
+
+        name = request.form.get('name')
+        muscles = request.form.getlist('muscles')
+        sets = int(request.form.get('sets', 3))
+        reps = int(request.form.get('reps', 10))
+        rest = int(request.form.get('rest', 60))
+        link = request.form.get('link')
+        instructions = request.form.get('instructions')
+
+        image_filename = None
+        if 'image' in request.files:
+            file = request.files['image']
+            image_filename = save_image(file)
+
+        new_exercise = Exercise(
+            name=name,
+            muscles=muscles,
+            sets=sets,
+            reps=reps,
+            rest=rest,
+            image=image_filename,
+            link=link,
+            instructions=instructions,
+        )
+        db.session.add(new_exercise)
+        db.session.commit()
+
+        if return_workout_id:
+            return redirect(
+                url_for('add_exercise', workout_id=return_workout_id)
+            )
+        return redirect(url_for('exercise_list'))
+
+    muscle_groups = [
+        'Chest',
+        'Back',
+        'Shoulders',
+        'Biceps',
+        'Triceps',
+        'Legs',
+        'Abs',
+        'Cardio',
+    ]
+    return render_template(
+        'add_new_exercise.html',
+        muscle_groups=muscle_groups,
+        return_workout_id=return_workout_id,
+    )
+
+
+@app.route('/exercise/<int:id>', methods=['GET', 'POST'])
+def display_exercise(id):
+    exercise = Exercise.query.get_or_404(id)
+
+    if request.method == 'POST':
+        exercise.name = request.form.get('name', exercise.name)
+        exercise.sets = int(request.form.get('sets', exercise.sets))
+        exercise.reps = int(request.form.get('reps', exercise.reps))
+        exercise.rest = int(request.form.get('rest', exercise.rest))
+        exercise.instructions = request.form.get('instructions', '')
+        exercise.link = request.form.get('link', '')
+        exercise.muscles = request.form.getlist('muscles')
+
+        if 'image' in request.files:
+            file = request.files['image']
+            if file and file.filename != '':
+                image_filename = save_image(file)
+                if image_filename:
+                    exercise.image = image_filename
+
+        db.session.commit()
+
+        next_url = request.form.get('next_url')
+        if next_url and next_url != request.url:
+            return redirect(next_url)
+        return redirect(url_for('exercise_list'))
+
+    next_url = request.referrer or url_for('exercise_list')
+
+    muscle_groups = [
+        'Chest',
+        'Back',
+        'Shoulders',
+        'Biceps',
+        'Triceps',
+        'Legs',
+        'Abs',
+        'Cardio',
+    ]
+    return render_template(
+        'display_exercise.html',
+        exercise=exercise,
+        muscle_groups=muscle_groups,
+        next_url=next_url,
+    )
+
+
+# Workout Routes
+@app.route('/workouts')
+def workout_list():
+    workouts = Workout.query.all()
+    return render_template('workout_list.html', workouts=workouts)
 
 
 @app.route('/workout/add', methods=['GET', 'POST'])
 def add_workout():
     if request.method == 'POST':
-        name = request.form.get('name', '').strip()
-        if not name:
-            flash("Workout name is required.", "danger")
-            return redirect(url_for('add_workout'))
-        
-        workouts = load_json(WORKOUTS_FILE)
-        new_id = f"wk_{uuid.uuid4().hex[:8]}"
-        workouts.append({"id": new_id, "name": name, "exercise_ids": []})
-        save_json(WORKOUTS_FILE, workouts)
-        
-        flash("Workout created successfully!", "success")
-        return redirect(url_for('view_workout', workout_id=new_id))
+        title = request.form.get('title', '').strip()
+        description = request.form.get('description', '').strip()
 
-    return render_template('add_workout.html', active_page='workouts')
+        if not title:
+            flash('Workout title is required.', 'error')
+            return render_template(
+                'add_workout.html', title=title, description=description
+            )
+
+        workout = Workout(title=title, description=description or None)
+        db.session.add(workout)
+        db.session.commit()
+
+        return redirect(url_for('add_exercise', workout_id=workout.id))
+
+    return render_template('add_workout.html')
 
 
-@app.route('/workout/<workout_id>')
+@app.route('/workout/<int:workout_id>')
 def view_workout(workout_id):
-    workouts = load_json(WORKOUTS_FILE)
-    workout = next((w for w in workouts if w['id'] == workout_id), None)
-    if not workout:
-        flash("Workout not found.", "danger")
-        return redirect(url_for('workout_list'))
-
-    all_exercises = {e['id']: e for e in load_json(EXERCISES_FILE)}
-    workout_exercises = normalize_workout_exercises(workout, all_exercises)
-
-    return render_template('view_workout.html', workout=workout, workout_exercises=workout_exercises, active_page='workouts')
+    workout = Workout.query.get_or_404(workout_id)
+    sorted_exercises = sorted(workout.exercises, key=lambda x: x.order)
+    return render_template(
+        'view_workout.html', workout=workout, sorted_exercises=sorted_exercises
+    )
 
 
-@app.route('/workout/<workout_id>/add-exercise', methods=['GET', 'POST'])
-def add_exercise_to_workout(workout_id):
-    workouts = load_json(WORKOUTS_FILE)
-    workout = next((w for w in workouts if w['id'] == workout_id), None)
-    if not workout:
-        return redirect(url_for('workout_list'))
+@app.route('/workout/<int:workout_id>/add_exercise', methods=['GET', 'POST'])
+def add_exercise(workout_id):
+    workout = Workout.query.get_or_404(workout_id)
 
     if request.method == 'POST':
+        WorkoutExercise.query.filter_by(workout_id=workout.id).delete()
+
         selected_ids = request.form.getlist('exercise_ids')
-        updated_list = []
+        for idx, ex_id in enumerate(selected_ids):
+            ex_id_int = int(ex_id)
+            sets = request.form.get(f'sets_{ex_id_int}')
+            reps = request.form.get(f'reps_{ex_id_int}')
+            rest = request.form.get(f'rest_{ex_id_int}')
 
-        for eid in selected_ids:
-            sets = request.form.get(f'sets_{eid}')
-            reps = request.form.get(f'reps_{eid}')
-            rest = request.form.get(f'rest_{eid}')
-            
-            entry = {"id": eid}
-            if sets: entry["sets"] = int(sets)
-            if reps: entry["reps"] = int(reps)
-            if rest: entry["rest"] = int(rest)
-            
-            updated_list.append(entry)
+            we = WorkoutExercise(
+                workout_id=workout.id,
+                exercise_id=ex_id_int,
+                custom_sets=int(sets) if sets else None,
+                custom_reps=int(reps) if reps else None,
+                custom_rest=int(rest) if rest else None,
+                order=idx,
+            )
+            db.session.add(we)
 
-        workout['exercise_ids'] = updated_list
-        save_json(WORKOUTS_FILE, workouts)
-        flash("Exercises saved to workout!", "success")
-        return redirect(url_for('view_workout', workout_id=workout_id))
+        db.session.commit()
+        return redirect(url_for('view_workout', workout_id=workout.id))
 
-    all_exercises = load_json(EXERCISES_FILE)
-    
-    # Map existing exercise configurations
-    existing_map = {}
-    for item in workout.get('exercise_ids', []):
-        if isinstance(item, str):
-            existing_map[item] = {}
-        else:
-            existing_map[item['id']] = item
-
-    return render_template(
-        'add_exercise_to_workout.html', 
-        workout=workout, 
-        all_exercises=all_exercises, 
-        existing_map=existing_map,
-        active_page='workouts'
-    )
-
-
-@app.route('/exercise/new', methods=['GET', 'POST'])
-def add_new_exercise():
-    return_workout_id = request.args.get('return_workout_id', request.form.get('return_workout_id', ''))
-    muscle_groups = ['Abs', 'Back', 'Biceps', 'Chest', 'Forearms', 'Glutes', 'Shoulders', 'Triceps', 'Upper Leg', 'Lower Leg', 'Cardio']
-
-    if request.method == 'POST':
-        name = request.form.get('name', '').strip()
-        muscles = request.form.getlist('muscles')
-        link = request.form.get('link', '').strip()
-        instructions = request.form.get('instructions', '').strip()
-        sets = int(request.form.get('sets', 3))
-        reps = int(request.form.get('reps', 10))
-        rest = int(request.form.get('rest', 60))
-
-        image_filename = ""
-        if 'image' in request.files:
-            file = request.files['image']
-            if file and allowed_file(file.filename):
-                filename = secure_filename(f"{uuid.uuid4().hex[:6]}_{file.filename}")
-                file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-                image_filename = filename
-
-        exercises = load_json(EXERCISES_FILE)
-        new_ex_id = f"ex_{uuid.uuid4().hex[:8]}"
-        new_ex = {
-            "id": new_ex_id,
-            "name": name,
-            "muscles": muscles,
-            "image": image_filename,
-            "link": link,
-            "instructions": instructions,
-            "sets": sets,
-            "reps": reps,
-            "rest": rest
+    all_exercises = Exercise.query.order_by(Exercise.name.asc()).all()
+    existing_we = WorkoutExercise.query.filter_by(
+        workout_id=workout.id
+    ).all()
+    existing_map = {
+        we.exercise_id: {
+            'sets': we.custom_sets,
+            'reps': we.custom_reps,
+            'rest': we.custom_rest,
         }
-        exercises.append(new_ex)
-        save_json(EXERCISES_FILE, exercises)
-
-        if return_workout_id:
-            workouts = load_json(WORKOUTS_FILE)
-            for w in workouts:
-                if w['id'] == return_workout_id:
-                    if 'exercise_ids' not in w:
-                        w['exercise_ids'] = []
-                    
-                    # Ensure we don't duplicate entry
-                    existing_eids = [item if isinstance(item, str) else item.get('id') for item in w['exercise_ids']]
-                    if new_ex_id not in existing_eids:
-                        w['exercise_ids'].append({"id": new_ex_id, "sets": sets, "reps": reps, "rest": rest})
-                    break
-            save_json(WORKOUTS_FILE, workouts)
-            flash("New Exercise created and added to workout!", "success")
-            return redirect(url_for('view_workout', workout_id=return_workout_id))
-
-        flash("New Exercise created!", "success")
-        return redirect(url_for('workout_list'))
-
-    return render_template(
-        'add_new_exercise.html', 
-        muscle_groups=muscle_groups, 
-        return_workout_id=return_workout_id,
-        active_page='workouts'
-    )
-
-
-@app.route('/workout/<workout_id>/start')
-def start_workout(workout_id):
-    workouts = load_json(WORKOUTS_FILE)
-    workout = next((w for w in workouts if w['id'] == workout_id), None)
-    if not workout or not workout.get('exercise_ids'):
-        flash("Cannot start an empty workout.", "danger")
-        return redirect(url_for('view_workout', workout_id=workout_id))
-
-    session_id = f"sess_{uuid.uuid4().hex[:8]}"
-    sessions = load_json(SESSIONS_FILE)
-    
-    new_session = {
-        "session_id": session_id,
-        "workout_id": workout_id,
-        "start_time": datetime.utcnow().isoformat() + "Z",
-        "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
-        "completed": False,
-        "logs": []
+        for we in existing_we
     }
-    sessions.append(new_session)
-    save_json(SESSIONS_FILE, sessions)
-
-    return redirect(url_for('display_exercise', session_id=session_id, exercise_idx=0))
-
-
-@app.route('/session/<session_id>/exercise/<int:exercise_idx>')
-def display_exercise(session_id, exercise_idx):
-    sessions = load_json(SESSIONS_FILE)
-    session = next((s for s in sessions if s['session_id'] == session_id), None)
-    if not session or session.get('completed', False):
-        return redirect(url_for('workout_list'))
-
-    workouts = load_json(WORKOUTS_FILE)
-    workout = next((w for w in workouts if w['id'] == session['workout_id']), None)
-    
-    all_exercises_map = {e['id']: e for e in load_json(EXERCISES_FILE)}
-    workout_exercises = normalize_workout_exercises(workout, all_exercises_map) if workout else []
-    
-    if not workout or exercise_idx >= len(workout_exercises):
-        return redirect(url_for('finished_workout', session_id=session_id))
-
-    exercise = workout_exercises[exercise_idx]
-    
-    logged_counts_map = {}
-    for ex_item in workout_exercises:
-        ex_id = ex_item['id']
-        logged_counts_map[ex_id] = len([l for l in session.get('logs', []) if l.get('exercise_id') == ex_id])
-
-    logged_sets = [l for l in session.get('logs', []) if l.get('exercise_id') == exercise['id']]
 
     return render_template(
-        'display_exercise.html', 
-        exercise=exercise, 
-        session_id=session_id, 
-        exercise_idx=exercise_idx, 
-        total_exercises=len(workout_exercises),
-        all_workout_exercises=workout_exercises,
-        logged_counts_map=logged_counts_map,
-        logged_sets=logged_sets,
-        active_page='workouts',
-        is_in_session=True  # <--- Pass flag to template
+        'add_exercise_to_workout.html',
+        workout=workout,
+        all_exercises=all_exercises,
+        existing_map=existing_map,
     )
 
-@app.route('/api/log-set', methods=['POST'])
-def log_set():
-    data = request.json
-    sessions = load_json(SESSIONS_FILE)
-    session = next((s for s in sessions if s['session_id'] == data['session_id']), None)
-    
-    if session:
-        session['logs'].append({
-            "exercise_id": data['exercise_id'],
-            "set_number": data['set_number'],
-            "lbs": data['lbs'],
-            "reps": data['reps'],
-            "rest": data['rest']
-        })
-        save_json(SESSIONS_FILE, sessions)
-        return jsonify({"success": True})
-    return jsonify({"success": False}), 400
 
-
-@app.route('/session/<session_id>/finished')
-def finished_workout(session_id):
-    sessions = load_json(SESSIONS_FILE)
-    session = next((s for s in sessions if s['session_id'] == session_id), None)
-    if session:
-        session['completed'] = True
-        save_json(SESSIONS_FILE, sessions)
-
-    return render_template('finished_workout.html', active_page='workouts')
-
-
-@app.route('/progress')
-def progress():
-    sessions = load_json(SESSIONS_FILE)
-    workouts = {w['id']: w['name'] for w in load_json(WORKOUTS_FILE)}
-    return render_template('progress.html', sessions=sessions, workouts=workouts, active_page='progress')
-
-
-@app.route('/workout/<workout_id>/reorder', methods=['POST'])
+@app.route('/workout/<int:workout_id>/reorder', methods=['POST'])
 def reorder_workout_exercises(workout_id):
-    data = request.json
-    new_order = data.get('exercise_ids', [])
-    
-    workouts = load_json(WORKOUTS_FILE)
-    workout = next((w for w in workouts if w['id'] == workout_id), None)
-    
-    if workout:
-        # Preserve configuration objects while reordering
-        item_map = {}
-        for item in workout.get('exercise_ids', []):
-            eid = item if isinstance(item, str) else item.get('id')
-            item_map[eid] = item
+    data = request.get_json()
+    if not data or 'order' not in data:
+        return jsonify({'status': 'error', 'message': 'Invalid payload'}), 400
 
-        reordered = []
-        for eid in new_order:
-            if eid in item_map:
-                reordered.append(item_map[eid])
+    order_map = {item['id']: item['order'] for item in data['order']}
+    exercises = WorkoutExercise.query.filter_by(workout_id=workout_id).all()
 
-        workout['exercise_ids'] = reordered
-        save_json(WORKOUTS_FILE, workouts)
-        return jsonify({"success": True})
-    
-    return jsonify({"success": False}), 404
+    for ex in exercises:
+        if ex.id in order_map:
+            ex.order = order_map[ex.id]
+
+    db.session.commit()
+    return jsonify({'status': 'success'})
 
 
-@app.route('/workout/<workout_id>/remove-exercise/<exercise_id>', methods=['POST'])
-def remove_exercise_from_workout(workout_id, exercise_id):
-    workouts = load_json(WORKOUTS_FILE)
-    workout = next((w for w in workouts if w['id'] == workout_id), None)
-    
-    if workout and 'exercise_ids' in workout:
-        workout['exercise_ids'] = [
-            item for item in workout['exercise_ids'] 
-            if (item if isinstance(item, str) else item.get('id')) != exercise_id
-        ]
-        save_json(WORKOUTS_FILE, workouts)
-        return jsonify({"success": True})
-        
-    return jsonify({"success": False}), 400
+@app.route('/workout/<int:workout_id>/remove_exercise/<int:we_id>', methods=['POST'])
+def remove_exercise_from_workout(workout_id, we_id):
+    we = WorkoutExercise.query.filter_by(
+        id=we_id, workout_id=workout_id
+    ).first_or_404()
+    db.session.delete(we)
+    db.session.commit()
+    flash('Exercise removed from workout.', 'success')
+    return redirect(url_for('view_workout', workout_id=workout_id))
 
 
-@app.route('/workouts/reorder', methods=['POST'])
-def reorder_workouts():
-    data = request.json
-    new_order = data.get('workout_ids', [])
-    
-    workouts = load_json(WORKOUTS_FILE)
-    workout_dict = {w['id']: w for w in workouts}
-    
-    # Reconstruct list matching the new user-defined order
-    reordered_workouts = []
-    for wid in new_order:
-        if wid in workout_dict:
-            reordered_workouts.append(workout_dict.pop(wid))
-            
-    # Append any workouts that weren't included in the request payload
-    reordered_workouts.extend(workout_dict.values())
-    
-    save_json(WORKOUTS_FILE, reordered_workouts)
-    return jsonify({"success": True})
-
-
-@app.route('/workout/<workout_id>/delete', methods=['POST'])
+@app.route('/workout/<int:workout_id>/delete', methods=['POST'])
 def delete_workout(workout_id):
-    workouts = load_json(WORKOUTS_FILE)
-    updated_workouts = [w for w in workouts if w['id'] != workout_id]
-    
-    if len(workouts) != len(updated_workouts):
-        save_json(WORKOUTS_FILE, updated_workouts)
-        return jsonify({"success": True})
-        
-    return jsonify({"success": False, "message": "Workout not found"}), 404
-
-
-@app.route('/api/active-session')
-def get_active_session():
-    sessions = load_json(SESSIONS_FILE)
-    # Find the most recent active (uncompleted) session
-    active_session = next((s for s in reversed(sessions) if not s.get('completed', False)), None)
-    
-    if active_session:
-        workouts = load_json(WORKOUTS_FILE)
-        workout = next((w for w in workouts if w['id'] == active_session['workout_id']), None)
-        
-        if workout:
-            all_exercises_map = {e['id']: e for e in load_json(EXERCISES_FILE)}
-            workout_exercises = normalize_workout_exercises(workout, all_exercises_map)
-            
-            # Determine current exercise index based on latest logged set
-            last_idx = 0
-            if active_session.get('logs'):
-                last_logged_eid = active_session['logs'][-1].get('exercise_id')
-                for idx, ex in enumerate(workout_exercises):
-                    if ex['id'] == last_logged_eid:
-                        last_idx = idx
-                        break
-
-            return jsonify({
-                'active': True,
-                'session_id': active_session['session_id'],
-                'workout_name': workout['name'],
-                'start_time': active_session.get('start_time', datetime.utcnow().isoformat() + "Z"),
-                'current_exercise_idx': last_idx
-            })
-
-    return jsonify({'active': False})
-
-@app.route('/session/<session_id>/exit', methods=['POST'])
-def exit_workout(session_id):
-    sessions = load_json(SESSIONS_FILE)
-    session = next((s for s in sessions if s['session_id'] == session_id), None)
-    if session:
-        session['completed'] = True
-        save_json(SESSIONS_FILE, sessions)
-        flash("Workout ended early.", "info")
+    workout = Workout.query.get_or_404(workout_id)
+    db.session.delete(workout)
+    db.session.commit()
+    flash('Workout deleted successfully.', 'success')
     return redirect(url_for('workout_list'))
 
+
+# Active Workout Logging Routes
+@app.route('/workout/<int:workout_id>/start')
+def start_workout(workout_id):
+    workout = Workout.query.get_or_404(workout_id)
+    log = WorkoutLog(workout_id=workout.id, start_time=datetime.utcnow())
+    db.session.add(log)
+    db.session.commit()
+    return redirect(url_for('log_exercise', log_id=log.id))
+
+
+@app.route('/log/<int:log_id>', methods=['GET', 'POST'])
+def log_exercise(log_id):
+    log = WorkoutLog.query.get_or_404(log_id)
+
+    if request.method == 'POST':
+        exercise_id = int(request.form.get('exercise_id'))
+        set_number = int(request.form.get('set_number'))
+        reps = int(request.form.get('reps'))
+        weight = float(request.form.get('weight'))
+
+        set_log = SetLog(
+            workout_log_id=log.id,
+            exercise_id=exercise_id,
+            set_number=set_number,
+            reps=reps,
+            weight=weight,
+        )
+        db.session.add(set_log)
+        db.session.commit()
+        return redirect(url_for('log_exercise', log_id=log.id))
+
+    return render_template('log_workout.html', log=log)
+
+
+@app.route('/log/<int:log_id>/finish', methods=['POST'])
+def finish_workout(log_id):
+    log = WorkoutLog.query.get_or_404(log_id)
+    log.end_time = datetime.utcnow()
+    log.notes = request.form.get('notes', '')
+    db.session.commit()
+
+    return render_template('finished_workout.html', log=log)
+
+
+# Progress Route
+@app.route('/progress')
+def progress():
+    sessions = (
+        WorkoutLog.query.filter(WorkoutLog.end_time.isnot(None))
+        .order_by(WorkoutLog.end_time.desc())
+        .all()
+    )
+    return render_template('progress.html', sessions=sessions)
+
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=52889)
+    with app.app_context():
+        db.create_all()
+    app.run(host='0.0.0.0', port=52889, debug=True)
