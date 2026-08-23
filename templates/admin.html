@@ -1,0 +1,178 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="glass-card p-5 rounded-2xl mb-6">
+    <h2 class="text-xl font-extrabold text-white mb-4 flex items-center gap-2">
+        <i class="fa-solid fa-sliders text-emerald-400"></i> Admin Settings
+    </h2>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="mb-4 p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs rounded-xl font-medium">
+            {{ message }}
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <!-- Tab Navigation Bar -->
+    <div class="flex border-b border-slate-800 mb-6">
+        <button onclick="switchTab('sounds')" id="tab-btn-sounds" class="tab-btn py-2 px-4 text-xs font-bold border-b-2 border-emerald-400 text-emerald-400 transition">
+            <i class="fa-solid fa-volume-high mr-1.5"></i> Sounds
+        </button>
+    </div>
+
+    <!-- Tab Content: Sounds -->
+    <div id="tab-content-sounds" class="tab-content space-y-6">
+
+        <!-- Upload New Sound File -->
+        <div class="p-4 bg-slate-900 border border-slate-800/80 rounded-xl">
+            <h3 class="text-sm font-bold text-white mb-3">Upload Sound File</h3>
+            <form action="{{ url_for('admin') }}" method="POST" enctype="multipart/form-data" class="space-y-3">
+                <input type="hidden" name="action" value="upload_sound">
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-400 mb-1">Sound Label / Name</label>
+                    <input type="text" name="sound_name" required placeholder="e.g., Whistle, Beep, Voice Memo" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-400 mb-1">Audio File (.mp3, .m4a, .mp4, .wav, .ogg)</label>
+                    <input type="file" name="sound_file" accept=".m4a,.mp3,.mp4,.wav,.ogg,audio/m4a,audio/x-m4a,audio/mp4,audio/mpeg,audio/wav,audio/ogg,audio/*" required class="w-full text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-500/20 file:text-emerald-400 hover:file:bg-emerald-500/30">
+                </div>
+                <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold py-2 rounded-lg text-xs transition">
+                    Upload to Library
+                </button>
+            </form>
+        </div>
+
+        <!-- Sound Event Configuration Form -->
+        <form action="{{ url_for('admin') }}" method="POST" class="space-y-4">
+            <input type="hidden" name="action" value="save_sound_settings">
+
+            <h3 class="text-sm font-bold text-white border-b border-slate-800 pb-2">Event Sound Mappings</h3>
+
+            <!-- 1. Start Workout Sound -->
+            <div class="p-3.5 bg-slate-900 border border-slate-800/80 rounded-xl space-y-2">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-slate-200">Start Workout Sound</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" name="start_enabled" class="sr-only peer" {% if settings.start_enabled %}checked{% endif %}>
+                        <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+                    </label>
+                </div>
+                <select name="start_file_id" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500">
+                    <option value="">-- Select Sound File --</option>
+                    {% for sound in sounds %}
+                    <option value="{{ sound.id }}" {% if settings.start_file_id == sound.id %}selected{% endif %}>{{ sound.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- 2. Timer Notice Sound -->
+            <div class="p-3.5 bg-slate-900 border border-slate-800/80 rounded-xl space-y-2">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-slate-200">Timer Warning Notice</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" name="notice_enabled" class="sr-only peer" {% if settings.notice_enabled %}checked{% endif %}>
+                        <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+                    </label>
+                </div>
+                <div class="grid grid-cols-3 gap-2">
+                    <div class="col-span-2">
+                        <select name="notice_file_id" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500">
+                            <option value="">-- Select Sound File --</option>
+                            {% for sound in sounds %}
+                            <option value="{{ sound.id }}" {% if settings.notice_file_id == sound.id %}selected{% endif %}>{{ sound.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <input type="number" name="notice_seconds" value="{{ settings.notice_seconds }}" min="1" max="60" placeholder="Secs" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2 py-2 text-xs text-slate-100 text-center focus:outline-none focus:border-emerald-500" title="Seconds remaining when notice plays">
+                    </div>
+                </div>
+                <div class="text-[10px] text-slate-500">Plays when timer reaches this remaining number of seconds.</div>
+            </div>
+
+            <!-- 3. End Round / Rest Timer End Sound -->
+            <div class="p-3.5 bg-slate-900 border border-slate-800/80 rounded-xl space-y-2">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-slate-200">End Round / Rest Timer End</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" name="rest_end_enabled" class="sr-only peer" {% if settings.rest_end_enabled %}checked{% endif %}>
+                        <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+                    </label>
+                </div>
+                <select name="rest_end_file_id" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500">
+                    <option value="">-- Select Sound File --</option>
+                    {% for sound in sounds %}
+                    <option value="{{ sound.id }}" {% if settings.rest_end_file_id == sound.id %}selected{% endif %}>{{ sound.name }}</option>
+                    {% endfor %}
+                </select>
+                <div class="text-[10px] text-slate-500">Plays when rest timer reaches 0 seconds.</div>
+            </div>
+
+            <!-- 4. End Workout Sound -->
+            <div class="p-3.5 bg-slate-900 border border-slate-800/80 rounded-xl space-y-2">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-slate-200">End Workout Sound</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" name="end_enabled" class="sr-only peer" {% if settings.end_enabled %}checked{% endif %}>
+                        <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+                    </label>
+                </div>
+                <select name="end_file_id" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500">
+                    <option value="">-- Select Sound File --</option>
+                    {% for sound in sounds %}
+                    <option value="{{ sound.id }}" {% if settings.end_file_id == sound.id %}selected{% endif %}>{{ sound.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold py-3 rounded-xl text-xs transition">
+                Save Audio Preferences
+            </button>
+        </form>
+
+        <!-- Library Listing & Deletion -->
+        {% if sounds %}
+        <div class="border-t border-slate-800 pt-4">
+            <h3 class="text-xs font-bold text-slate-400 mb-2">Uploaded Library Files</h3>
+            <div class="space-y-2">
+                {% for sound in sounds %}
+                <div class="flex items-center justify-between p-2.5 bg-slate-900 border border-slate-800/80 rounded-lg text-xs">
+                    <span class="font-semibold text-slate-200">{{ sound.name }}</span>
+                    <div class="flex items-center gap-2">
+                        <button onclick="new Audio('{{ url_for('static', filename='sounds/' + sound.filename) }}').play()" class="text-emerald-400 hover:text-emerald-300 p-1">
+                            <i class="fa-solid fa-play"></i>
+                        </button>
+                        <form action="{{ url_for('delete_sound', sound_id=sound.id) }}" method="POST" onsubmit="return confirm('Delete this sound file?');">
+                            <button type="submit" class="text-slate-500 hover:text-red-400 p-1">
+                                <i class="fa-regular fa-trash-can"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+</div>
+
+<script>
+function switchTab(tabName) {
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('border-emerald-400', 'text-emerald-400');
+        btn.classList.add('text-slate-400', 'border-transparent');
+    });
+    document.querySelectorAll('.tab-content').forEach(content => content.classList.add('hidden'));
+
+    const activeBtn = document.getElementById(`tab-btn-${tabName}`);
+    activeBtn.classList.remove('text-slate-400', 'border-transparent');
+    activeBtn.classList.add('border-emerald-400', 'text-emerald-400');
+
+    document.getElementById(`tab-content-${tabName}`).classList.remove('hidden');
+}
+</script>
+{% endblock %}

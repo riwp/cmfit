@@ -5,29 +5,29 @@ from flask import Flask, render_template, request, redirect, url_for, flash, jso
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.utils import secure_filename
 
-# 1. Load environment variables from .env file
+# Load environment variables
 load_dotenv()
 
-# 2. Get absolute path to project root (~/cmfit)
+# Absolute path to project root
 basedir = os.path.abspath(os.path.dirname(__file__))
 
 app = Flask(__name__)
 
-# 3. Retrieve SECRET_KEY from environment (fallback for quick testing if .env isn't present)
+# Secret key & absolute DB path locking
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'default-dev-key-change-in-prod')
-
-# 4. Lock SQLite database location to absolute path (~/cmfit/data/cmfit.db)
 db_dir = os.path.join(basedir, 'data')
 os.makedirs(db_dir, exist_ok=True)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(db_dir, 'cmfit.db')
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = os.path.join(basedir, 'static', 'uploads')
+app.config['SOUND_FOLDER'] = os.path.join(basedir, 'static', 'sounds')
 
 db = SQLAlchemy(app)
 
-# Ensure upload directory exists
+# Ensure upload directories exist
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+os.makedirs(app.config['SOUND_FOLDER'], exist_ok=True)
 
 
 # Models
@@ -98,6 +98,19 @@ class SetLog(db.Model):
     exercise = db.relationship('Exercise')
 
 
+class SoundFile(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    filename = db.Column(db.String(255), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class AppSetting(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(50), unique=True, nullable=False)
+    value = db.Column(db.String(255), nullable=True)
+
+
 # Helpers
 def save_image(file):
     if file and file.filename != '':
@@ -106,6 +119,57 @@ def save_image(file):
         file.save(filepath)
         return filename
     return None
+
+
+def save_sound(file):
+    if file and file.filename != '':
+        filename = secure_filename(file.filename)
+        filepath = os.path.join(app.config['SOUND_FOLDER'], filename)
+        file.save(filepath)
+        return filename
+    return None
+
+
+def safe_int(val, default=0):
+    """Safely converts string inputs to integer without breaking on empty values."""
+    try:
+        return int(val) if val is not None and str(val).strip() != '' else default
+    except (ValueError, TypeError):
+        return default
+
+
+def get_sound_settings():
+    settings = {s.key: s.value for s in AppSetting.query.all()}
+    
+    # Helper lambda to look up sound file safely by ID string
+    def get_file(key):
+        file_id = safe_int(settings.get(key, 0))
+        return SoundFile.query.get(file_id) if file_id > 0 else None
+
+    start_file = get_file('sound_start_file_id')
+    notice_file = get_file('sound_notice_file_id')
+    rest_end_file = get_file('sound_rest_end_file_id')
+    end_file = get_file('sound_end_file_id')
+
+    return {
+        'start_enabled': settings.get('sound_start_enabled', 'false') == 'true',
+        'start_url': url_for('static', filename=f'sounds/{start_file.filename}') if start_file else None,
+        'notice_enabled': settings.get('sound_notice_enabled', 'false') == 'true',
+        'notice_url': url_for('static', filename=f'sounds/{notice_file.filename}') if notice_file else None,
+        'notice_seconds': safe_int(settings.get('sound_notice_seconds'), 5),
+        'rest_end_enabled': settings.get('sound_rest_end_enabled', 'false') == 'true',
+        'rest_end_url': url_for('static', filename=f'sounds/{rest_end_file.filename}') if rest_end_file else None,
+        'end_enabled': settings.get('sound_end_enabled', 'false') == 'true',
+        'end_url': url_for('static', filename=f'sounds/{end_file.filename}') if end_file else None,
+    }
+
+
+@app.context_processor
+def inject_sound_config():
+    try:
+        return dict(sound_config=get_sound_settings())
+    except Exception:
+        return dict(sound_config={})
 
 
 # Routes
@@ -130,9 +194,9 @@ def add_new_exercise():
 
         name = request.form.get('name')
         muscles = request.form.getlist('muscles')
-        sets = int(request.form.get('sets', 3))
-        reps = int(request.form.get('reps', 10))
-        rest = int(request.form.get('rest', 60))
+        sets = safe_int(request.form.get('sets'), 3)
+        reps = safe_int(request.form.get('reps'), 10)
+        rest = safe_int(request.form.get('rest'), 60)
         link = request.form.get('link')
         instructions = request.form.get('instructions')
 
@@ -161,14 +225,7 @@ def add_new_exercise():
         return redirect(url_for('exercise_list'))
 
     muscle_groups = [
-        'Chest',
-        'Back',
-        'Shoulders',
-        'Biceps',
-        'Triceps',
-        'Legs',
-        'Abs',
-        'Cardio',
+        'Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps', 'Legs', 'Abs', 'Cardio'
     ]
     return render_template(
         'add_new_exercise.html',
@@ -183,9 +240,9 @@ def display_exercise(id):
 
     if request.method == 'POST':
         exercise.name = request.form.get('name', exercise.name)
-        exercise.sets = int(request.form.get('sets', exercise.sets))
-        exercise.reps = int(request.form.get('reps', exercise.reps))
-        exercise.rest = int(request.form.get('rest', exercise.rest))
+        exercise.sets = safe_int(request.form.get('sets'), exercise.sets)
+        exercise.reps = safe_int(request.form.get('reps'), exercise.reps)
+        exercise.rest = safe_int(request.form.get('rest'), exercise.rest)
         exercise.instructions = request.form.get('instructions', '')
         exercise.link = request.form.get('link', '')
         exercise.muscles = request.form.getlist('muscles')
@@ -207,14 +264,7 @@ def display_exercise(id):
     next_url = request.referrer or url_for('exercise_list')
 
     muscle_groups = [
-        'Chest',
-        'Back',
-        'Shoulders',
-        'Biceps',
-        'Triceps',
-        'Legs',
-        'Abs',
-        'Cardio',
+        'Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps', 'Legs', 'Abs', 'Cardio'
     ]
     return render_template(
         'display_exercise.html',
@@ -278,9 +328,9 @@ def add_exercise(workout_id):
             we = WorkoutExercise(
                 workout_id=workout.id,
                 exercise_id=ex_id_int,
-                custom_sets=int(sets) if sets else None,
-                custom_reps=int(reps) if reps else None,
-                custom_rest=int(rest) if rest else None,
+                custom_sets=safe_int(sets) if sets else None,
+                custom_reps=safe_int(reps) if reps else None,
+                custom_rest=safe_int(rest) if rest else None,
                 order=idx,
             )
             db.session.add(we)
@@ -361,10 +411,13 @@ def log_exercise(log_id):
     log = WorkoutLog.query.get_or_404(log_id)
 
     if request.method == 'POST':
-        exercise_id = int(request.form.get('exercise_id'))
-        set_number = int(request.form.get('set_number'))
-        reps = int(request.form.get('reps'))
-        weight = float(request.form.get('weight'))
+        # Safely parse form data or JSON data depending on how front-end submits
+        data = request.get_json() if request.is_json else request.form
+
+        exercise_id = int(data.get('exercise_id'))
+        set_number = int(data.get('set_number'))
+        reps = int(data.get('reps'))
+        weight = float(data.get('weight'))
 
         set_log = SetLog(
             workout_log_id=log.id,
@@ -375,6 +428,17 @@ def log_exercise(log_id):
         )
         db.session.add(set_log)
         db.session.commit()
+
+        # Respond to AJAX / Fetch requests directly without a full-page reload
+        is_ajax = (
+            request.is_json
+            or request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+            or 'application/json' in request.headers.get('Accept', '')
+        )
+
+        if is_ajax:
+            return jsonify({'status': 'success', 'set_id': set_log.id}), 200
+
         return redirect(url_for('log_exercise', log_id=log.id))
 
     return render_template('log_workout.html', log=log)
@@ -399,6 +463,83 @@ def progress():
         .all()
     )
     return render_template('progress.html', sessions=sessions)
+
+
+# Admin & Sound Management Routes
+@app.route('/admin', methods=['GET', 'POST'])
+def admin():
+    if request.method == 'POST':
+        action = request.form.get('action')
+
+        if action == 'upload_sound':
+            sound_name = request.form.get('sound_name', '').strip()
+            file = request.files.get('sound_file')
+            if file and sound_name:
+                filename = save_sound(file)
+                if filename:
+                    sf = SoundFile(name=sound_name, filename=filename)
+                    db.session.add(sf)
+                    db.session.commit()
+                    flash('Sound file uploaded to library.', 'success')
+            else:
+                flash('Please provide a sound name and valid file.', 'error')
+
+        elif action == 'save_sound_settings':
+            settings = {
+                'sound_start_enabled': 'true' if request.form.get('start_enabled') else 'false',
+                'sound_start_file_id': request.form.get('start_file_id', ''),
+                'sound_notice_enabled': 'true' if request.form.get('notice_enabled') else 'false',
+                'sound_notice_file_id': request.form.get('notice_file_id', ''),
+                'sound_notice_seconds': request.form.get('notice_seconds', '5'),
+                'sound_rest_end_enabled': 'true' if request.form.get('rest_end_enabled') else 'false',
+                'sound_rest_end_file_id': request.form.get('rest_end_file_id', ''),
+                'sound_end_enabled': 'true' if request.form.get('end_enabled') else 'false',
+                'sound_end_file_id': request.form.get('end_file_id', ''),
+            }
+
+            for key, val in settings.items():
+                setting = AppSetting.query.filter_by(key=key).first()
+                if not setting:
+                    setting = AppSetting(key=key, value=val)
+                    db.session.add(setting)
+                else:
+                    setting.value = val
+
+            db.session.commit()
+            flash('Sound settings updated.', 'success')
+
+        return redirect(url_for('admin'))
+
+    sounds = SoundFile.query.order_by(SoundFile.name.asc()).all()
+    raw_settings = {s.key: s.value for s in AppSetting.query.all()}
+
+    settings = {
+        'start_enabled': raw_settings.get('sound_start_enabled', 'false') == 'true',
+        'start_file_id': safe_int(raw_settings.get('sound_start_file_id'), None),
+        'notice_enabled': raw_settings.get('sound_notice_enabled', 'false') == 'true',
+        'notice_file_id': safe_int(raw_settings.get('sound_notice_file_id'), None),
+        'notice_seconds': safe_int(raw_settings.get('sound_notice_seconds'), 5),
+        'rest_end_enabled': raw_settings.get('sound_rest_end_enabled', 'false') == 'true',
+        'rest_end_file_id': safe_int(raw_settings.get('sound_rest_end_file_id'), None),
+        'end_enabled': raw_settings.get('sound_end_enabled', 'false') == 'true',
+        'end_file_id': safe_int(raw_settings.get('sound_end_file_id'), None),
+    }
+
+    return render_template('admin.html', sounds=sounds, settings=settings)
+
+
+@app.route('/admin/sound/<int:sound_id>/delete', methods=['POST'])
+def delete_sound(sound_id):
+    sf = SoundFile.query.get_or_404(sound_id)
+    try:
+        os.remove(os.path.join(app.config['SOUND_FOLDER'], sf.filename))
+    except OSError:
+        pass
+
+    db.session.delete(sf)
+    db.session.commit()
+    flash('Sound file deleted.', 'success')
+    return redirect(url_for('admin'))
 
 
 if __name__ == '__main__':

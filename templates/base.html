@@ -12,6 +12,15 @@
             backdrop-filter: blur(12px);
             border: 1px solid rgba(255, 255, 255, 0.08);
         }
+
+        /* Prevent iOS Safari auto-zoom on input focus across all pages */
+        @media screen and (max-width: 768px) {
+            input,
+            select,
+            textarea {
+                font-size: 16px !important;
+            }
+        }
     </style>
 </head>
 <body class="h-full flex flex-col justify-between max-w-md mx-auto bg-slate-950 font-sans antialiased text-slate-100 border-x border-slate-900">
@@ -32,7 +41,7 @@
     </main>
 
     <!-- Bottom Navigation Bar -->
-    <nav class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-slate-950/90 backdrop-blur-md border-t border-slate-800/80 py-2.5 px-6 flex justify-around items-center z-50">
+    <nav class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-slate-950/90 backdrop-blur-md border-t border-slate-800/80 py-2.5 px-4 flex justify-around items-center z-50">
         <a href="{{ url_for('exercise_list') }}" class="flex flex-col items-center gap-1 text-slate-400 hover:text-emerald-400 transition text-xs font-semibold">
             <i class="fa-solid fa-dumbbell text-base"></i>
             <span>Exercises</span>
@@ -45,7 +54,118 @@
             <i class="fa-solid fa-chart-line text-base"></i>
             <span>Progress</span>
         </a>
+        <a href="{{ url_for('admin') }}" class="flex flex-col items-center gap-1 text-slate-400 hover:text-emerald-400 transition text-xs font-semibold">
+            <i class="fa-solid fa-sliders text-base"></i>
+            <span>Admin</span>
+        </a>
     </nav>
 
+    <!-- Unified Sound & Web Audio System -->
+    <script>
+        window.CMFitSoundConfig = {{ sound_config | tojson | safe }};
+
+        // Persistent Audio Cache
+        window.audioCache = {};
+        let audioCtx = null;
+        window.soundBuffers = {};
+
+        // Helper to obtain sound URL and status from configuration
+        function getSoundDetails(type) {
+            if (!window.CMFitSoundConfig) return { enabled: false, url: null };
+            const cfg = window.CMFitSoundConfig;
+            if (type === 'start') return { enabled: !!cfg.start_enabled, url: cfg.start_url };
+            if (type === 'notice') return { enabled: !!cfg.notice_enabled, url: cfg.notice_url };
+            if (type === 'rest_end') return { enabled: !!cfg.rest_end_enabled, url: cfg.rest_end_url };
+            if (type === 'end') return { enabled: !!cfg.end_enabled, url: cfg.end_url };
+            return { enabled: false, url: null };
+        }
+
+        // Initialize AudioContext & Preload Audio Elements
+        function initAudioEngine() {
+            if (!audioCtx) {
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                if (AudioContextClass) {
+                    audioCtx = new AudioContextClass();
+                }
+            }
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+
+            // Warm up standard HTML5 Audio objects
+            const types = ['start', 'notice', 'rest_end', 'end'];
+            types.forEach(type => {
+                const details = getSoundDetails(type);
+                if (details.enabled && details.url && !window.audioCache[type]) {
+                    const a = new Audio(details.url);
+                    a.preload = 'auto';
+                    window.audioCache[type] = a;
+
+                    // Also attempt Web Audio decoding if fetch succeeds
+                    if (audioCtx) {
+                        fetch(details.url)
+                            .then(res => res.arrayBuffer())
+                            .then(buf => audioCtx.decodeAudioData(buf))
+                            .then(decoded => { window.soundBuffers[type] = decoded; })
+                            .catch(e => console.warn('WebAudio fetch/decode fallback for', type, e));
+                    }
+                }
+            });
+        }
+
+        // Unlock audio context on user interaction
+        function unlockAudio() {
+            initAudioEngine();
+            // Silent play on cached audio elements to bypass iOS auto-play block
+            Object.keys(window.audioCache).forEach(k => {
+                const sound = window.audioCache[k];
+                sound.muted = true;
+                sound.play().then(() => {
+                    sound.pause();
+                    sound.currentTime = 0;
+                    sound.muted = false;
+                }).catch(() => {
+                    sound.muted = false;
+                });
+            });
+
+            document.removeEventListener('touchstart', unlockAudio);
+            document.removeEventListener('click', unlockAudio);
+        }
+
+        document.addEventListener('touchstart', unlockAudio, { once: true, passive: true });
+        document.addEventListener('click', unlockAudio, { once: true, passive: true });
+
+        // Reliable Master Sound Player
+        window.playCMFitSound = function(type) {
+            const details = getSoundDetails(type);
+            if (!details.enabled || !details.url) return;
+
+            // Method 1: Web Audio Buffer Playback
+            if (audioCtx && window.soundBuffers[type]) {
+                try {
+                    if (audioCtx.state === 'suspended') audioCtx.resume();
+                    const source = audioCtx.createBufferSource();
+                    source.buffer = window.soundBuffers[type];
+                    source.connect(audioCtx.destination);
+                    source.start(0);
+                    return;
+                } catch(e) {
+                    console.warn('WebAudio playback failed, attempting HTML5 fallback:', e);
+                }
+            }
+
+            // Method 2: HTML5 Audio Element Playback
+            let audio = window.audioCache[type];
+            if (!audio) {
+                audio = new Audio(details.url);
+                window.audioCache[type] = audio;
+            }
+            audio.currentTime = 0;
+            audio.play().catch(e => {
+                console.error('HTML5 Audio play rejected:', e);
+            });
+        };
+    </script>
 </body>
 </html>

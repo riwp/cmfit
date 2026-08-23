@@ -36,7 +36,6 @@
             
             <!-- Left Side: Handle & Details -->
             <div class="flex items-center gap-3">
-                <!-- Mobile-friendly Drag Handle -->
                 <div class="reorder-handle p-1 text-slate-600 group-hover:text-slate-400 touch-none">
                     <i class="fa-solid fa-grip-vertical text-sm"></i>
                 </div>
@@ -64,13 +63,13 @@
         {% endfor %}
     </div>
 
-    <!-- Start Button -->
-    <a href="{{ url_for('start_workout', workout_id=workout.id) }}" class="block text-center w-full bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold py-3 rounded-xl transition shadow-lg shadow-emerald-500/10">
+    <!-- Start Button with Audio Trigger -->
+    <a href="{{ url_for('start_workout', workout_id=workout.id) }}" onclick="window.playCMFitSound('start');" class="block text-center w-full bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold py-3 rounded-xl transition shadow-lg shadow-emerald-500/10">
         Start Workout
     </a>
 </div>
 
-<!-- Simple Drag-and-Drop Script -->
+<!-- Drag-and-Drop Script -->
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     const list = document.getElementById('exercise-list');

@@ -24,7 +24,7 @@
             <h1 class="text-2xl font-black text-white">{{ log.workout.title }}</h1>
             <p class="text-xs text-slate-400">Active Workout Session</p>
         </div>
-        <form action="{{ url_for('finish_workout', log_id=log.id) }}" method="POST">
+        <form action="{{ url_for('finish_workout', log_id=log.id) }}" method="POST" onsubmit="handleFinishWorkout(event)">
             <button type="submit" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-4 py-2 rounded-xl text-sm transition">
                 Finish Workout
             </button>
@@ -50,25 +50,23 @@
             {% endif %}
         </div>
 
-        <!-- Previously Logged Sets for this Exercise -->
+        <!-- Completed Sets Container -->
         {% set logged_sets = log.sets | selectattr("exercise_id", "equalto", item.exercise.id) | list %}
-        {% if logged_sets %}
-            <div class="space-y-2">
-                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Completed Sets</p>
-                <div class="grid grid-cols-3 gap-2">
-                    {% for set_item in logged_sets %}
-                        <div class="bg-slate-800/60 p-2 rounded-lg text-center text-xs text-slate-200 border border-slate-700/50">
-                            Set {{ set_item.set_number }}: <span class="font-bold text-emerald-400">{{ set_item.weight }} lbs</span> × {{ set_item.reps }}
-                        </div>
-                    {% endfor %}
-                </div>
+        <div id="sets-container-{{ item.exercise.id }}" class="space-y-2 {% if not logged_sets %}hidden{% endif %}">
+            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Completed Sets</p>
+            <div class="grid grid-cols-3 gap-2" id="sets-grid-{{ item.exercise.id }}">
+                {% for set_item in logged_sets %}
+                    <div class="bg-slate-800/60 p-2 rounded-lg text-center text-xs text-slate-200 border border-slate-700/50">
+                        Set {{ set_item.set_number }}: <span class="font-bold text-emerald-400">{{ set_item.weight }} lbs</span> × {{ set_item.reps }}
+                    </div>
+                {% endfor %}
             </div>
-        {% endif %}
+        </div>
 
-        <!-- Form to Log a New Set -->
-        <form action="{{ url_for('log_exercise', log_id=log.id) }}" method="POST" onsubmit="handleSetSubmit(event, this)" class="space-y-3 pt-2 border-t border-slate-700/40">
+        <!-- AJAX Set Logger Form -->
+        <form action="{{ url_for('log_exercise', log_id=log.id) }}" method="POST" onsubmit="handleSetSubmit(event, this, {{ item.exercise.id }})" class="space-y-3 pt-2 border-t border-slate-700/40">
             <input type="hidden" name="exercise_id" value="{{ item.exercise.id }}">
-            <input type="hidden" name="set_number" value="{{ logged_sets|length + 1 }}">
+            <input type="hidden" name="set_number" id="set-num-input-{{ item.exercise.id }}" value="{{ logged_sets|length + 1 }}">
             
             <div class="grid grid-cols-3 gap-2">
                 <div>
@@ -86,16 +84,16 @@
             </div>
 
             <button type="submit" class="w-full bg-slate-800 hover:bg-slate-700 text-white font-semibold py-2.5 rounded-xl text-sm border border-slate-600 transition flex items-center justify-center space-x-2">
-                <span>+ Log Set {{ logged_sets|length + 1 }}</span>
+                <span id="btn-label-{{ item.exercise.id }}">+ Log Set {{ logged_sets|length + 1 }}</span>
             </button>
         </form>
     </div>
     {% endfor %}
 
-    <!-- Finish / Notes Form at Bottom -->
+    <!-- Finish / Notes Form -->
     <div class="glass-card p-6 rounded-2xl space-y-3">
         <h3 class="text-sm font-bold text-slate-300">Workout Summary & Notes</h3>
-        <form action="{{ url_for('finish_workout', log_id=log.id) }}" method="POST" class="space-y-3">
+        <form action="{{ url_for('finish_workout', log_id=log.id) }}" method="POST" onsubmit="handleFinishWorkout(event)" class="space-y-3">
             <textarea name="notes" placeholder="How did this workout feel? Notes..." class="w-full bg-slate-900/80 border border-slate-700 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-emerald-500 h-24 resize-none"></textarea>
             <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-3 rounded-xl text-sm transition">
                 Complete Workout
@@ -105,37 +103,18 @@
 
 </div>
 
-<!-- Timer & Sound Script -->
+<!-- Timer & Sound Controller -->
 <script>
 let restInterval = null;
-let audioCtx = null;
 
-function initAudio() {
-    if (!audioCtx) {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    }
-}
-
-function playBeep(freq = 600, duration = 0.2, type = 'sine') {
-    initAudio();
-    if (!audioCtx) return;
-
-    try {
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-
-        osc.type = type;
-        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-        gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
-
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-
-        osc.start();
-        osc.stop(audioCtx.currentTime + duration);
-    } catch(e) {
-        console.error(e);
+// Safe Sound Player Helper
+function playSoundSafely(type) {
+    if (typeof window.playCMFitSound === 'function') {
+        try {
+            window.playCMFitSound(type);
+        } catch (e) {
+            console.warn(`Sound playback failed for sound key: ${type}`, e);
+        }
     }
 }
 
@@ -144,11 +123,15 @@ function startRestTimer(seconds) {
     
     const card = document.getElementById('timer-card');
     const display = document.getElementById('timer-display');
-    card.classList.remove('hidden');
+    if (card) card.classList.remove('hidden');
 
     let remaining = seconds;
+    const noticeSeconds = (window.CMFitSoundConfig && window.CMFitSoundConfig.notice_seconds) 
+        ? parseInt(window.CMFitSoundConfig.notice_seconds, 10) 
+        : 5;
 
     function updateDisplay() {
+        if (!display) return;
         const mins = Math.floor(remaining / 60);
         const secs = remaining % 60;
         display.innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
@@ -160,10 +143,10 @@ function startRestTimer(seconds) {
         remaining--;
         updateDisplay();
 
-        if (remaining === 5) {
-            playBeep(800, 0.25); // Warning tone at 5 seconds
+        if (remaining === noticeSeconds) {
+            playSoundSafely('notice');
         } else if (remaining <= 0) {
-            playBeep(1200, 0.5); // Final completion tone at 0 seconds
+            playSoundSafely('rest_end');
             stopRestTimer();
         }
     }, 1000);
@@ -175,36 +158,65 @@ function stopRestTimer() {
         restInterval = null;
     }
     const card = document.getElementById('timer-card');
-    card.classList.add('hidden');
+    if (card) card.classList.add('hidden');
 }
 
-function handleSetSubmit(event, form) {
-    initAudio();
+// Seamless AJAX Submission prevents page reloads and maintains sound context
+async function handleSetSubmit(event, form, exerciseId) {
+    event.preventDefault();
+
+    // 1. Instantly trigger start audio synchronously during the click gesture
+    playSoundSafely('start');
+
+    // 2. Extract values
     const restInput = form.querySelector('.rest-input');
     const restSeconds = parseInt(restInput.value, 10) || 0;
+    const formData = new FormData(form);
 
-    if (restSeconds > 0) {
-        localStorage.setItem('active_rest_seconds', restSeconds);
-        localStorage.setItem('active_rest_start', Date.now());
+    // 3. Post data via fetch
+    try {
+        const response = await fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+
+        if (response.ok) {
+            // Update UI set counters
+            const weight = formData.get('weight');
+            const reps = formData.get('reps');
+            const setNumInput = document.getElementById(`set-num-input-${exerciseId}`);
+            const currentSetNum = parseInt(setNumInput.value, 10);
+
+            const grid = document.getElementById(`sets-grid-${exerciseId}`);
+            const container = document.getElementById(`sets-container-${exerciseId}`);
+            
+            container.classList.remove('hidden');
+            grid.insertAdjacentHTML('beforeend', `
+                <div class="bg-slate-800/60 p-2 rounded-lg text-center text-xs text-slate-200 border border-slate-700/50">
+                    Set ${currentSetNum}: <span class="font-bold text-emerald-400">${weight} lbs</span> × ${reps}
+                </div>
+            `);
+
+            // Increment values for next set
+            const nextSet = currentSetNum + 1;
+            setNumInput.value = nextSet;
+            document.getElementById(`btn-label-${exerciseId}`).innerText = `+ Log Set ${nextSet}`;
+
+            // 4. Start timer smoothly without reloading page
+            if (restSeconds > 0) {
+                startRestTimer(restSeconds);
+            }
+        }
+    } catch (err) {
+        console.error('Failed to log set asynchronously:', err);
+        form.submit(); // Fallback if network drops
     }
 }
 
-// On page refresh after POST submit, resume floating rest timer
-window.addEventListener('DOMContentLoaded', () => {
-    const savedSeconds = localStorage.getItem('active_rest_seconds');
-    const savedStart = localStorage.getItem('active_rest_start');
-
-    if (savedSeconds && savedStart) {
-        const elapsed = Math.floor((Date.now() - parseInt(savedStart, 10)) / 1000);
-        const remaining = parseInt(savedSeconds, 10) - elapsed;
-
-        localStorage.removeItem('active_rest_seconds');
-        localStorage.removeItem('active_rest_start');
-
-        if (remaining > 0) {
-            startRestTimer(remaining);
-        }
-    }
-});
+function handleFinishWorkout(event) {
+    stopRestTimer();
+    playSoundSafely('end');
+}
 </script>
 {% endblock %}
