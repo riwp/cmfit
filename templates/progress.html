@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2 class="text-xl font-bold mb-4">Workout Logs</h2>
+<div class="space-y-3">
+    {% for s in sessions[::-1] %}
+    <div class="glass-card p-4 rounded-2xl">
+        <div class="flex justify-between items-center mb-2">
+            <h3 class="font-bold text-base text-slate-100">{{ workouts.get(s.workout_id, 'Workout') }}</h3>
+            <span class="text-xs text-slate-400">{{ s.date }}</span>
+        </div>
+        <p class="text-xs text-emerald-400 font-semibold">{{ s.logs|length }} Total Sets Logged</p>
+    </div>
+    {% else %}
+    <div class="glass-card p-8 rounded-2xl text-center text-slate-400">
+        <p>No completed sessions recorded yet.</p>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="glass-card p-5 rounded-2xl mb-6">
+    <div class="flex items-center justify-between mb-4">
+        <div>
+            <span class="text-xs text-emerald-400 font-bold uppercase tracking-wider">Dashboard</span>
+            <h2 class="text-2xl font-black text-white">My Workouts</h2>
+        </div>
+        <a href="{{ url_for('add_workout') }}" class="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-2 rounded-xl font-bold hover:bg-emerald-500/20 transition">
+            + New Workout
+        </a>
+    </div>
+
+    {% if workouts %}
+    <p class="text-xs text-slate-400 mb-3 flex items-center gap-1.5">
+        <i class="fa-solid fa-hand-pointer text-emerald-400"></i>
+        <span>Drag <i class="fa-solid fa-grip-vertical text-slate-500"></i> to re-order workouts</span>
+    </p>
+
+    <!-- Sortable List Container -->
+    <div id="workoutList" class="space-y-3">
+        {% for w in workouts %}
+        <div data-id="{{ w.id }}" class="workout-item glass-card p-4 rounded-2xl flex items-center justify-between gap-3 bg-slate-900/60 border border-slate-800">
+            <!-- Drag Handle -->
+            <div class="drag-handle touch-none cursor-grab active:cursor-grabbing p-2 text-slate-500 hover:text-emerald-400 transition">
+                <i class="fa-solid fa-grip-vertical text-lg"></i>
+            </div>
+
+            <!-- Workout Info Link -->
+            <a href="{{ url_for('view_workout', workout_id=w.id) }}" class="flex-1 min-w-0">
+                <h3 class="font-bold text-slate-100 text-base truncate">{{ w.name }}</h3>
+                <div class="flex items-center gap-3 text-xs text-slate-400 mt-1">
+                    <span><i class="fa-solid fa-dumbbell text-emerald-400 mr-1"></i>{{ w.count }} Exercises</span>
+                    <span>•</span>
+                    <span><i class="fa-solid fa-clock text-slate-400 mr-1"></i>~{{ w.duration }} mins</span>
+                </div>
+            </a>
+
+            <!-- Action Buttons -->
+            <div class="flex items-center gap-1">
+                <a href="{{ url_for('start_workout', workout_id=w.id) }}" class="bg-emerald-500/10 text-emerald-400 p-2.5 rounded-xl font-bold hover:bg-emerald-500/20 transition" title="Start Workout">
+                    <i class="fa-solid fa-play text-xs"></i>
+                </a>
+                <button onclick="deleteWorkout('{{ w.id }}', '{{ w.name|escape }}')" class="p-2.5 text-slate-500 hover:text-rose-400 transition" title="Delete Workout">
+                    <i class="fa-solid fa-trash-can text-sm"></i>
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-8 text-slate-400">
+        <i class="fa-solid fa-folder-open text-3xl mb-2 text-slate-600 block"></i>
+        <p class="text-sm font-medium mb-4">No workouts created yet.</p>
+        <a href="{{ url_for('add_workout') }}" class="inline-block bg-emerald-500 text-slate-950 px-4 py-2 rounded-xl text-xs font-bold">
+            Create Workout
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- SortableJS CDN -->
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<script>
+    const el = document.getElementById('workoutList');
+
+    if (el) {
+        // Initialize Drag & Drop for Workouts
+        const sortable = new Sortable(el, {
+            handle: '.drag-handle',
+            animation: 150,
+            ghostClass: 'opacity-40',
+            onEnd: function () {
+                // Collect ordered workout IDs
+                const order = Array.from(el.querySelectorAll('.workout-item')).map(item => item.getAttribute('data-id'));
+                
+                // Persist new workout order to Flask API
+                fetch('/workouts/reorder', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ workout_ids: order })
+                });
+            }
+        });
+    }
+
+    // Delete Workout Routine (Keeps past log history safe)
+    function deleteWorkout(workoutId, workoutName) {
+        if (!confirm(`Are you sure you want to delete "${workoutName}"?\n\nNote: Your past workout log history for this routine will NOT be lost.`)) return;
+
+        fetch(`/workout/${workoutId}/delete`, {
+            method: 'POST'
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                window.location.reload();
+            }
+        });
+    }
+</script>
+{% endblock %}

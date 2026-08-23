@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CMFit - Workout Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        .glass-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        .active-set { border-left: 4px solid #10b981; background: rgba(16, 185, 129, 0.1); }
+    </style>
+</head>
+<body class="pb-32 pt-4">
+    <div class="max-w-md mx-auto px-4">
+        <header class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-black tracking-wider text-emerald-400 flex items-center gap-2">
+                <i class="fa-solid fa-dumbbell"></i> CMFIT
+            </h1>
+            <span class="text-xs bg-slate-800 text-slate-400 px-2.5 py-1 rounded-full border border-slate-700">v1.0 Pro</span>
+        </header>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="mb-4 p-3 rounded-xl text-sm font-semibold {{ 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' if category == 'success' else 'bg-rose-500/20 text-rose-300 border border-rose-500/30' }}">
+                {{ message }}
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </div>
+
+    <!-- Persistent Floating Active Workout Banner with Live Session Timer -->
+    <div id="activeSessionBanner" 
+         class="hidden fixed bottom-16 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-md bg-slate-900/95 border border-emerald-500/40 backdrop-blur-md p-3 rounded-2xl shadow-2xl z-40 transition-all duration-300">
+        <div class="flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3 min-w-0">
+                <span class="relative flex h-3 w-3 shrink-0">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                </span>
+                <div class="min-w-0">
+                    <div class="flex items-center gap-2">
+                        <span class="text-[10px] uppercase font-extrabold tracking-wider text-emerald-400">In Progress</span>
+                        <span class="text-[10px] text-slate-500">•</span>
+                        <span class="activeWorkoutTimer text-[11px] font-mono font-bold text-emerald-300">00:00</span>
+                    </div>
+                    <div id="activeWorkoutName" class="text-xs font-bold text-white truncate">Active Workout</div>
+                </div>
+            </div>
+            <a id="resumeWorkoutBtn" href="#" class="shrink-0 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold text-xs px-3.5 py-2 rounded-xl transition">
+                Resume →
+            </a>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation Bar -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 px-3 py-3 z-50">
+        <div class="max-w-md mx-auto flex justify-around items-center">
+            {% if not is_in_session %}
+                <a href="{{ url_for('workout_list') }}" class="flex flex-col items-center gap-1 {{ 'text-emerald-400' if active_page == 'workouts' else 'text-slate-400' }}">
+                    <i class="fa-solid fa-list-check text-lg"></i>
+                    <span class="text-xs font-medium">Workouts</span>
+                </a>
+                <a href="{{ url_for('progress') }}" class="flex flex-col items-center gap-1 {{ 'text-emerald-400' if active_page == 'progress' else 'text-slate-400' }}">
+                    <i class="fa-solid fa-chart-line text-lg"></i>
+                    <span class="text-xs font-medium">Progress</span>
+                </a>
+            {% else %}
+                <!-- ACTIVE SESSION BAR -->
+                <div class="flex items-center justify-between w-full gap-1">
+                    <!-- Session Duration Info -->
+                    <div class="flex items-center gap-1 text-emerald-400 font-bold text-xs uppercase tracking-wider shrink-0">
+                        <i class="fa-solid fa-fire animate-bounce"></i>
+                        <span>Session</span>
+                        <span class="text-slate-500">•</span>
+                        <span class="activeWorkoutTimer font-mono font-bold text-emerald-300">00:00</span>
+                    </div>
+
+                    <!-- Floating Rest Timer Controls (Hidden when no rest is active) -->
+                    <div id="floatingRestTimer" class="hidden flex items-center gap-1 bg-slate-800/90 border border-emerald-500/40 px-2 py-1 rounded-xl shrink-0">
+                        <i class="fa-solid fa-stopwatch text-emerald-400 text-xs"></i>
+                        <span id="restTimerDisplay" class="font-mono text-xs font-bold text-emerald-300">00:00</span>
+                        
+                        <button type="button" onclick="addRestTime(30)" class="bg-slate-700 hover:bg-slate-600 text-slate-200 text-[10px] font-bold px-1.5 py-0.5 rounded-lg transition">
+                            +30s
+                        </button>
+                        <button type="button" onclick="stopRestTimer()" class="bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 text-[10px] font-bold px-1.5 py-0.5 rounded-lg transition">
+                            Skip
+                        </button>
+                    </div>
+
+                    <!-- End Session Button -->
+                    {% if session_id %}
+                    <form action="{{ url_for('exit_workout', session_id=session_id) }}" method="POST" onsubmit="return confirm('Are you sure you want to end this workout session?');" class="shrink-0">
+                        <button type="submit" class="flex items-center gap-1 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 text-xs font-bold px-2.5 py-1.5 rounded-xl transition">
+                            <i class="fa-solid fa-xmark"></i>
+                            <span id="endSessionBtnText">End Session</span>
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+    </nav>
+
+    <script>
+    // --- AUDIO SYSTEM WITH WEB AUDIO API FALLBACK ---
+    const warningSound = new Audio("{{ url_for('static', filename='sounds/warning_end_round.m4a') }}");
+    const doneSound = new Audio("{{ url_for('static', filename='sounds/end_round.m4a') }}");
+
+    let audioContext = null;
+
+    function getAudioContext() {
+        if (!audioContext) {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (AudioCtx) {
+                audioContext = new AudioCtx();
+            }
+        }
+        if (audioContext && audioContext.state === 'suspended') {
+            audioContext.resume();
+        }
+        return audioContext;
+    }
+
+    function unlockAudio() {
+        const ctx = getAudioContext();
+
+        [warningSound, doneSound].forEach(sound => {
+            if (!sound) return;
+            // Force hardware mute during unlock pre-roll
+            sound.muted = true;
+            sound.volume = 0;
+            const promise = sound.play();
+            if (promise !== undefined) {
+                promise.then(() => {
+                    sound.pause();
+                    sound.currentTime = 0;
+                    sound.muted = false; // Restore audio output for completion
+                    sound.volume = 1.0;
+                }).catch(() => {
+                    sound.muted = false;
+                    sound.volume = 1.0;
+                });
+            } else {
+                sound.muted = false;
+                sound.volume = 1.0;
+            }
+        });
+
+        localStorage.setItem('cmfit_audio_unlocked', 'true');
+    }
+
+    document.addEventListener('click', (e) => {
+        if (e.target.closest('a') || e.target.closest('button')) {
+            getAudioContext();
+        }
+    });
+
+    function playBeep(freq, count) {
+        try {
+            const ctx = getAudioContext();
+            if (!ctx) return;
+
+            for (let i = 0; i < count; i++) {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.value = freq;
+                
+                const startTime = ctx.currentTime + (i * 0.15);
+                gain.gain.setValueAtTime(0.3, startTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.12);
+                
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                
+                osc.start(startTime);
+                osc.stop(startTime + 0.12);
+            }
+        } catch (e) {
+            console.warn('WebAudio fallback failed:', e);
+        }
+    }
+
+    function playWarningSound() {
+        try {
+            warningSound.muted = false;
+            warningSound.volume = 1.0;
+            warningSound.currentTime = 0;
+            const promise = warningSound.play();
+            if (promise !== undefined) {
+                promise.catch(() => {
+                    playBeep(600, 2);
+                });
+            }
+            if ('vibrate' in navigator) navigator.vibrate(80);
+        } catch (e) {
+            playBeep(600, 2);
+        }
+    }
+
+    function playRestDoneSound() {
+        try {
+            doneSound.muted = false;
+            doneSound.volume = 1.0;
+            doneSound.currentTime = 0;
+            const promise = doneSound.play();
+            if (promise !== undefined) {
+                promise.catch(() => {
+                    playBeep(880, 3);
+                });
+            }
+            if ('vibrate' in navigator) navigator.vibrate([200, 100, 200]);
+        } catch (e) {
+            playBeep(880, 3);
+        }
+    }
+
+    // --- SESSION TIMER LOGIC ---
+    let activeSessionTimerInterval = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        fetch('/api/active-session')
+            .then(res => res.json())
+            .then(data => {
+                if (data.active) {
+                    if (data.start_time) {
+                        startActiveSessionTimer(new Date(data.start_time));
+                    }
+
+                    if (!window.location.pathname.includes('/session/')) {
+                        const banner = document.getElementById('activeSessionBanner');
+                        const workoutName = document.getElementById('activeWorkoutName');
+                        const resumeBtn = document.getElementById('resumeWorkoutBtn');
+
+                        if (banner && workoutName && resumeBtn) {
+                            workoutName.textContent = data.workout_name || 'Current Workout';
+                            resumeBtn.href = `/session/${data.session_id}/exercise/${data.current_exercise_idx || 0}`;
+                            banner.classList.remove('hidden');
+                        }
+                    }
+                }
+            })
+            .catch(err => console.error('Error fetching active session state:', err));
+
+        initRestTimer();
+    });
+
+    function startActiveSessionTimer(startTime) {
+        clearInterval(activeSessionTimerInterval);
+
+        function updateElapsed() {
+            const now = new Date();
+            const elapsedMs = Math.max(0, now - startTime);
+            const totalSeconds = Math.floor(elapsedMs / 1000);
+
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+
+            const formattedTime = hours > 0 
+                ? `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+                : `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+            const timerDisplays = document.querySelectorAll('.activeWorkoutTimer');
+            timerDisplays.forEach(display => {
+                display.textContent = formattedTime;
+            });
+        }
+
+        updateElapsed();
+        activeSessionTimerInterval = setInterval(updateElapsed, 1000);
+    }
+
+    // --- REST TIMER LOGIC WITH INSTANT CLEARDOWN ---
+    let restTimerInterval = null;
+
+    function startRestTimer(durationSeconds) {
+        // Stop any current interval
+        if (restTimerInterval) {
+            clearInterval(restTimerInterval);
+            restTimerInterval = null;
+        }
+
+        unlockAudio();
+
+        const startTime = Date.now();
+        const endTime = startTime + (durationSeconds * 1000);
+        
+        localStorage.setItem('cmfit_rest_end_time', endTime);
+        localStorage.setItem('cmfit_rest_start_time', startTime);
+        localStorage.removeItem('cmfit_rest_warned');
+        
+        runRestTimer(endTime, startTime);
+    }
+
+    function addRestTime(additionalSeconds) {
+        unlockAudio();
+        let endTime = parseInt(localStorage.getItem('cmfit_rest_end_time') || '0', 10);
+        let startTime = parseInt(localStorage.getItem('cmfit_rest_start_time') || Date.now(), 10);
+        
+        if (endTime < Date.now()) {
+            endTime = Date.now();
+        }
+        endTime += (additionalSeconds * 1000);
+        
+        localStorage.setItem('cmfit_rest_end_time', endTime);
+
+        if ((endTime - Date.now()) > 5000) {
+            localStorage.removeItem('cmfit_rest_warned');
+        }
+
+        runRestTimer(endTime, startTime);
+    }
+
+    function stopRestTimer() {
+        if (restTimerInterval) {
+            clearInterval(restTimerInterval);
+            restTimerInterval = null;
+        }
+        localStorage.removeItem('cmfit_rest_end_time');
+        localStorage.removeItem('cmfit_rest_start_time');
+        localStorage.removeItem('cmfit_rest_warned');
+        
+        const widget = document.getElementById('floatingRestTimer');
+        const endBtnText = document.getElementById('endSessionBtnText');
+        
+        if (widget) widget.classList.add('hidden');
+        if (endBtnText) endBtnText.textContent = 'End Session';
+    }
+
+    function initRestTimer() {
+        const endTime = parseInt(localStorage.getItem('cmfit_rest_end_time') || '0', 10);
+        const startTime = parseInt(localStorage.getItem('cmfit_rest_start_time') || '0', 10);
+        
+        if (endTime && endTime > Date.now()) {
+            runRestTimer(endTime, startTime);
+        } else {
+            stopRestTimer();
+        }
+    }
+
+    function runRestTimer(endTime, startTime) {
+        if (restTimerInterval) {
+            clearInterval(restTimerInterval);
+            restTimerInterval = null;
+        }
+
+        const widget = document.getElementById('floatingRestTimer');
+        const display = document.getElementById('restTimerDisplay');
+        const endBtnText = document.getElementById('endSessionBtnText');
+
+        if (widget) widget.classList.remove('hidden');
+        if (endBtnText) endBtnText.textContent = 'End';
+
+        function updateCountdown() {
+            const now = Date.now();
+            const remainingMs = endTime - now;
+            
+            // Safety Check: Do not trigger completion sound if timer was created < 500ms ago
+            if (remainingMs <= 0) {
+                stopRestTimer();
+                if (now - startTime > 500) {
+                    playRestDoneSound();
+                }
+                return;
+            }
+
+            const totalSeconds = Math.ceil(remainingMs / 1000);
+            const hasWarned = localStorage.getItem('cmfit_rest_warned');
+
+            if (totalSeconds <= 5 && !hasWarned) {
+                localStorage.setItem('cmfit_rest_warned', 'true');
+                playWarningSound();
+            }
+
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+
+            if (display) {
+                display.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            }
+        }
+
+        updateCountdown();
+        restTimerInterval = setInterval(updateCountdown, 1000);
+    }
+    </script>
+</body>
+</html>

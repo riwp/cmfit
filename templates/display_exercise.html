@@ -1,0 +1,230 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="space-y-4">
+    <!-- Header / Nav -->
+    <div class="flex items-center justify-between">
+        <!-- Clickable Exercise Progress Badge -->
+        <button type="button" 
+                onclick="toggleExerciseMenu()"
+                class="flex items-center gap-2 text-xs font-semibold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 px-3 py-1.5 rounded-full transition">
+            <span>Exercise {{ exercise_idx + 1 }} of {{ total_exercises }}</span>
+            <i class="fa-solid fa-chevron-down text-[10px]"></i>
+        </button>
+    </div>
+
+    <!-- Exercise Navigation Drawer Modal -->
+    <div id="exerciseMenuModal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="glass-card bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-4 space-y-3">
+            <div class="flex justify-between items-center pb-2 border-b border-slate-800">
+                <h3 class="text-sm font-bold text-white">Workout Exercises</h3>
+                <button type="button" onclick="toggleExerciseMenu()" class="text-slate-400 hover:text-white text-xs p-1">
+                    <i class="fa-solid fa-xmark text-sm"></i>
+                </button>
+            </div>
+            
+            <div class="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
+                {% for ex_item in all_workout_exercises %}
+                <a href="{{ url_for('display_exercise', session_id=session_id, exercise_idx=loop.index0) }}"
+                   class="flex items-center justify-between p-3 rounded-xl border transition {{ 'bg-emerald-500/10 border-emerald-500/40' if loop.index0 == exercise_idx else 'bg-slate-800/40 border-slate-700/50 hover:bg-slate-800' }}">
+                    <div class="min-w-0 flex-1 pr-2">
+                        <div class="text-xs font-bold text-white truncate">{{ ex_item.name }}</div>
+                        <div class="text-[10px] text-slate-400">{{ ex_item.muscles|join(', ') }}</div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        {% set ex_logged_count = logged_counts_map.get(ex_item.id, 0) %}
+                        {% if ex_logged_count >= ex_item.sets %}
+                        <span class="text-[10px] bg-emerald-500/20 text-emerald-400 font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
+                            <i class="fa-solid fa-check"></i> {{ ex_logged_count }}/{{ ex_item.sets }}
+                        </span>
+                        {% elif ex_logged_count > 0 %}
+                        <span class="text-[10px] bg-amber-500/20 text-amber-400 font-bold px-2 py-0.5 rounded-md">
+                            {{ ex_logged_count }}/{{ ex_item.sets }}
+                        </span>
+                        {% else %}
+                        <span class="text-[10px] bg-slate-800 text-slate-400 font-medium px-2 py-0.5 rounded-md">
+                            0/{{ ex_item.sets }}
+                        </span>
+                        {% endif %}
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+
+            <button type="button" onclick="toggleExerciseMenu()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold py-2 rounded-xl transition">
+                Close
+            </button>
+        </div>
+    </div>
+
+    <!-- Exercise Detail Header -->
+    <div class="glass-card p-4 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-2">
+        <h2 class="text-xl font-extrabold text-white">{{ exercise.name }}</h2>
+        <div class="flex flex-wrap items-center gap-2 text-xs text-slate-400">
+            <span class="bg-slate-800 px-2.5 py-1 rounded-lg text-slate-300 font-medium">
+                {{ exercise.muscles|join(', ') }}
+            </span>
+            <span>•</span>
+            <span>Target: <strong class="text-emerald-400">{{ exercise.sets }}</strong> sets × <strong class="text-emerald-400">{{ exercise.reps }}</strong> reps</span>
+        </div>
+        {% if exercise.instructions %}
+        <p class="text-xs text-slate-400 leading-relaxed pt-1 border-t border-slate-800/80 mt-2">
+            {{ exercise.instructions }}
+        </p>
+        {% endif %}
+    </div>
+
+    <!-- Sets Logger Table -->
+    <div class="glass-card p-4 rounded-2xl bg-slate-900/60 border border-slate-800">
+        <h3 class="text-sm font-bold text-slate-200 mb-3">Log Sets</h3>
+        <div class="space-y-2.5">
+            <div class="grid grid-cols-12 text-[10px] font-bold text-slate-400 uppercase px-1">
+                <span class="col-span-2 text-center">Set</span>
+                <span class="col-span-3 text-center">Lbs</span>
+                <span class="col-span-3 text-center">Reps</span>
+                <span class="col-span-2 text-center">Rest (s)</span>
+                <span class="col-span-2 text-center">Log</span>
+            </div>
+
+            {% set logged_count = logged_sets|length %}
+            {% for set_num in range(1, exercise.sets + 1) %}
+            {% set is_logged = set_num <= logged_count %}
+            {% set log = logged_sets[set_num - 1] if is_logged else None %}
+            
+            <div id="row_{{ set_num }}" class="set-row grid grid-cols-12 gap-2 items-center p-1.5 rounded-xl transition-colors {{ 'bg-emerald-500/10 border border-emerald-500/20' if is_logged else 'bg-slate-800/40' }}"
+                 data-set="{{ set_num }}">
+                
+                <div id="badge_{{ set_num }}" class="col-span-2 text-center font-bold text-xs {{ 'text-emerald-400' if is_logged else 'text-slate-400' }}">
+                    #{{ set_num }}
+                </div>
+
+                <div class="col-span-3">
+                    <input type="number" 
+                           id="lbs_{{ set_num }}" 
+                           value="{{ log.lbs if is_logged else '' }}" 
+                           placeholder="0" 
+                           {{ 'disabled' if is_logged }}
+                           class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-xs text-white text-center disabled:opacity-60 disabled:bg-slate-900">
+                </div>
+
+                <div class="col-span-3">
+                    <input type="number" 
+                           id="reps_{{ set_num }}" 
+                           value="{{ log.reps if is_logged else exercise.reps }}" 
+                           {{ 'disabled' if is_logged }}
+                           class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-xs text-white text-center disabled:opacity-60 disabled:bg-slate-900">
+                </div>
+
+                <div class="col-span-2">
+                    <input type="number" 
+                           id="rest_{{ set_num }}" 
+                           data-set="{{ set_num }}"
+                           value="{{ log.rest if is_logged else exercise.rest }}" 
+                           {{ 'disabled' if is_logged }}
+                           class="rest-input w-full bg-slate-800 border border-slate-700 rounded-lg px-1.5 py-1 text-xs text-emerald-400 text-center font-semibold disabled:opacity-60 disabled:bg-slate-900">
+                </div>
+
+                <div id="action_{{ set_num }}" class="col-span-2 flex justify-center">
+                    {% if is_logged %}
+                    <span class="text-emerald-400 text-xs font-bold"><i class="fa-solid fa-check"></i></span>
+                    {% else %}
+                    <button type="button" 
+                            onclick="logSet({{ set_num }})" 
+                            class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold text-xs px-2 py-1 rounded-lg transition w-full">
+                        Done
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Navigation Controls -->
+    <div class="flex justify-between items-center pt-2">
+        {% if exercise_idx > 0 %}
+        <a href="{{ url_for('display_exercise', session_id=session_id, exercise_idx=exercise_idx - 1) }}" 
+           class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs px-4 py-2.5 rounded-xl transition">
+            ← Previous
+        </a>
+        {% else %}
+        <div></div>
+        {% endif %}
+
+        <a href="{{ url_for('display_exercise', session_id=session_id, exercise_idx=exercise_idx + 1) }}" 
+           class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-xs px-5 py-2.5 rounded-xl transition">
+            {% if exercise_idx + 1 >= total_exercises %}Finish Workout{% else %}Next Exercise →{% endif %}
+        </a>
+    </div>
+</div>
+
+<script>
+function toggleExerciseMenu() {
+    const modal = document.getElementById('exerciseMenuModal');
+    modal.classList.toggle('hidden');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const restInputs = document.querySelectorAll('.rest-input');
+    
+    restInputs.forEach(input => {
+        input.addEventListener('input', (e) => {
+            const currentSet = parseInt(e.target.dataset.set);
+            const newValue = e.target.value;
+
+            restInputs.forEach(otherInput => {
+                const targetSet = parseInt(otherInput.dataset.set);
+                if (targetSet > currentSet && !otherInput.disabled) {
+                    otherInput.value = newValue;
+                }
+            });
+        });
+    });
+});
+
+function logSet(setNumber) {
+    const lbsInput = document.getElementById(`lbs_${setNumber}`);
+    const repsInput = document.getElementById(`reps_${setNumber}`);
+    const restInput = document.getElementById(`rest_${setNumber}`);
+
+    const lbs = parseFloat(lbsInput.value) || 0;
+    const reps = parseInt(repsInput.value) || 0;
+    const restSeconds = parseInt(restInput.value) || 0;
+
+    fetch('/api/log-set', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            session_id: "{{ session_id }}",
+            exercise_id: "{{ exercise.id }}",
+            set_number: setNumber,
+            lbs: lbs,
+            reps: reps,
+            rest: restSeconds
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            lbsInput.disabled = true;
+            repsInput.disabled = true;
+            restInput.disabled = true;
+
+            const row = document.getElementById(`row_${setNumber}`);
+            row.className = 'set-row grid grid-cols-12 gap-2 items-center p-1.5 rounded-xl transition-colors bg-emerald-500/10 border border-emerald-500/20';
+
+            const badge = document.getElementById(`badge_${setNumber}`);
+            badge.className = 'col-span-2 text-center font-bold text-xs text-emerald-400';
+
+            const actionCell = document.getElementById(`action_${setNumber}`);
+            actionCell.innerHTML = '<span class="text-emerald-400 text-xs font-bold"><i class="fa-solid fa-check"></i></span>';
+
+            // Trigger global floating rest timer defined in base.html
+            if (restSeconds > 0 && typeof startRestTimer === 'function') {
+                startRestTimer(restSeconds);
+            }
+        }
+    })
+    .catch(err => console.error('Error logging set:', err));
+}
+</script>
+{% endblock %}

@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="glass-card p-5 rounded-2xl mb-6">
+    <h2 class="text-xl font-bold mb-4">Create Exercise</h2>
+    <form method="POST" enctype="multipart/form-data" class="space-y-4">
+        <input type="hidden" name="return_workout_id" value="{{ return_workout_id }}">
+        
+        <div>
+            <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Exercise Name</label>
+            <input type="text" name="name" required class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white">
+        </div>
+
+        <div>
+            <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Target Muscle Groups</label>
+            <div class="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto p-2 bg-slate-800 border border-slate-700 rounded-xl">
+                {% for m in muscle_groups %}
+                <label class="flex items-center gap-2 text-xs text-slate-300">
+                    <input type="checkbox" name="muscles" value="{{ m }}" class="accent-emerald-500"> {{ m }}
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2">
+            <div>
+                <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Sets</label>
+                <input type="number" name="sets" value="3" required class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Reps</label>
+                <input type="number" name="reps" value="10" required class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Rest (s)</label>
+                <input type="number" name="rest" value="60" required class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white">
+            </div>
+        </div>
+
+        <div>
+            <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Upload Photo</label>
+            <input type="file" name="image" accept="image/*" class="w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-emerald-400 hover:file:bg-slate-700">
+        </div>
+
+        <div>
+            <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Web Link (Optional)</label>
+            <input type="url" name="link" placeholder="https://..." class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white">
+        </div>
+
+        <div>
+            <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Instructions</label>
+            <textarea name="instructions" rows="3" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white"></textarea>
+        </div>
+
+        <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold py-3 rounded-xl transition">
+            Save Exercise
+        </button>
+    </form>
+</div>
+{% endblock %}

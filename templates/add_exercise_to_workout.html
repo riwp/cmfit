@@ -1,0 +1,131 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="flex justify-between items-center mb-4">
+    <h2 class="text-xl font-bold">Select Exercises</h2>
+    <a href="{{ url_for('add_new_exercise', return_workout_id=workout['id']) }}" class="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-1.5 rounded-xl font-bold">
+        + Create New
+    </a>
+</div>
+
+<!-- Controls: Search Input & Selected Toggle Filter -->
+<div class="space-y-2 mb-4">
+    <div class="relative">
+        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+        <input type="text" id="exerciseSearch" placeholder="Search exercise name or instructions..." 
+               class="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition">
+    </div>
+    <div class="flex items-center justify-between px-1">
+        <label class="flex items-center gap-2 cursor-pointer select-none text-xs text-slate-400 hover:text-slate-200">
+            <input type="checkbox" id="showOnlySelected" class="w-4 h-4 accent-emerald-500 rounded cursor-pointer">
+            <span>Show selected only</span>
+        </label>
+        <span id="matchCount" class="text-[11px] text-slate-500 font-medium"></span>
+    </div>
+</div>
+
+<form method="POST">
+    <div id="exerciseList" class="space-y-3 mb-6">
+        {% for ex in all_exercises %}
+        {% set custom = existing_map.get(ex.id, {}) %}
+        {% set is_checked = ex.id in existing_map %}
+        <div class="exercise-card glass-card p-3 rounded-2xl bg-slate-900/60 border border-slate-800 transition-all duration-200"
+             data-name="{{ ex.name|lower }}"
+             data-instructions="{{ ex.instructions|lower }}">
+            <label class="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" name="exercise_ids" value="{{ ex.id }}" 
+                       {{ 'checked' if is_checked }} 
+                       class="exercise-checkbox w-5 h-5 accent-emerald-500 rounded cursor-pointer">
+                <div class="flex-1 min-w-0">
+                    <h4 class="font-bold text-slate-100 text-sm truncate">{{ ex.name }}</h4>
+                    <p class="text-xs text-slate-400 truncate">{{ ex.muscles|join(', ') }}</p>
+                </div>
+            </label>
+
+            <!-- Customization Settings -->
+            <details class="mt-2.5 pt-2.5 border-t border-slate-800/80 group">
+                <summary class="text-xs text-emerald-400 font-semibold cursor-pointer flex items-center justify-between select-none">
+                    <span>Customize Sets & Reps</span>
+                    <i class="fa-solid fa-chevron-down text-[10px] group-open:rotate-180 transition-transform"></i>
+                </summary>
+                
+                <div class="grid grid-cols-3 gap-2 mt-2.5">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Sets</label>
+                        <input type="number" name="sets_{{ ex.id }}" value="{{ custom.get('sets', ex.sets) }}" min="1" 
+                               class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white text-center">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Reps</label>
+                        <input type="number" name="reps_{{ ex.id }}" value="{{ custom.get('reps', ex.reps) }}" min="1" 
+                               class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white text-center">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Rest (s)</label>
+                        <input type="number" name="rest_{{ ex.id }}" value="{{ custom.get('rest', ex.rest) }}" min="0" 
+                               class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white text-center">
+                    </div>
+                </div>
+            </details>
+        </div>
+        {% endfor %}
+
+        <p id="noResultsMsg" class="hidden text-center py-8 text-xs text-slate-500">
+            No exercises match your search or filters.
+        </p>
+    </div>
+
+    <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold py-3 rounded-xl transition">
+        Save Exercises
+    </button>
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const searchInput = document.getElementById('exerciseSearch');
+    const selectedFilter = document.getElementById('showOnlySelected');
+    const cards = document.querySelectorAll('.exercise-card');
+    const noResultsMsg = document.getElementById('noResultsMsg');
+    const matchCount = document.getElementById('matchCount');
+
+    function filterExercises() {
+        const query = searchInput.value.trim().toLowerCase();
+        const showSelectedOnly = selectedFilter.checked;
+        let visibleCount = 0;
+
+        cards.forEach(card => {
+            const name = card.dataset.name || '';
+            const instructions = card.dataset.instructions || '';
+            const isChecked = card.querySelector('.exercise-checkbox').checked;
+
+            const matchesSearch = !query || name.includes(query) || instructions.includes(query);
+            const matchesSelectedFilter = !showSelectedOnly || isChecked;
+
+            if (matchesSearch && matchesSelectedFilter) {
+                card.classList.remove('hidden');
+                visibleCount++;
+            } else {
+                card.classList.add('hidden');
+            }
+        });
+
+        if (visibleCount === 0) {
+            noResultsMsg.classList.remove('hidden');
+        } else {
+            noResultsMsg.classList.add('hidden');
+        }
+
+        matchCount.textContent = `${visibleCount} of ${cards.length} exercises`;
+    }
+
+    searchInput.addEventListener('input', filterExercises);
+    selectedFilter.addEventListener('change', filterExercises);
+    
+    // Recalculate when checkboxes change while "Show selected only" is active
+    document.querySelectorAll('.exercise-checkbox').forEach(cb => {
+        cb.addEventListener('change', filterExercises);
+    });
+
+    filterExercises();
+});
+</script>
+{% endblock %}

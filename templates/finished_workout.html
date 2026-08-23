@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="glass-card p-8 rounded-2xl text-center my-8">
+    <div class="w-20 h-20 bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
+        <i class="fa-solid fa-trophy"></i>
+    </div>
+    <h2 class="text-2xl font-black text-white mb-2">Workout Finished!</h2>
+    <p class="text-xs text-slate-400 mb-6">Great job! All exercise sets have been logged successfully.</p>
+    <a href="{{ url_for('workout_list') }}" class="block bg-emerald-500 text-slate-950 font-bold py-3 rounded-xl">
+        Back to Home
+    </a>
+</div>
+{% endblock %}
