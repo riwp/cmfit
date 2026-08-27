@@ -23,7 +23,7 @@
       {% endif %}
     {% endwith %}
 
-    <!-- Create Workout Form Card -->
+    <!-- Create Workout Form Card (Added !overflow-visible to prevent shadow clipping) -->
     <div class="glass-card p-5 rounded-2xl !overflow-visible">
         <form action="{{ url_for('add_workout') }}" method="POST" class="space-y-4">
             <!-- Title Input -->
@@ -44,7 +44,7 @@
                           class="w-full bg-slate-950/80 border border-white/10 rounded-xl p-3.5 text-slate-100 placeholder-slate-500 text-xs font-medium focus:outline-none focus:border-emerald-500/50 transition resize-none">{{ description or '' }}</textarea>
             </div>
 
-            <!-- Action Button Wrapper -->
+            <!-- Action Button Wrapper (Added p-1 padding buffer so the glow has room) -->
             <div class="pt-2 p-1 overflow-visible">
                 <button type="submit" class="btn-emerald-full">
                     <span>{% if exercise %}Save Changes{% else %}Continue to Add Exercises{% endif %}</span>

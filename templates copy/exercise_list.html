@@ -11,13 +11,13 @@
         </div>
         <p class="text-xs text-slate-400 font-medium">Explore and manage movement library</p>
     </div>
-    <a href="{{ url_for('add_new_exercise') }}" class="btn-emerald-sm shadow-[0_4px_20px_rgba(16,185,129,0.2)] hover:shadow-[0_4px_25px_rgba(16,185,129,0.4)]">
+    <a href="{{ url_for('add_new_exercise') }}" class="btn-emerald inline-flex items-center gap-1.5 px-3 py-2 text-xs font-extrabold rounded-xl shadow-[0_4px_20px_rgba(16,185,129,0.2)] hover:shadow-[0_4px_25px_rgba(16,185,129,0.4)] transition active:scale-95">
         <i class="fa-solid fa-plus text-[11px]"></i>
         <span>Create New</span>
     </a>
 </div>
 
-<!-- Search Bar -->
+<!-- Search Bar with Dynamic Clear Button -->
 <div class="relative mb-5">
     <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs pointer-events-none"></i>
     <input type="search" id="exerciseSearch" placeholder="Search exercises or muscle groups..." 
@@ -27,7 +27,7 @@
     </button>
 </div>
 
-<!-- Exercise List Grid -->
+<!-- Exercise Card Grid / Deck Layout -->
 <div id="exerciseList" class="space-y-3 mb-6">
     {% for ex in all_exercises %}
     <a href="{{ url_for('display_exercise', id=ex.id) }}" 

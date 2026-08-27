@@ -2,7 +2,7 @@
 
 {% block content %}
 <div class="space-y-5">
-    <!-- Active Workout Header -->
+    <!-- Active Workout Top Header Card -->
     <div class="glass-card p-4 rounded-2xl flex items-center justify-between border border-emerald-500/20 shadow-[0_0_25px_rgba(16,185,129,0.1)]">
         <div>
             <h1 class="text-base font-black text-slate-100 tracking-tight flex items-center gap-2">
@@ -14,22 +14,21 @@
             </p>
         </div>
         <form action="{{ url_for('finish_workout', log_id=log.id) }}" method="POST">
-            <button type="submit" class="btn-emerald-sm shadow-[0_4px_16px_rgba(16,185,129,0.25)]">
+            <button type="submit" class="btn-emerald-sm shadow-[0_4px_16px_rgba(16,185,129,0.25)] flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-xl">
                 <i class="fa-solid fa-flag-checkered text-xs"></i>
                 <span>Finish</span>
             </button>
         </form>
     </div>
 
-    <!-- Exercise Cards Loop -->
     {% for item in log.workout.exercises | sort(attribute='order') %}
     {% set ex = item.exercise %}
+    {% set type = ex.exercise_type or 'Strength' %}
     {% set target_sets = item.custom_sets or ex.sets %}
     {% set target_rest = item.custom_rest or ex.rest %}
-    {% set is_aerobic = ex.exercise_type == 'Aerobic Capacity' %}
     
     <div class="glass-card p-4 rounded-2xl space-y-4" id="exercise-card-{{ ex.id }}">
-        <!-- Header -->
+        <!-- Exercise Card Header -->
         <div class="flex items-center gap-3">
             {% if ex.image %}
             <div class="w-12 h-12 rounded-xl overflow-hidden border border-white/10 bg-slate-950 flex-shrink-0">
@@ -40,11 +39,7 @@
                 <h3 class="font-black text-slate-100 text-sm truncate tracking-tight">{{ ex.name }}</h3>
                 <div class="flex items-center gap-2 mt-1">
                     <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-950 text-emerald-400 border border-emerald-500/20">
-                        {% if is_aerobic %}
-                            {{ target_sets }} Sets × {{ item.custom_duration or ex.duration or 0 }} min
-                        {% else %}
-                            {{ target_sets }} Sets × {{ item.custom_reps or ex.reps }} Reps
-                        {% endif %}
+                        {{ type }}
                     </span>
                     <span class="text-[10px] font-extrabold uppercase text-slate-400">
                         Rest: <span class="text-slate-200 font-mono">{{ target_rest }}s</span>
@@ -59,12 +54,15 @@
                 <thead class="bg-slate-900/80 text-[10px] uppercase font-extrabold text-slate-400 border-b border-white/5">
                     <tr>
                         <th class="py-2.5 px-3">Set</th>
-                        {% if is_aerobic %}
-                        <th class="py-2.5 px-3">Duration (min)</th>
-                        <th class="py-2.5 px-3">Rest (s)</th>
-                        {% else %}
+                        {% if type in ['Strength', 'Movement'] %}
                         <th class="py-2.5 px-3">Reps</th>
-                        <th class="py-2.5 px-3">Weight (lbs)</th>
+                        {% endif %}
+                        {% if type == 'Strength' %}
+                        <th class="py-2.5 px-3">Weight</th>
+                        {% endif %}
+                        {% if type in ['Aerobic Capacity', 'Speed', 'ALactic ATP', 'Anaerobic (HIT)'] %}
+                        <th class="py-2.5 px-3">Time</th>
+                        <th class="py-2.5 px-3">Dist</th>
                         {% endif %}
                         <th class="py-2.5 px-3 text-right">Status</th>
                     </tr>
@@ -74,12 +72,15 @@
                     {% for set_item in logged_sets %}
                     <tr class="hover:bg-white/[0.02] transition">
                         <td class="py-2.5 px-3 font-bold text-slate-400">#{{ set_item.set_number }}</td>
-                        {% if is_aerobic %}
-                        <td class="py-2.5 px-3 text-slate-100 font-bold">{{ set_item.duration or '-' }} min</td>
-                        <td class="py-2.5 px-3 text-slate-100 font-bold">{{ target_rest }}s</td>
-                        {% else %}
+                        {% if type in ['Strength', 'Movement'] %}
                         <td class="py-2.5 px-3 text-slate-100 font-bold">{{ set_item.reps or '-' }}</td>
+                        {% endif %}
+                        {% if type == 'Strength' %}
                         <td class="py-2.5 px-3 text-slate-100 font-bold">{{ set_item.weight or '-' }}</td>
+                        {% endif %}
+                        {% if type in ['Aerobic Capacity', 'Speed', 'ALactic ATP', 'Anaerobic (HIT)'] %}
+                        <td class="py-2.5 px-3 text-slate-100 font-bold">{{ set_item.time_seconds or '-' }}s</td>
+                        <td class="py-2.5 px-3 text-slate-100 font-bold">{{ set_item.distance_meters or '-' }}</td>
                         {% endif %}
                         <td class="py-2.5 px-3 text-right font-extrabold text-emerald-400">
                             Logged <i class="fa-solid fa-check text-[10px] ml-0.5"></i>
@@ -90,7 +91,7 @@
             </table>
         </div>
 
-        <!-- Dynamic Input Row -->
+        <!-- Set Input Row -->
         {% set next_set_num = logged_sets | length + 1 %}
         <form class="set-log-form flex items-center gap-2 pt-1" data-exercise-id="{{ ex.id }}" data-log-id="{{ log.id }}">
             <input type="hidden" name="exercise_id" value="{{ ex.id }}">
@@ -100,14 +101,21 @@
                 #{{ next_set_num }}
             </div>
 
-            {% if is_aerobic %}
-                <input type="number" step="0.5" name="duration" placeholder="Duration (min)" value="{{ item.custom_duration or ex.duration or '' }}" required 
-                       class="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-xs text-slate-100 font-bold text-center placeholder-slate-600 focus:outline-none focus:border-emerald-500/50 transition">
-            {% else %}
-                <input type="number" name="reps" placeholder="Reps" value="{{ item.custom_reps or ex.reps }}" required 
-                       class="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-xs text-slate-100 font-bold text-center placeholder-slate-600 focus:outline-none focus:border-emerald-500/50 transition">
-                <input type="number" step="0.5" name="weight" placeholder="Weight (lbs)" 
-                       class="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-xs text-slate-100 font-bold text-center placeholder-slate-600 focus:outline-none focus:border-emerald-500/50 transition">
+            {% if type in ['Strength', 'Movement'] %}
+            <input type="number" name="reps" placeholder="Reps" value="{{ item.custom_reps or ex.reps }}" required 
+                   class="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-xs text-slate-100 font-bold text-center placeholder-slate-600 focus:outline-none focus:border-emerald-500/50 transition">
+            {% endif %}
+
+            {% if type == 'Strength' %}
+            <input type="number" step="0.5" name="weight" placeholder="Weight" 
+                   class="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-xs text-slate-100 font-bold text-center placeholder-slate-600 focus:outline-none focus:border-emerald-500/50 transition">
+            {% endif %}
+
+            {% if type in ['Aerobic Capacity', 'Speed', 'ALactic ATP', 'Anaerobic (HIT)'] %}
+            <input type="number" name="time_seconds" placeholder="Time (s)" 
+                   class="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-xs text-slate-100 font-bold text-center placeholder-slate-600 focus:outline-none focus:border-emerald-500/50 transition">
+            <input type="number" step="0.01" name="distance_meters" placeholder="Distance" 
+                   class="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-xs text-slate-100 font-bold text-center placeholder-slate-600 focus:outline-none focus:border-emerald-500/50 transition">
             {% endif %}
 
             <button type="submit" class="px-4 py-2 bg-slate-800 hover:bg-emerald-500 hover:text-slate-950 text-emerald-400 border border-emerald-500/30 rounded-xl font-extrabold text-xs whitespace-nowrap transition active:scale-95 flex-shrink-0">

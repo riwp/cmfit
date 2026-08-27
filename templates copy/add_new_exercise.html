@@ -10,11 +10,11 @@
         <h1 class="text-base font-black text-slate-100 tracking-tight">
             {% if exercise %}Edit Exercise{% else %}Create Exercise{% endif %}
         </h1>
-        <div class="w-10"></div> </div>
+        <div class="w-10"></div> 
+    </div>
 
-    <form action="{{ url_for('display_exercise', id=exercise.id) if exercise else url_for('add_new_exercise') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
+    <form action="{{ url_for('edit_exercise', exercise_id=exercise.id) if exercise else url_for('add_new_exercise') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
         <input type="hidden" name="return_workout_id" value="{{ return_workout_id or '' }}">
-        <input type="hidden" name="next_url" value="{{ next_url or '' }}">
 
         <div class="glass-card rounded-2xl p-4 space-y-4 border border-white/5">
             <div>
@@ -50,17 +50,17 @@
                 <div class="bg-slate-950/60 p-2.5 rounded-xl border border-white/5 text-center">
                     <label for="sets" class="block text-[10px] font-extrabold uppercase text-slate-400 mb-1">Sets</label>
                     <input type="number" id="sets" name="sets" value="{{ exercise.sets if exercise else 3 }}" min="1"
-                           class="w-full !bg-transparent text-center text-lg font-black text-emerald-400 focus:outline-none">
+                           class="w-full bg-transparent text-center text-lg font-black text-emerald-400 focus:outline-none">
                 </div>
                 <div class="bg-slate-950/60 p-2.5 rounded-xl border border-white/5 text-center">
                     <label for="reps" class="block text-[10px] font-extrabold uppercase text-slate-400 mb-1">Reps</label>
                     <input type="number" id="reps" name="reps" value="{{ exercise.reps if exercise else 10 }}" min="1"
-                           class="w-full !bg-transparent text-center text-lg font-black text-emerald-400 focus:outline-none">
+                           class="w-full bg-transparent text-center text-lg font-black text-emerald-400 focus:outline-none">
                 </div>
                 <div class="bg-slate-950/60 p-2.5 rounded-xl border border-white/5 text-center">
                     <label for="rest" class="block text-[10px] font-extrabold uppercase text-slate-400 mb-1">Rest (s)</label>
                     <input type="number" id="rest" name="rest" value="{{ exercise.rest if exercise else 60 }}" min="0" step="5"
-                           class="w-full !bg-transparent text-center text-lg font-black text-emerald-400 focus:outline-none">
+                           class="w-full bg-transparent text-center text-lg font-black text-emerald-400 focus:outline-none">
                 </div>
             </div>
         </div>
@@ -72,7 +72,7 @@
             <div class="flex flex-wrap gap-2">
                 {% for muscle in muscle_groups %}
                 <label class="cursor-pointer">
-                    <input type="checkbox" name="muscles" value="{{ muscle }}" class="peer sr-only" {% if exercise and exercise.muscles and muscle in exercise.muscles %}checked{% endif %}>
+                    <input type="checkbox" name="muscles" value="{{ muscle }}" class="peer sr-only" {% if exercise and muscle in exercise.target_muscles %}checked{% endif %}>
                     <span class="inline-block px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-950/60 text-slate-300 border border-white/5 peer-checked:bg-emerald-500/20 peer-checked:text-emerald-400 peer-checked:border-emerald-500/40 transition active:scale-95">
                         {{ muscle }}
                     </span>
@@ -91,7 +91,7 @@
                 <label class="flex flex-col items-center justify-center border-2 border-dashed border-white/10 hover:border-emerald-500/40 rounded-xl p-4 bg-slate-950/40 cursor-pointer transition group">
                     <i class="fa-solid fa-cloud-arrow-up text-xl text-slate-400 group-hover:text-emerald-400 mb-1.5 transition"></i>
                     <span id="file-label" class="text-xs font-medium text-slate-400 group-hover:text-slate-200 transition">
-                        {% if exercise and exercise.image %}{{ exercise.image }}{% else %}Tap to upload media file{% endif %}
+                        {% if exercise and exercise.image_url %}{{ exercise.image_url }}{% else %}Tap to upload media file{% endif %}
                     </span>
                     <input type="file" id="image" name="image" accept="image/*" class="hidden" onchange="updateFileName(this)">
                 </label>
@@ -114,16 +114,16 @@
             </div>
         </div>
 
-        <button type="submit" class="btn-emerald-full shadow-[0_6px_25px_rgba(16,185,129,0.4)]">
-            <i class="fa-solid {% if exercise %}fa-check{% else %}fa-plus{% endif %} text-sm"></i>
+        <button type="submit" class="btn-emerald-full">
+            <i class="fa-solid {% if exercise %}fa-check{% else %}fa-plus{% endif %} text-xs"></i>
             <span>{% if exercise %}Save Changes{% else %}Save Exercise{% endif %}</span>
         </button>
     </form>
 
     {% if exercise %}
-    <form action="{{ url_for('delete_exercise', exercise_id=exercise.id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete {{ exercise.name }}? This action cannot be undone.');" class="pt-2">
+    <form action="{{ url_for('delete_exercise', exercise_id=exercise.id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete {{ exercise.name }}? This action cannot be undone.');" class="pt-1">
         <button type="submit" class="btn-danger">
-            <i class="fa-regular fa-trash-can text-sm"></i>
+            <i class="fa-regular fa-trash-can text-xs"></i>
             <span>Delete Exercise</span>
         </button>
     </form>

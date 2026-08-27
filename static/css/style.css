@@ -1,0 +1,81 @@
+/* ==========================================================================
+   CMFit Unified Glow Buttons
+   ========================================================================== */
+
+/* Base Emerald Glow Button */
+.btn-emerald,
+.btn-emerald-full {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  
+  /* Reduced height profile (~60% of standard 3.5rem button) */
+  min-height: 2.125rem; /* ~34px compact height */
+  padding: 0.375rem 1rem;
+  
+  background: linear-gradient(135deg, #34d399 0%, #10b981 50%, #059669 100%);
+  color: #020617;
+  font-weight: 900;
+  font-size: 0.75rem; /* text-xs */
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border-radius: 0.625rem; /* rounded-lg */
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.btn-emerald:hover,
+.btn-emerald-full:hover {
+  box-shadow: 0 4px 20px rgba(16, 185, 129, 0.45);
+  filter: brightness(1.05);
+}
+
+.btn-emerald:active,
+.btn-emerald-full:active {
+  transform: scale(0.97);
+}
+
+/* Compact Header Button Variation */
+.btn-emerald-sm {
+  composes: btn-emerald;
+  width: auto;
+  min-height: 1.875rem; /* Ultra-compact header button */
+  padding: 0.25rem 0.75rem;
+  font-size: 0.7rem;
+}
+
+/* Danger / Delete Button */
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  
+  /* Matches 60% reduced height profile */
+  min-height: 2.125rem;
+  padding: 0.375rem 1rem;
+  
+  background-color: rgba(244, 63, 94, 0.1);
+  color: #fb7185;
+  font-weight: 900;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border-radius: 0.625rem;
+  border: 1px solid rgba(244, 63, 94, 0.2);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.btn-danger:hover {
+  background-color: rgba(244, 63, 94, 0.2);
+}
+
+.btn-danger:active {
+  transform: scale(0.97);
+}

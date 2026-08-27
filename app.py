@@ -3,6 +3,7 @@ from datetime import datetime
 from dotenv import load_dotenv
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import inspect, text
 from werkzeug.utils import secure_filename
 
 # Load environment variables
@@ -29,6 +30,16 @@ db = SQLAlchemy(app)
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(app.config['SOUND_FOLDER'], exist_ok=True)
 
+# Valid Exercise Types
+VALID_EXERCISE_TYPES = [
+    'Movement',
+    'Aerobic Capacity',
+    'Strength',
+    'Speed',
+    'ALactic ATP',
+    'Anaerobic (HIT)'
+]
+
 
 # Models
 class Exercise(db.Model):
@@ -37,10 +48,12 @@ class Exercise(db.Model):
     muscles = db.Column(db.JSON, nullable=True)
     sets = db.Column(db.Integer, default=3)
     reps = db.Column(db.Integer, default=10)
+    duration = db.Column(db.Float, nullable=True)  # Added duration column (minutes)
     rest = db.Column(db.Integer, default=60)
     image = db.Column(db.String(255), nullable=True)
     link = db.Column(db.String(255), nullable=True)
     instructions = db.Column(db.Text, nullable=True)
+    exercise_type = db.Column(db.String(50), nullable=False, default='Strength')
 
 
 class Workout(db.Model):
@@ -62,6 +75,7 @@ class WorkoutExercise(db.Model):
     )
     custom_sets = db.Column(db.Integer, nullable=True)
     custom_reps = db.Column(db.Integer, nullable=True)
+    custom_duration = db.Column(db.Float, nullable=True)  # Added custom duration override
     custom_rest = db.Column(db.Integer, nullable=True)
     order = db.Column(db.Integer, default=0, nullable=False)
 
@@ -92,8 +106,11 @@ class SetLog(db.Model):
         db.Integer, db.ForeignKey('exercise.id'), nullable=False
     )
     set_number = db.Column(db.Integer, nullable=False)
-    reps = db.Column(db.Integer, nullable=False)
-    weight = db.Column(db.Float, nullable=False)
+    reps = db.Column(db.Integer, nullable=True)
+    weight = db.Column(db.Float, nullable=True)
+    duration = db.Column(db.Float, nullable=True)  # Added duration column
+    time_seconds = db.Column(db.Integer, nullable=True)
+    distance_meters = db.Column(db.Float, nullable=True)
 
     exercise = db.relationship('Exercise')
 
@@ -131,17 +148,22 @@ def save_sound(file):
 
 
 def safe_int(val, default=0):
-    """Safely converts string inputs to integer without breaking on empty values."""
     try:
         return int(val) if val is not None and str(val).strip() != '' else default
     except (ValueError, TypeError):
         return default
 
 
+def safe_float(val, default=0.0):
+    try:
+        return float(val) if val is not None and str(val).strip() != '' else default
+    except (ValueError, TypeError):
+        return default
+
+
 def get_sound_settings():
     settings = {s.key: s.value for s in AppSetting.query.all()}
-    
-    # Helper lambda to look up sound file safely by ID string
+
     def get_file(key):
         file_id = safe_int(settings.get(key, 0))
         return SoundFile.query.get(file_id) if file_id > 0 else None
@@ -178,7 +200,6 @@ def index():
     return redirect(url_for('workout_list'))
 
 
-# Exercise Library Routes
 @app.route('/exercises')
 def exercise_list():
     all_exercises = Exercise.query.order_by(Exercise.name.asc()).all()
@@ -193,9 +214,14 @@ def add_new_exercise():
         return_workout_id = request.form.get('return_workout_id', '')
 
         name = request.form.get('name')
+        exercise_type = request.form.get('exercise_type', 'Strength')
+        if exercise_type not in VALID_EXERCISE_TYPES:
+            exercise_type = 'Strength'
+
         muscles = request.form.getlist('muscles')
         sets = safe_int(request.form.get('sets'), 3)
         reps = safe_int(request.form.get('reps'), 10)
+        duration = safe_float(request.form.get('duration'), 0.0)
         rest = safe_int(request.form.get('rest'), 60)
         link = request.form.get('link')
         instructions = request.form.get('instructions')
@@ -207,9 +233,11 @@ def add_new_exercise():
 
         new_exercise = Exercise(
             name=name,
+            exercise_type=exercise_type,
             muscles=muscles,
             sets=sets,
             reps=reps,
+            duration=duration,
             rest=rest,
             image=image_filename,
             link=link,
@@ -230,6 +258,7 @@ def add_new_exercise():
     return render_template(
         'add_new_exercise.html',
         muscle_groups=muscle_groups,
+        valid_exercise_types=VALID_EXERCISE_TYPES,
         return_workout_id=return_workout_id,
     )
 
@@ -240,8 +269,14 @@ def display_exercise(id):
 
     if request.method == 'POST':
         exercise.name = request.form.get('name', exercise.name)
+        
+        req_type = request.form.get('exercise_type')
+        if req_type in VALID_EXERCISE_TYPES:
+            exercise.exercise_type = req_type
+
         exercise.sets = safe_int(request.form.get('sets'), exercise.sets)
         exercise.reps = safe_int(request.form.get('reps'), exercise.reps)
+        exercise.duration = safe_float(request.form.get('duration'), exercise.duration or 0.0)
         exercise.rest = safe_int(request.form.get('rest'), exercise.rest)
         exercise.instructions = request.form.get('instructions', '')
         exercise.link = request.form.get('link', '')
@@ -270,11 +305,31 @@ def display_exercise(id):
         'display_exercise.html',
         exercise=exercise,
         muscle_groups=muscle_groups,
+        valid_exercise_types=VALID_EXERCISE_TYPES,
         next_url=next_url,
     )
 
 
-# Workout Routes
+@app.route('/exercise/<int:exercise_id>/delete', methods=['POST'])
+def delete_exercise(exercise_id):
+    exercise = Exercise.query.get_or_404(exercise_id)
+    
+    if exercise.image:
+        try:
+            os.remove(os.path.join(app.config['UPLOAD_FOLDER'], exercise.image))
+        except OSError:
+            pass
+
+    WorkoutExercise.query.filter_by(exercise_id=exercise.id).delete()
+    SetLog.query.filter_by(exercise_id=exercise.id).delete()
+
+    db.session.delete(exercise)
+    db.session.commit()
+    
+    flash('Exercise deleted successfully.', 'success')
+    return redirect(url_for('exercise_list'))
+
+
 @app.route('/workouts')
 def workout_list():
     workouts = Workout.query.all()
@@ -323,6 +378,7 @@ def add_exercise(workout_id):
             ex_id_int = int(ex_id)
             sets = request.form.get(f'sets_{ex_id_int}')
             reps = request.form.get(f'reps_{ex_id_int}')
+            duration = request.form.get(f'duration_{ex_id_int}')
             rest = request.form.get(f'rest_{ex_id_int}')
 
             we = WorkoutExercise(
@@ -330,6 +386,7 @@ def add_exercise(workout_id):
                 exercise_id=ex_id_int,
                 custom_sets=safe_int(sets) if sets else None,
                 custom_reps=safe_int(reps) if reps else None,
+                custom_duration=safe_float(duration) if duration else None,
                 custom_rest=safe_int(rest) if rest else None,
                 order=idx,
             )
@@ -346,6 +403,7 @@ def add_exercise(workout_id):
         we.exercise_id: {
             'sets': we.custom_sets,
             'reps': we.custom_reps,
+            'duration': we.custom_duration,
             'rest': we.custom_rest,
         }
         for we in existing_we
@@ -396,7 +454,6 @@ def delete_workout(workout_id):
     return redirect(url_for('workout_list'))
 
 
-# Active Workout Logging Routes
 @app.route('/workout/<int:workout_id>/start')
 def start_workout(workout_id):
     workout = Workout.query.get_or_404(workout_id)
@@ -411,25 +468,30 @@ def log_exercise(log_id):
     log = WorkoutLog.query.get_or_404(log_id)
 
     if request.method == 'POST':
-        # Safely parse form data or JSON data depending on how front-end submits
         data = request.get_json() if request.is_json else request.form
 
         exercise_id = int(data.get('exercise_id'))
         set_number = int(data.get('set_number'))
-        reps = int(data.get('reps'))
-        weight = float(data.get('weight'))
+
+        reps_val = data.get('reps')
+        weight_val = data.get('weight')
+        duration_val = data.get('duration')
+        time_seconds_val = data.get('time_seconds')
+        distance_meters_val = data.get('distance_meters')
 
         set_log = SetLog(
             workout_log_id=log.id,
             exercise_id=exercise_id,
             set_number=set_number,
-            reps=reps,
-            weight=weight,
+            reps=safe_int(reps_val) if reps_val is not None and str(reps_val).strip() != '' else None,
+            weight=safe_float(weight_val) if weight_val is not None and str(weight_val).strip() != '' else None,
+            duration=safe_float(duration_val) if duration_val is not None and str(duration_val).strip() != '' else None,
+            time_seconds=safe_int(time_seconds_val) if time_seconds_val is not None and str(time_seconds_val).strip() != '' else None,
+            distance_meters=safe_float(distance_meters_val) if distance_meters_val is not None and str(distance_meters_val).strip() != '' else None,
         )
         db.session.add(set_log)
         db.session.commit()
 
-        # Respond to AJAX / Fetch requests directly without a full-page reload
         is_ajax = (
             request.is_json
             or request.headers.get('X-Requested-With') == 'XMLHttpRequest'
@@ -454,7 +516,6 @@ def finish_workout(log_id):
     return render_template('finished_workout.html', log=log)
 
 
-# Progress Route
 @app.route('/progress')
 def progress():
     sessions = (
@@ -465,7 +526,6 @@ def progress():
     return render_template('progress.html', sessions=sessions)
 
 
-# Admin & Sound Management Routes
 @app.route('/admin', methods=['GET', 'POST'])
 def admin():
     if request.method == 'POST':
@@ -542,7 +602,37 @@ def delete_sound(sound_id):
     return redirect(url_for('admin'))
 
 
+# Migration Helper
+def run_migrations():
+    inspector = inspect(db.engine)
+    
+    if 'exercise' in inspector.get_table_names():
+        columns = [c['name'] for c in inspector.get_columns('exercise')]
+        if 'exercise_type' not in columns:
+            db.session.execute(text("ALTER TABLE exercise ADD COLUMN exercise_type VARCHAR(50) DEFAULT 'Strength' NOT NULL"))
+        if 'duration' not in columns:
+            db.session.execute(text("ALTER TABLE exercise ADD COLUMN duration FLOAT"))
+        db.session.commit()
+
+    if 'workout_exercise' in inspector.get_table_names():
+        columns = [c['name'] for c in inspector.get_columns('workout_exercise')]
+        if 'custom_duration' not in columns:
+            db.session.execute(text("ALTER TABLE workout_exercise ADD COLUMN custom_duration FLOAT"))
+        db.session.commit()
+
+    if 'set_log' in inspector.get_table_names():
+        columns = [c['name'] for c in inspector.get_columns('set_log')]
+        if 'duration' not in columns:
+            db.session.execute(text("ALTER TABLE set_log ADD COLUMN duration FLOAT"))
+        if 'time_seconds' not in columns:
+            db.session.execute(text("ALTER TABLE set_log ADD COLUMN time_seconds INTEGER"))
+        if 'distance_meters' not in columns:
+            db.session.execute(text("ALTER TABLE set_log ADD COLUMN distance_meters FLOAT"))
+        db.session.commit()
+
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
+        run_migrations()
     app.run(host='0.0.0.0', port=52889, debug=True)
