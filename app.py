@@ -538,7 +538,6 @@ def log_exercise(log_id):
 
     return render_template('log_workout.html', log=log)
 
-
 @app.route('/log/<int:log_id>/finish', methods=['POST'])
 def finish_workout(log_id):
     log = WorkoutLog.query.get_or_404(log_id)

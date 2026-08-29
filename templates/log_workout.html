@@ -185,7 +185,13 @@
 </div>
 
 <!-- Rest Timer Modal -->
-<div id="restTimerModal" class="rest-timer-overlay hidden">
+<!-- Rest Timer Modal -->
+<div id="restTimerModal" class="rest-timer-overlay hidden"
+     data-notice-seconds="{{ sound_config.notice_seconds | default(5) }}"
+     data-notice-enabled="{{ 'true' if sound_config.notice_enabled else 'false' }}"
+     data-notice-src="{{ sound_config.notice_url or '' }}"
+     data-rest-end-enabled="{{ 'true' if sound_config.rest_end_enabled else 'false' }}"
+     data-rest-end-src="{{ sound_config.rest_end_url or '' }}">
     <div class="rest-timer-card">
         <span class="rest-timer-label">Rest Period</span>
         <div id="restTimerDisplay" class="rest-timer-time">00:00</div>
@@ -231,9 +237,27 @@ function closeLightbox() {
     document.body.classList.remove('overflow-hidden');
 }
 
-/* --- Rest Timer Logic --- */
+/* --- Rest Timer Logic & Audio Triggers --- */
 let restInterval = null;
 let restTimeRemaining = 0;
+
+function getSoundSettings() {
+    const modal = document.getElementById('restTimerModal');
+    if (!modal) return {};
+    return {
+        noticeSeconds: parseInt(modal.dataset.noticeSeconds, 10) || 10,
+        noticeEnabled: modal.dataset.noticeEnabled === 'true',
+        noticeSrc: modal.dataset.noticeSrc || '',
+        restEndEnabled: modal.dataset.restEndEnabled === 'true',
+        restEndSrc: modal.dataset.restEndSrc || ''
+    };
+}
+
+function playAudioFile(src) {
+    if (!src) return;
+    const audio = new Audio(src);
+    audio.play().catch(err => console.error("Audio playback error:", err));
+}
 
 function formatTime(seconds) {
     const mins = Math.floor(seconds / 60);
@@ -250,18 +274,42 @@ function startRestTimer(seconds) {
     restTimeRemaining = parseInt(seconds, 10) || 60;
     const modal = document.getElementById('restTimerModal');
     const display = document.getElementById('restTimerDisplay');
+    const settings = getSoundSettings();
     
     display.textContent = formatTime(restTimeRemaining);
     modal.classList.remove('hidden');
 
+    // Check immediately in case timer is initialized equal to warning threshold
+    if (settings.noticeEnabled && restTimeRemaining === settings.noticeSeconds) {
+        playAudioFile(settings.noticeSrc);
+    }
+
     restInterval = setInterval(() => {
         restTimeRemaining--;
+
+        // Check for Timer Notice sound match
+        if (settings.noticeEnabled && restTimeRemaining === settings.noticeSeconds) {
+            playAudioFile(settings.noticeSrc);
+        }
+
         if (restTimeRemaining <= 0) {
+            clearInterval(restInterval);
+            restInterval = null;
             display.textContent = "00:00";
+            
             if ('vibrate' in navigator) {
                 navigator.vibrate([200, 100, 200]);
             }
-            dismissAndReload();
+
+            // Play Rest/Round End audio if enabled, then reload after short delay
+            if (settings.restEndEnabled && settings.restEndSrc) {
+                playAudioFile(settings.restEndSrc);
+                setTimeout(() => {
+                    dismissAndReload();
+                }, 1000);
+            } else {
+                dismissAndReload();
+            }
         } else {
             display.textContent = formatTime(restTimeRemaining);
         }
