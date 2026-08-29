@@ -2,18 +2,18 @@
 
 {% block content %}
 <div class="space-y-5">
-    <div class="flex items-center justify-between pb-3 border-b border-white/5">
-        <a href="{{ url_for('exercise_list') }}" class="flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-slate-200 transition">
-            <i class="fa-solid fa-chevron-left text-[10px]"></i>
+    <div class="form-header-bar flex items-center justify-between mb-2">
+        <a href="{{ url_for('exercise_list') }}" class="btn-cancel-link">
+            <i class="fa-solid fa-chevron-left text-xs"></i>
             <span>Cancel</span>
         </a>
-        <h1 class="text-base font-black text-slate-100 tracking-tight">
+        <h1 class="form-page-title">
             {% if exercise %}Edit Exercise{% else %}Create Exercise{% endif %}
         </h1>
-        <div class="w-10"></div> 
+        <div class="w-16"></div>
     </div>
 
-    <form action="{{ url_for('edit_exercise', exercise_id=exercise.id) if exercise else url_for('add_new_exercise') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
+    <form action="{{ url_for('display_exercise', id=exercise.id) if exercise else url_for('add_new_exercise') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
         <input type="hidden" name="return_workout_id" value="{{ return_workout_id or '' }}">
 
         <div class="glass-card rounded-2xl p-4 space-y-4 border border-white/5">
@@ -72,7 +72,7 @@
             <div class="flex flex-wrap gap-2">
                 {% for muscle in muscle_groups %}
                 <label class="cursor-pointer">
-                    <input type="checkbox" name="muscles" value="{{ muscle }}" class="peer sr-only" {% if exercise and muscle in exercise.target_muscles %}checked{% endif %}>
+                    <input type="checkbox" name="muscles" value="{{ muscle }}" class="peer sr-only" {% if exercise and exercise.muscles and muscle in exercise.muscles %}checked{% endif %}>
                     <span class="inline-block px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-950/60 text-slate-300 border border-white/5 peer-checked:bg-emerald-500/20 peer-checked:text-emerald-400 peer-checked:border-emerald-500/40 transition active:scale-95">
                         {{ muscle }}
                     </span>
@@ -90,11 +90,25 @@
                 <label class="block text-xs font-semibold text-slate-400 mb-1.5">Demo Image / GIF</label>
                 <label class="flex flex-col items-center justify-center border-2 border-dashed border-white/10 hover:border-emerald-500/40 rounded-xl p-4 bg-slate-950/40 cursor-pointer transition group">
                     <i class="fa-solid fa-cloud-arrow-up text-xl text-slate-400 group-hover:text-emerald-400 mb-1.5 transition"></i>
-                    <span id="file-label" class="text-xs font-medium text-slate-400 group-hover:text-slate-200 transition">
-                        {% if exercise and exercise.image_url %}{{ exercise.image_url }}{% else %}Tap to upload media file{% endif %}
+                    <span id="file-label" class="text-xs font-medium text-slate-400 group-hover:text-slate-200 transition text-center">
+                        Tap to select image or GIF file
                     </span>
-                    <input type="file" id="image" name="image" accept="image/*" class="hidden" onchange="updateFileName(this)">
+                    <input type="file" id="image" name="image" accept="image/*" class="hidden" onchange="previewImages(this)">
                 </label>
+
+                <div id="image-preview-container" class="mt-3 hidden">
+                    <span class="block text-[10px] font-extrabold uppercase text-slate-400 mb-1.5">New Image Preview</span>
+                    <div id="preview-box" class="w-32 h-32 relative aspect-square rounded-lg overflow-hidden border border-emerald-500/30"></div>
+                </div>
+
+                {% if exercise and exercise.image %}
+                <div class="mt-3">
+                    <span class="block text-[10px] font-extrabold uppercase text-slate-400 mb-1.5">Current Saved Image</span>
+                    <div class="w-32 h-32 relative aspect-square rounded-lg overflow-hidden border border-white/10">
+                        <img src="{{ url_for('static', filename='uploads/' + exercise.image) }}" class="w-full h-full object-cover">
+                    </div>
+                </div>
+                {% endif %}
             </div>
 
             <div>
@@ -122,7 +136,7 @@
 
     {% if exercise %}
     <form action="{{ url_for('delete_exercise', exercise_id=exercise.id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete {{ exercise.name }}? This action cannot be undone.');" class="pt-1">
-        <button type="submit" class="btn-danger">
+        <button type="submit" class="btn-danger w-full flex items-center justify-center gap-2 p-3 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl font-bold text-xs hover:bg-red-500/20 transition active:scale-98">
             <i class="fa-regular fa-trash-can text-xs"></i>
             <span>Delete Exercise</span>
         </button>
@@ -131,12 +145,31 @@
 </div>
 
 <script>
-function updateFileName(input) {
+function previewImages(input) {
     const label = document.getElementById('file-label');
+    const container = document.getElementById('image-preview-container');
+    const previewBox = document.getElementById('preview-box');
+    previewBox.innerHTML = '';
+
     if (input.files && input.files[0]) {
         label.textContent = input.files[0].name;
         label.classList.remove('text-slate-400');
         label.classList.add('text-emerald-400', 'font-bold');
+        container.classList.remove('hidden');
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = document.createElement('img');
+            img.src = e.target.result;
+            img.className = 'w-full h-full object-cover';
+            previewBox.appendChild(img);
+        };
+        reader.readAsDataURL(input.files[0]);
+    } else {
+        label.textContent = 'Tap to select image or GIF file';
+        label.classList.remove('text-emerald-400', 'font-bold');
+        label.classList.add('text-slate-400');
+        container.classList.add('hidden');
     }
 }
 </script>

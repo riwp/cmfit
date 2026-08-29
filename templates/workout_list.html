@@ -5,12 +5,17 @@
     <!-- Page Header & Action Bar -->
     <div class="glass-card p-4 rounded-2xl flex items-center justify-between border border-white/10">
         <div>
-            <h1 class="text-xl font-black text-slate-100 tracking-tight">Workouts</h1>
-            <p class="text-xs text-slate-400 font-medium">Select a workout routine or create a new one</p>
+            <div class="flex items-center gap-2 mb-1">
+                <h1 class="text-xl font-black text-slate-100 tracking-tight">Workouts</h1>
+                <span class="exercise-counter-badge">
+                    {{ workouts|length }}
+                </span>
+            </div>
+            <p class="text-xs text-slate-400 font-medium">Select or create new workout</p>
         </div>
         <a href="{{ url_for('add_workout') }}" class="btn-emerald-sm shadow-[0_4px_20px_rgba(16,185,129,0.2)] hover:shadow-[0_4px_25px_rgba(16,185,129,0.4)]">
             <i class="fa-solid fa-plus text-[11px]"></i>
-            <span>New Workout</span>
+            <span>Workout</span>
         </a>
     </div>
 

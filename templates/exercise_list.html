@@ -1,20 +1,22 @@
 {% extends 'base.html' %}
 {% block content %}
-<!-- Page Header -->
-<div class="flex items-center justify-between mb-5 px-1">
-    <div>
-        <div class="flex items-center gap-2 mb-1">
-            <h2 class="text-xl font-black text-slate-100 tracking-tight">Exercise Library</h2>
-            <span id="exerciseCounter" class="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                {{ all_exercises|length }}
-            </span>
+<!-- Page Header (In Card) -->
+<div class="glass-card p-4 rounded-2xl mb-5">
+    <div class="flex items-center justify-between">
+        <div>
+            <div class="flex items-center gap-2 mb-1">
+                <h2 class="text-xl font-black text-slate-100 tracking-tight">Exercise Library</h2>
+                <span id="exerciseCounter" class="exercise-counter-badge">
+                    {{ all_exercises|length }}
+                </span>
+            </div>
+            <p class="text-xs text-slate-400 font-medium">Explore and manage movement library</p>
         </div>
-        <p class="text-xs text-slate-400 font-medium">Explore and manage movement library</p>
+        <a href="{{ url_for('add_new_exercise') }}" class="btn-emerald-sm shadow-[0_4px_20px_rgba(16,185,129,0.2)] hover:shadow-[0_4px_25px_rgba(16,185,129,0.4)]">
+            <i class="fa-solid fa-plus text-[11px]"></i>
+            <span>Exercise</span>
+        </a>
     </div>
-    <a href="{{ url_for('add_new_exercise') }}" class="btn-emerald-sm shadow-[0_4px_20px_rgba(16,185,129,0.2)] hover:shadow-[0_4px_25px_rgba(16,185,129,0.4)]">
-        <i class="fa-solid fa-plus text-[11px]"></i>
-        <span>Create New</span>
-    </a>
 </div>
 
 <!-- Search Bar -->

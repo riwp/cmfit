@@ -1,4 +1,5 @@
 import os
+import uuid
 from datetime import datetime
 from dotenv import load_dotenv
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
@@ -48,9 +49,10 @@ class Exercise(db.Model):
     muscles = db.Column(db.JSON, nullable=True)
     sets = db.Column(db.Integer, default=3)
     reps = db.Column(db.Integer, default=10)
-    duration = db.Column(db.Float, nullable=True)  # Added duration column (minutes)
+    duration = db.Column(db.Float, nullable=True)  # Duration column (minutes)
     rest = db.Column(db.Integer, default=60)
-    image = db.Column(db.String(255), nullable=True)
+    image = db.Column(db.String(255), nullable=True)  # Single image fallback
+    image_urls = db.Column(db.JSON, nullable=True)     # Multi-image array list
     link = db.Column(db.String(255), nullable=True)
     instructions = db.Column(db.Text, nullable=True)
     exercise_type = db.Column(db.String(50), nullable=False, default='Strength')
@@ -75,7 +77,7 @@ class WorkoutExercise(db.Model):
     )
     custom_sets = db.Column(db.Integer, nullable=True)
     custom_reps = db.Column(db.Integer, nullable=True)
-    custom_duration = db.Column(db.Float, nullable=True)  # Added custom duration override
+    custom_duration = db.Column(db.Float, nullable=True)
     custom_rest = db.Column(db.Integer, nullable=True)
     order = db.Column(db.Integer, default=0, nullable=False)
 
@@ -108,7 +110,7 @@ class SetLog(db.Model):
     set_number = db.Column(db.Integer, nullable=False)
     reps = db.Column(db.Integer, nullable=True)
     weight = db.Column(db.Float, nullable=True)
-    duration = db.Column(db.Float, nullable=True)  # Added duration column
+    duration = db.Column(db.Float, nullable=True)
     time_seconds = db.Column(db.Integer, nullable=True)
     distance_meters = db.Column(db.Float, nullable=True)
 
@@ -131,11 +133,22 @@ class AppSetting(db.Model):
 # Helpers
 def save_image(file):
     if file and file.filename != '':
-        filename = secure_filename(file.filename)
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        ext = os.path.splitext(secure_filename(file.filename))[1]
+        unique_name = f"{uuid.uuid4().hex}{ext}"
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_name)
         file.save(filepath)
-        return filename
+        return unique_name
     return None
+
+
+def save_multiple_images(files):
+    filenames = []
+    for file in files:
+        if file and file.filename != '':
+            saved_name = save_image(file)
+            if saved_name:
+                filenames.append(saved_name)
+    return filenames
 
 
 def save_sound(file):
@@ -226,10 +239,11 @@ def add_new_exercise():
         link = request.form.get('link')
         instructions = request.form.get('instructions')
 
-        image_filename = None
-        if 'image' in request.files:
-            file = request.files['image']
-            image_filename = save_image(file)
+        # Handle uploaded images (Single file or Multiple files)
+        uploaded_files = request.files.getlist('images') or request.files.getlist('image')
+        image_list = save_multiple_images(uploaded_files)
+        
+        primary_image = image_list[0] if image_list else None
 
         new_exercise = Exercise(
             name=name,
@@ -239,7 +253,8 @@ def add_new_exercise():
             reps=reps,
             duration=duration,
             rest=rest,
-            image=image_filename,
+            image=primary_image,
+            image_urls=image_list if image_list else None,
             link=link,
             instructions=instructions,
         )
@@ -265,7 +280,7 @@ def add_new_exercise():
 
 @app.route('/exercise/<int:id>', methods=['GET', 'POST'])
 def display_exercise(id):
-    exercise = Exercise.query.get_or_404(id)
+    exercise = db.session.get(Exercise, id) or Flask.abort(404)
 
     if request.method == 'POST':
         exercise.name = request.form.get('name', exercise.name)
@@ -282,41 +297,40 @@ def display_exercise(id):
         exercise.link = request.form.get('link', '')
         exercise.muscles = request.form.getlist('muscles')
 
-        if 'image' in request.files:
-            file = request.files['image']
-            if file and file.filename != '':
-                image_filename = save_image(file)
-                if image_filename:
-                    exercise.image = image_filename
+        # Multi & Single image update handling
+        uploaded_files = request.files.getlist('images') or request.files.getlist('image')
+        new_image_list = save_multiple_images(uploaded_files)
+        
+        if new_image_list:
+            existing_images = exercise.image_urls if isinstance(exercise.image_urls, list) else []
+            combined_images = existing_images + new_image_list
+            exercise.image_urls = combined_images
+            exercise.image = combined_images[0]
 
         db.session.commit()
-
-        next_url = request.form.get('next_url')
-        if next_url and next_url != request.url:
-            return redirect(next_url)
-        return redirect(url_for('exercise_list'))
-
-    next_url = request.referrer or url_for('exercise_list')
+        flash('Exercise updated successfully.', 'success')
+        return redirect(url_for('display_exercise', id=exercise.id))
 
     muscle_groups = [
         'Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps', 'Legs', 'Abs', 'Cardio'
     ]
-    return render_template(
-        'display_exercise.html',
-        exercise=exercise,
-        muscle_groups=muscle_groups,
-        valid_exercise_types=VALID_EXERCISE_TYPES,
-        next_url=next_url,
-    )
+    return render_template('display_exercise.html', exercise=exercise, muscle_groups=muscle_groups, valid_exercise_types=VALID_EXERCISE_TYPES)
 
 
 @app.route('/exercise/<int:exercise_id>/delete', methods=['POST'])
 def delete_exercise(exercise_id):
     exercise = Exercise.query.get_or_404(exercise_id)
     
-    if exercise.image:
+    # Cleanup all images attached to exercise
+    images_to_delete = []
+    if exercise.image_urls and isinstance(exercise.image_urls, list):
+        images_to_delete.extend(exercise.image_urls)
+    elif exercise.image:
+        images_to_delete.append(exercise.image)
+
+    for img_file in set(images_to_delete):
         try:
-            os.remove(os.path.join(app.config['UPLOAD_FOLDER'], exercise.image))
+            os.remove(os.path.join(app.config['UPLOAD_FOLDER'], img_file))
         except OSError:
             pass
 
@@ -551,8 +565,8 @@ def admin():
                 'sound_notice_enabled': 'true' if request.form.get('notice_enabled') else 'false',
                 'sound_notice_file_id': request.form.get('notice_file_id', ''),
                 'sound_notice_seconds': request.form.get('notice_seconds', '5'),
-                'sound_rest_end_enabled': 'true' if request.form.get('rest_end_enabled') else 'false',
-                'sound_rest_end_file_id': request.form.get('rest_end_file_id', ''),
+                'rest_end_enabled': 'true' if request.form.get('rest_end_enabled') else 'false',
+                'rest_end_file_id': request.form.get('rest_end_file_id', ''),
                 'sound_end_enabled': 'true' if request.form.get('end_enabled') else 'false',
                 'sound_end_file_id': request.form.get('end_file_id', ''),
             }
@@ -574,17 +588,16 @@ def admin():
     raw_settings = {s.key: s.value for s in AppSetting.query.all()}
 
     settings = {
-        'start_enabled': raw_settings.get('sound_start_enabled', 'false') == 'true',
-        'start_file_id': safe_int(raw_settings.get('sound_start_file_id'), None),
-        'notice_enabled': raw_settings.get('sound_notice_enabled', 'false') == 'true',
-        'notice_file_id': safe_int(raw_settings.get('sound_notice_file_id'), None),
-        'notice_seconds': safe_int(raw_settings.get('sound_notice_seconds'), 5),
-        'rest_end_enabled': raw_settings.get('sound_rest_end_enabled', 'false') == 'true',
-        'rest_end_file_id': safe_int(raw_settings.get('sound_rest_end_file_id'), None),
-        'end_enabled': raw_settings.get('sound_end_enabled', 'false') == 'true',
-        'end_file_id': safe_int(raw_settings.get('sound_end_file_id'), None),
-    }
-
+            'start_enabled': raw_settings.get('sound_start_enabled', 'false') == 'true',
+            'start_file_id': safe_int(raw_settings.get('sound_start_file_id'), None),
+            'notice_enabled': raw_settings.get('sound_notice_enabled', 'false') == 'true',
+            'notice_file_id': safe_int(raw_settings.get('sound_notice_file_id'), None),
+            'notice_seconds': safe_int(raw_settings.get('sound_notice_seconds'), 5),
+            'rest_end_enabled': raw_settings.get('sound_rest_end_enabled', 'false') == 'true',
+            'rest_end_file_id': safe_int(raw_settings.get('sound_rest_end_file_id'), None),
+            'end_enabled': raw_settings.get('sound_end_enabled', 'false') == 'true',
+            'end_file_id': safe_int(raw_settings.get('sound_end_file_id'), None),
+        }
     return render_template('admin.html', sounds=sounds, settings=settings)
 
 
@@ -612,6 +625,8 @@ def run_migrations():
             db.session.execute(text("ALTER TABLE exercise ADD COLUMN exercise_type VARCHAR(50) DEFAULT 'Strength' NOT NULL"))
         if 'duration' not in columns:
             db.session.execute(text("ALTER TABLE exercise ADD COLUMN duration FLOAT"))
+        if 'image_urls' not in columns:
+            db.session.execute(text("ALTER TABLE exercise ADD COLUMN image_urls JSON"))
         db.session.commit()
 
     if 'workout_exercise' in inspector.get_table_names():

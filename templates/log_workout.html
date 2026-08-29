@@ -28,14 +28,24 @@
     {% set target_rest = item.custom_rest or ex.rest %}
     {% set is_aerobic = ex.exercise_type == 'Aerobic Capacity' %}
     
+    <!-- Build normalized media list -->
+    {% set media_list = [] %}
+    {% if ex.image_urls %}
+        {% if ex.image_urls is string %}
+            {# If stored as comma-separated or plain text #}
+            {% set media_list = ex.image_urls.split(',') %}
+        {% else %}
+            {% set media_list = ex.image_urls %}
+        {% endif %}
+    {% elif ex.image %}
+        {% set media_list = [ex.image] %}
+    {% endif %}
+    
+    {% set has_images = media_list | length > 0 %}
+    
     <div class="glass-card p-4 rounded-2xl space-y-4" id="exercise-card-{{ ex.id }}">
         <!-- Header -->
-        <div class="flex items-center gap-3">
-            {% if ex.image %}
-            <div class="w-12 h-12 rounded-xl overflow-hidden border border-white/10 bg-slate-950 flex-shrink-0">
-                <img src="{{ url_for('static', filename='uploads/' + ex.image) }}" alt="{{ ex.name }}" class="w-full h-full object-cover">
-            </div>
-            {% endif %}
+        <div class="flex items-center justify-between gap-3">
             <div class="flex-1 min-w-0">
                 <h3 class="font-black text-slate-100 text-sm truncate tracking-tight">{{ ex.name }}</h3>
                 <div class="flex items-center gap-2 mt-1">
@@ -51,7 +61,53 @@
                     </span>
                 </div>
             </div>
+
+            <!-- Action Buttons: External Link & Image Toggle -->
+            <div class="flex items-center gap-1.5 flex-shrink-0">
+                {% if ex.link %}
+                <a href="{{ ex.link }}" target="_blank" rel="noopener noreferrer" 
+                   class="p-2 rounded-xl bg-slate-950 border border-white/10 text-slate-300 hover:text-emerald-400 hover:border-emerald-500/30 transition active:scale-95" 
+                   title="Watch Demonstration Video">
+                    <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+                </a>
+                {% endif %}
+
+                {% if has_images %}
+                <button type="button" 
+                        onclick="toggleMedia('media-{{ ex.id }}', 'chevron-{{ ex.id }}')"
+                        class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-950 border border-white/10 text-slate-300 text-xs font-semibold hover:border-emerald-500/30 hover:text-emerald-400 transition active:scale-95">
+                    <i class="fa-regular fa-image text-xs"></i>
+                    <span>Media</span>
+                    <i id="chevron-{{ ex.id }}" class="fa-solid fa-chevron-down text-[10px] transition-transform duration-300"></i>
+                </button>
+                {% endif %}
+            </div>
         </div>
+
+        <!-- Collapsible Media Container -->
+        {% if has_images %}
+        <div id="media-{{ ex.id }}" class="hidden overflow-hidden transition-all duration-300 pt-3 border-t border-white/5 space-y-2">
+            <span class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                Demonstration Gallery
+            </span>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {% for img in media_list %}
+                    {% set img_path = img.strip() %}
+                    {% if img_path.startswith('http://') or img_path.startswith('https://') or img_path.startswith('/') %}
+                        {% set final_src = img_path %}
+                    {% else %}
+                        {% set final_src = url_for('static', filename='uploads/' + img_path) %}
+                    {% endif %}
+                    <a href="{{ final_src }}" target="_blank" rel="noopener noreferrer" class="group relative aspect-video rounded-xl overflow-hidden border border-white/10 bg-slate-950">
+                        <img src="{{ final_src }}" alt="{{ ex.name }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" loading="lazy">
+                        <div class="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition duration-200">
+                            <i class="fa-solid fa-magnifying-glass-plus text-white text-xs"></i>
+                        </div>
+                    </a>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
 
         <!-- Logged Sets Table -->
         <div class="overflow-x-auto rounded-xl border border-white/5 bg-slate-950/60">
@@ -119,6 +175,22 @@
 </div>
 
 <script>
+function toggleMedia(containerId, chevronId) {
+    const container = document.getElementById(containerId);
+    const chevron = document.getElementById(chevronId);
+
+    if (!container) return;
+
+    const isHidden = container.classList.contains('hidden');
+    if (isHidden) {
+        container.classList.remove('hidden');
+        if (chevron) chevron.classList.add('rotate-180');
+    } else {
+        container.classList.add('hidden');
+        if (chevron) chevron.classList.remove('rotate-180');
+    }
+}
+
 document.querySelectorAll('.set-log-form').forEach(form => {
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
