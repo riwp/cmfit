@@ -13,8 +13,8 @@
             </div>
             <p class="text-xs text-slate-400 font-medium">Select or create new workout</p>
         </div>
-        <a href="{{ url_for('add_workout') }}" class="btn-emerald-sm shadow-[0_4px_20px_rgba(16,185,129,0.2)] hover:shadow-[0_4px_25px_rgba(16,185,129,0.4)]">
-            <i class="fa-solid fa-plus text-[11px]"></i>
+        <a href="{{ url_for('add_workout') }}" class="btn-emerald-sm shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30">
+            <i class="fa-solid fa-plus text-xs"></i>
             <span>Workout</span>
         </a>
     </div>
@@ -62,14 +62,14 @@
 
             <!-- Bottom Row: Meta Stats & Direct Action -->
             <div class="pt-3 border-t border-white/5 flex items-center justify-between">
-                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-slate-950 text-slate-300 border border-white/5">
-                    <i class="fa-solid fa-dumbbell text-emerald-400 text-[10px]"></i>
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-extrabold bg-slate-950 text-slate-300 border border-white/5">
+                    <i class="fa-solid fa-dumbbell text-emerald-400 text-xs"></i>
                     <span>{{ workout.exercises|length }} {{ 'exercise' if workout.exercises|length == 1 else 'exercises' }}</span>
                 </span>
 
                 <a href="{{ url_for('view_workout', workout_id=workout.id) }}" class="inline-flex items-center gap-1 text-xs font-bold text-emerald-400 hover:text-emerald-300 transition group-hover:translate-x-0.5 transform duration-150">
                     <span>View Routine</span>
-                    <i class="fa-solid fa-chevron-right text-[10px]"></i>
+                    <i class="fa-solid fa-chevron-right text-xs"></i>
                 </a>
             </div>
         </div>
@@ -79,10 +79,10 @@
                 <i class="fa-solid fa-dumbbell text-xl"></i>
             </div>
             <p class="text-xs font-bold text-slate-300 mb-1">No workouts found.</p>
-            <p class="text-[11px] text-slate-500 mb-4">Get started by creating your first exercise routine.</p>
+            <p class="text-xs text-slate-500 mb-4">Get started by creating your first exercise routine.</p>
             <a href="{{ url_for('add_workout') }}" class="inline-flex items-center gap-1.5 text-xs font-extrabold text-emerald-400 hover:text-emerald-300 transition">
                 <span>Create your first routine</span>
-                <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                <i class="fa-solid fa-arrow-right text-xs"></i>
             </a>
         </div>
         {% endfor %}

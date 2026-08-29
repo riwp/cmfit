@@ -5,28 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>CMFit</title>
+    <title>{% block title %}CMFit{% endblock %}</title>
     
     <!-- FontAwesome Pro Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous">
     
     <!-- Tailwind CSS Engine -->
     <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- Custom Theme Design System -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v={{ range(1000, 9999) | random }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=1.0.0">
 </head>
 <body class="ios-body-wrapper bg-slate-950 min-h-full flex flex-col text-slate-100 antialiased selection:bg-emerald-500 selection:text-slate-950 !overflow-visible">
 
     <!-- Top Navigation Header -->
-    <header class="ios-header sticky top-0 z-40 bg-slate-950/80 border-b border-white/5 px-4">
+    <header class="ios-header sticky top-0 z-40 bg-slate-950/80 backdrop-blur-md border-b border-white/5 px-4 py-3">
         <a href="{{ url_for('workout_list') }}" class="flex items-center gap-3.5 active:scale-95 transition-transform duration-150">
-            <div class="brand-logo-icon">
+            <div class="brand-logo-icon flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-500 text-slate-950 font-bold text-sm">
                 CM
             </div>
             <div class="flex flex-col justify-center">
-                <span class="brand-title">CMFit</span>
-                <span class="brand-subtitle">Performance</span>
+                <span class="brand-title text-sm font-bold leading-tight">CMFit</span>
+                <span class="brand-subtitle text-[10px] text-slate-400 tracking-wider uppercase leading-tight">Performance</span>
             </div>
         </a>
     </header>
@@ -40,21 +40,21 @@
     <div class="fixed bottom-0 left-0 right-0 z-50">
         <nav class="max-w-lg mx-auto bg-slate-950/90 backdrop-blur-2xl border-t border-white/10 px-2 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] flex items-center justify-around shadow-[0_-8px_30px_rgba(0,0,0,0.85)]">
             
-            <!-- Exercises Item -->
+            <!-- Exercises -->
             <a href="{{ url_for('exercise_list') }}" 
                class="flex-1 flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all duration-200 active:scale-95 {{ 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.15)] font-bold' if request.endpoint in ['exercise_list', 'display_exercise', 'add_exercise', 'edit_exercise'] else 'text-slate-400 hover:text-slate-200 hover:bg-white/5 font-medium' }}">
                 <i class="fa-solid fa-dumbbell text-base mb-1"></i>
                 <span class="text-[10px] tracking-wider uppercase">Exercises</span>
             </a>
 
-            <!-- Workouts Item -->
+            <!-- Workouts -->
             <a href="{{ url_for('workout_list') }}" 
                class="flex-1 flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all duration-200 active:scale-95 {{ 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.15)] font-bold' if request.endpoint in ['workout_list', 'index', 'view_workout', 'add_workout', 'start_workout', 'reorder_workout_exercises'] else 'text-slate-400 hover:text-slate-200 hover:bg-white/5 font-medium' }}">
                 <i class="fa-solid fa-list-check text-base mb-1"></i>
                 <span class="text-[10px] tracking-wider uppercase">Workouts</span>
             </a>
 
-            <!-- Progress Item -->
+            <!-- Progress -->
             {% set progress_endpoint = 'progress' if 'progress' in url_map else ('workout_progress' if 'workout_progress' in url_map else 'progress') %}
             <a href="{{ url_for(progress_endpoint) }}" 
                class="flex-1 flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all duration-200 active:scale-95 {{ 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.15)] font-bold' if request.endpoint in ['progress', 'workout_progress', 'history', 'logs'] else 'text-slate-400 hover:text-slate-200 hover:bg-white/5 font-medium' }}">
@@ -62,7 +62,7 @@
                 <span class="text-[10px] tracking-wider uppercase">Progress</span>
             </a>
 
-            <!-- Admin Item -->
+            <!-- Admin -->
             {% set admin_endpoint = 'admin' if 'admin' in url_map else ('settings' if 'settings' in url_map else 'admin') %}
             <a href="{{ url_for(admin_endpoint) }}" 
                class="flex-1 flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all duration-200 active:scale-95 {{ 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.15)] font-bold' if request.endpoint in ['admin', 'settings', 'sound_settings', 'config'] else 'text-slate-400 hover:text-slate-200 hover:bg-white/5 font-medium' }}">
@@ -77,17 +77,18 @@
     <script>
         window.CMFitSoundConfig = {{ sound_config | tojson | safe if sound_config is defined else '{}' }};
         window.audioCache = {};
-        let audioCtx = null;
         window.soundBuffers = {};
+        let audioCtx = null;
 
         function getSoundDetails(type) {
-            if (!window.CMFitSoundConfig) return { enabled: false, url: null };
-            const cfg = window.CMFitSoundConfig;
-            if (type === 'start') return { enabled: !!cfg.start_enabled, url: cfg.start_url };
-            if (type === 'notice') return { enabled: !!cfg.notice_enabled, url: cfg.notice_url };
-            if (type === 'rest_end') return { enabled: !!cfg.rest_end_enabled, url: cfg.rest_end_url };
-            if (type === 'end') return { enabled: !!cfg.end_enabled, url: cfg.end_url };
-            return { enabled: false, url: null };
+            const cfg = window.CMFitSoundConfig || {};
+            const mappings = {
+                'start': { enabled: !!cfg.start_enabled, url: cfg.start_url },
+                'notice': { enabled: !!cfg.notice_enabled, url: cfg.notice_url },
+                'rest_end': { enabled: !!cfg.rest_end_enabled, url: cfg.rest_end_url },
+                'end': { enabled: !!cfg.end_enabled, url: cfg.end_url }
+            };
+            return mappings[type] || { enabled: false, url: null };
         }
 
         function initAudioEngine() {
@@ -95,14 +96,17 @@
                 const AudioContextClass = window.AudioContext || window.webkitAudioContext;
                 if (AudioContextClass) audioCtx = new AudioContextClass();
             }
-            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
 
             ['start', 'notice', 'rest_end', 'end'].forEach(type => {
                 const details = getSoundDetails(type);
                 if (details.enabled && details.url && !window.audioCache[type]) {
-                    const a = new Audio(details.url);
-                    a.preload = 'auto';
-                    window.audioCache[type] = a;
+                    const audioObj = new Audio(details.url);
+                    audioObj.preload = 'auto';
+                    window.audioCache[type] = audioObj;
+
                     if (audioCtx) {
                         fetch(details.url)
                             .then(res => res.arrayBuffer())
@@ -136,6 +140,7 @@
             const details = getSoundDetails(type);
             if (!details.enabled || !details.url) return;
 
+            // Strategy 1: High-performance Web Audio API Buffer
             if (audioCtx && window.soundBuffers[type]) {
                 try {
                     if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -144,9 +149,12 @@
                     source.connect(audioCtx.destination);
                     source.start(0);
                     return;
-                } catch(e) {}
+                } catch(e) {
+                    console.warn('WebAudio play failed, using fallback audio element', e);
+                }
             }
 
+            // Strategy 2: Preloaded HTML5 Audio Tag Fallback
             let audio = window.audioCache[type];
             if (!audio) {
                 audio = new Audio(details.url);

@@ -2,23 +2,28 @@
 
 {% block content %}
 <div class="space-y-5">
+    <!-- Header Bar -->
     <div class="flex items-center justify-between pb-3 border-b border-white/5">
         <a href="{{ url_for('exercise_list') }}" class="flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-slate-200 transition">
-            <i class="fa-solid fa-chevron-left text-[10px]"></i>
+            <i class="fa-solid fa-chevron-left text-xs"></i>
             <span>Cancel</span>
         </a>
         <h1 class="text-base font-black text-slate-100 tracking-tight">
             {% if exercise %}Edit Exercise{% else %}Create Exercise{% endif %}
         </h1>
-        <div class="w-10"></div> </div>
+        <div class="w-10"></div>
+    </div>
 
     <form action="{{ url_for('display_exercise', id=exercise.id) if exercise else url_for('add_new_exercise') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
         <input type="hidden" name="return_workout_id" value="{{ return_workout_id or '' }}">
         <input type="hidden" name="next_url" value="{{ next_url or '' }}">
+        
+        <div id="deleted-images-container"></div>
 
+        <!-- Name & Category -->
         <div class="glass-card rounded-2xl p-4 space-y-4 border border-white/5">
             <div>
-                <label for="name" class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">
+                <label for="name" class="block text-xs font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">
                     Exercise Name
                 </label>
                 <input type="text" id="name" name="name" required placeholder="e.g., Dumbbell Incline Bench"
@@ -27,7 +32,7 @@
             </div>
 
             <div>
-                <label for="exercise_type" class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">
+                <label for="exercise_type" class="block text-xs font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">
                     Category / Type
                 </label>
                 <div class="relative">
@@ -42,31 +47,33 @@
             </div>
         </div>
 
+        <!-- Default Targets -->
         <div class="glass-card rounded-2xl p-4 border border-white/5">
-            <span class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-3">
+            <span class="block text-xs font-extrabold uppercase tracking-wider text-slate-400 mb-3">
                 Default Targets
             </span>
             <div class="grid grid-cols-3 gap-2.5">
                 <div class="bg-slate-950/60 p-2.5 rounded-xl border border-white/5 text-center">
-                    <label for="sets" class="block text-[10px] font-extrabold uppercase text-slate-400 mb-1">Sets</label>
+                    <label for="sets" class="block text-xs font-extrabold uppercase text-slate-400 mb-1">Sets</label>
                     <input type="number" id="sets" name="sets" value="{{ exercise.sets if exercise else 3 }}" min="1"
-                           class="w-full !bg-transparent text-center text-lg font-black text-emerald-400 focus:outline-none">
+                           class="w-full bg-transparent text-center text-lg font-black text-emerald-400 focus:outline-none">
                 </div>
                 <div class="bg-slate-950/60 p-2.5 rounded-xl border border-white/5 text-center">
-                    <label for="reps" class="block text-[10px] font-extrabold uppercase text-slate-400 mb-1">Reps</label>
+                    <label for="reps" class="block text-xs font-extrabold uppercase text-slate-400 mb-1">Reps</label>
                     <input type="number" id="reps" name="reps" value="{{ exercise.reps if exercise else 10 }}" min="1"
-                           class="w-full !bg-transparent text-center text-lg font-black text-emerald-400 focus:outline-none">
+                           class="w-full bg-transparent text-center text-lg font-black text-emerald-400 focus:outline-none">
                 </div>
                 <div class="bg-slate-950/60 p-2.5 rounded-xl border border-white/5 text-center">
-                    <label for="rest" class="block text-[10px] font-extrabold uppercase text-slate-400 mb-1">Rest (s)</label>
+                    <label for="rest" class="block text-xs font-extrabold uppercase text-slate-400 mb-1">Rest (s)</label>
                     <input type="number" id="rest" name="rest" value="{{ exercise.rest if exercise else 60 }}" min="0" step="5"
-                           class="w-full !bg-transparent text-center text-lg font-black text-emerald-400 focus:outline-none">
+                           class="w-full bg-transparent text-center text-lg font-black text-emerald-400 focus:outline-none">
                 </div>
             </div>
         </div>
 
+        <!-- Target Muscle Groups -->
         <div class="glass-card rounded-2xl p-4 border border-white/5">
-            <label class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-3">
+            <label class="block text-xs font-extrabold uppercase tracking-wider text-slate-400 mb-3">
                 Target Muscle Groups
             </label>
             <div class="flex flex-wrap gap-2">
@@ -81,19 +88,43 @@
             </div>
         </div>
 
+        <!-- Media & Form Details -->
         <div class="glass-card rounded-2xl p-4 space-y-4 border border-white/5">
-            <span class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+            <span class="block text-xs font-extrabold uppercase tracking-wider text-slate-400">
                 Media & Form Details
             </span>
 
             <div>
-                <label class="block text-xs font-semibold text-slate-400 mb-1.5">Demo Image / GIF</label>
+                <label class="block text-xs font-semibold text-slate-400 mb-1.5">Exercise Gallery</label>
+                
+                {% set images = [] %}
+                {% if exercise %}
+                    {% if exercise.image_urls and exercise.image_urls is iterable and exercise.image_urls is not string %}
+                        {% set images = exercise.image_urls %}
+                    {% elif exercise.image %}
+                        {% set images = [exercise.image] %}
+                    {% endif %}
+                {% endif %}
+
+                {% if images %}
+                <div class="media-gallery-grid mb-3">
+                    {% for img in images %}
+                    <div class="media-gallery-item" id="img-card-{{ loop.index }}">
+                        <img src="{{ url_for('static', filename='uploads/' ~ img) }}" alt="{{ exercise.name }}">
+                        <button type="button" class="btn-delete-image" onclick="removeImage('{{ img }}', 'img-card-{{ loop.index }}')">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
                 <label class="flex flex-col items-center justify-center border-2 border-dashed border-white/10 hover:border-emerald-500/40 rounded-xl p-4 bg-slate-950/40 cursor-pointer transition group">
                     <i class="fa-solid fa-cloud-arrow-up text-xl text-slate-400 group-hover:text-emerald-400 mb-1.5 transition"></i>
                     <span id="file-label" class="text-xs font-medium text-slate-400 group-hover:text-slate-200 transition">
-                        {% if exercise and exercise.image %}{{ exercise.image }}{% else %}Tap to upload media file{% endif %}
+                        Tap to upload image file(s)
                     </span>
-                    <input type="file" id="image" name="image" accept="image/*" class="hidden" onchange="updateFileName(this)">
+                    <input type="file" id="images" name="images" accept="image/*" multiple class="hidden" onchange="updateFileNames(this)">
                 </label>
             </div>
 
@@ -114,7 +145,7 @@
             </div>
         </div>
 
-        <button type="submit" class="btn-emerald-full shadow-[0_6px_25px_rgba(16,185,129,0.4)]">
+        <button type="submit" class="btn-emerald-full shadow-lg shadow-emerald-500/20">
             <i class="fa-solid {% if exercise %}fa-check{% else %}fa-plus{% endif %} text-sm"></i>
             <span>{% if exercise %}Save Changes{% else %}Save Exercise{% endif %}</span>
         </button>
@@ -131,13 +162,30 @@
 </div>
 
 <script>
-function updateFileName(input) {
+function updateFileNames(input) {
     const label = document.getElementById('file-label');
-    if (input.files && input.files[0]) {
-        label.textContent = input.files[0].name;
+    if (input.files && input.files.length > 0) {
+        if (input.files.length === 1) {
+            label.textContent = input.files[0].name;
+        } else {
+            label.textContent = `${input.files.length} files selected`;
+        }
         label.classList.remove('text-slate-400');
         label.classList.add('text-emerald-400', 'font-bold');
     }
+}
+
+function removeImage(filename, cardId) {
+    const card = document.getElementById(cardId);
+    if (card) {
+        card.remove();
+    }
+    const container = document.getElementById('deleted-images-container');
+    const hiddenInput = document.createElement('input');
+    hiddenInput.type = 'hidden';
+    hiddenInput.name = 'delete_images';
+    hiddenInput.value = filename;
+    container.appendChild(hiddenInput);
 }
 </script>
 {% endblock %}

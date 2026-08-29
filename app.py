@@ -239,10 +239,8 @@ def add_new_exercise():
         link = request.form.get('link')
         instructions = request.form.get('instructions')
 
-        # Handle uploaded images (Single file or Multiple files)
         uploaded_files = request.files.getlist('images') or request.files.getlist('image')
         image_list = save_multiple_images(uploaded_files)
-        
         primary_image = image_list[0] if image_list else None
 
         new_exercise = Exercise(
@@ -262,14 +260,10 @@ def add_new_exercise():
         db.session.commit()
 
         if return_workout_id:
-            return redirect(
-                url_for('add_exercise', workout_id=return_workout_id)
-            )
+            return redirect(url_for('add_exercise', workout_id=return_workout_id))
         return redirect(url_for('exercise_list'))
 
-    muscle_groups = [
-        'Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps', 'Legs', 'Abs', 'Cardio'
-    ]
+    muscle_groups = ['Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps', 'Legs', 'Abs', 'Cardio']
     return render_template(
         'add_new_exercise.html',
         muscle_groups=muscle_groups,
@@ -281,8 +275,10 @@ def add_new_exercise():
 @app.route('/exercise/<int:id>', methods=['GET', 'POST'])
 def display_exercise(id):
     exercise = db.session.get(Exercise, id) or Flask.abort(404)
+    return_workout_id = request.args.get('return_workout_id', '')
 
     if request.method == 'POST':
+        return_workout_id = request.form.get('return_workout_id', '')
         exercise.name = request.form.get('name', exercise.name)
         
         req_type = request.form.get('exercise_type')
@@ -297,31 +293,51 @@ def display_exercise(id):
         exercise.link = request.form.get('link', '')
         exercise.muscles = request.form.getlist('muscles')
 
-        # Multi & Single image update handling
+        if isinstance(exercise.image_urls, list):
+            existing_images = list(exercise.image_urls)
+        elif exercise.image:
+            existing_images = [exercise.image]
+        else:
+            existing_images = []
+
+        delete_list = request.form.getlist('delete_images')
+        for img_to_delete in delete_list:
+            if img_to_delete in existing_images:
+                existing_images.remove(img_to_delete)
+                try:
+                    os.remove(os.path.join(app.config['UPLOAD_FOLDER'], img_to_delete))
+                except OSError:
+                    pass
+
         uploaded_files = request.files.getlist('images') or request.files.getlist('image')
         new_image_list = save_multiple_images(uploaded_files)
         
-        if new_image_list:
-            existing_images = exercise.image_urls if isinstance(exercise.image_urls, list) else []
-            combined_images = existing_images + new_image_list
-            exercise.image_urls = combined_images
-            exercise.image = combined_images[0]
+        combined_images = existing_images + new_image_list
+        exercise.image_urls = combined_images if combined_images else None
+        exercise.image = combined_images[0] if combined_images else None
 
         db.session.commit()
         flash('Exercise updated successfully.', 'success')
-        return redirect(url_for('display_exercise', id=exercise.id))
 
-    muscle_groups = [
-        'Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps', 'Legs', 'Abs', 'Cardio'
-    ]
-    return render_template('display_exercise.html', exercise=exercise, muscle_groups=muscle_groups, valid_exercise_types=VALID_EXERCISE_TYPES)
+        if return_workout_id:
+            return redirect(url_for('add_exercise', workout_id=return_workout_id))
+        return redirect(url_for('exercise_list'))
+
+    muscle_groups = ['Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps', 'Legs', 'Abs', 'Cardio']
+    return render_template(
+        'add_new_exercise.html',  # Or display_exercise.html
+        exercise=exercise,
+        muscle_groups=muscle_groups,
+        valid_exercise_types=VALID_EXERCISE_TYPES,
+        return_workout_id=return_workout_id
+    )
 
 
 @app.route('/exercise/<int:exercise_id>/delete', methods=['POST'])
 def delete_exercise(exercise_id):
-    exercise = Exercise.query.get_or_404(exercise_id)
+    exercise = db.session.get(Exercise, exercise_id) or Flask.abort(404)
+    return_workout_id = request.form.get('return_workout_id', '')
     
-    # Cleanup all images attached to exercise
     images_to_delete = []
     if exercise.image_urls and isinstance(exercise.image_urls, list):
         images_to_delete.extend(exercise.image_urls)
@@ -341,6 +357,9 @@ def delete_exercise(exercise_id):
     db.session.commit()
     
     flash('Exercise deleted successfully.', 'success')
+
+    if return_workout_id:
+        return redirect(url_for('add_exercise', workout_id=return_workout_id))
     return redirect(url_for('exercise_list'))
 
 
@@ -588,16 +607,16 @@ def admin():
     raw_settings = {s.key: s.value for s in AppSetting.query.all()}
 
     settings = {
-            'start_enabled': raw_settings.get('sound_start_enabled', 'false') == 'true',
-            'start_file_id': safe_int(raw_settings.get('sound_start_file_id'), None),
-            'notice_enabled': raw_settings.get('sound_notice_enabled', 'false') == 'true',
-            'notice_file_id': safe_int(raw_settings.get('sound_notice_file_id'), None),
-            'notice_seconds': safe_int(raw_settings.get('sound_notice_seconds'), 5),
-            'rest_end_enabled': raw_settings.get('sound_rest_end_enabled', 'false') == 'true',
-            'rest_end_file_id': safe_int(raw_settings.get('sound_rest_end_file_id'), None),
-            'end_enabled': raw_settings.get('sound_end_enabled', 'false') == 'true',
-            'end_file_id': safe_int(raw_settings.get('sound_end_file_id'), None),
-        }
+        'start_enabled': raw_settings.get('sound_start_enabled', 'false') == 'true',
+        'start_file_id': safe_int(raw_settings.get('sound_start_file_id'), None),
+        'notice_enabled': raw_settings.get('sound_notice_enabled', 'false') == 'true',
+        'notice_file_id': safe_int(raw_settings.get('sound_notice_file_id'), None),
+        'notice_seconds': safe_int(raw_settings.get('sound_notice_seconds'), 5),
+        'rest_end_enabled': raw_settings.get('sound_rest_end_enabled', 'false') == 'true',
+        'rest_end_file_id': safe_int(raw_settings.get('sound_rest_end_file_id'), None),
+        'end_enabled': raw_settings.get('sound_end_enabled', 'false') == 'true',
+        'end_file_id': safe_int(raw_settings.get('sound_end_file_id'), None),
+    }
     return render_template('admin.html', sounds=sounds, settings=settings)
 
 

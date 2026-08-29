@@ -3,18 +3,18 @@
 {% block content %}
 <div class="space-y-5">
     <!-- Active Workout Header -->
-    <div class="glass-card p-4 rounded-2xl flex items-center justify-between border border-emerald-500/20 shadow-[0_0_25px_rgba(16,185,129,0.1)]">
+    <div class="glass-card p-4 rounded-2xl flex items-center justify-between border border-emerald-500/20 shadow-lg shadow-emerald-500/10">
         <div>
             <h1 class="text-base font-black text-slate-100 tracking-tight flex items-center gap-2">
                 <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                 {{ log.workout.title }}
             </h1>
-            <p class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mt-0.5">
+            <p class="text-xs font-extrabold uppercase tracking-wider text-slate-400 mt-0.5">
                 Started: <span class="text-emerald-400 font-mono">{{ log.start_time.strftime('%H:%M:%S') }}</span>
             </p>
         </div>
         <form action="{{ url_for('finish_workout', log_id=log.id) }}" method="POST">
-            <button type="submit" class="btn-emerald-sm shadow-[0_4px_16px_rgba(16,185,129,0.25)]">
+            <button type="submit" class="btn-emerald-sm shadow-md shadow-emerald-500/20">
                 <i class="fa-solid fa-flag-checkered text-xs"></i>
                 <span>Finish</span>
             </button>
@@ -32,7 +32,6 @@
     {% set media_list = [] %}
     {% if ex.image_urls %}
         {% if ex.image_urls is string %}
-            {# If stored as comma-separated or plain text #}
             {% set media_list = ex.image_urls.split(',') %}
         {% else %}
             {% set media_list = ex.image_urls %}
@@ -43,26 +42,26 @@
     
     {% set has_images = media_list | length > 0 %}
     
-    <div class="glass-card p-4 rounded-2xl space-y-4" id="exercise-card-{{ ex.id }}">
+    <div class="glass-card p-4 rounded-2xl space-y-4 border border-white/5" id="exercise-card-{{ ex.id }}">
         <!-- Header -->
         <div class="flex items-center justify-between gap-3">
             <div class="flex-1 min-w-0">
                 <h3 class="font-black text-slate-100 text-sm truncate tracking-tight">{{ ex.name }}</h3>
                 <div class="flex items-center gap-2 mt-1">
-                    <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-950 text-emerald-400 border border-emerald-500/20">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold bg-slate-950 text-emerald-400 border border-emerald-500/20">
                         {% if is_aerobic %}
                             {{ target_sets }} Sets × {{ item.custom_duration or ex.duration or 0 }} min
                         {% else %}
                             {{ target_sets }} Sets × {{ item.custom_reps or ex.reps }} Reps
                         {% endif %}
                     </span>
-                    <span class="text-[10px] font-extrabold uppercase text-slate-400">
+                    <span class="text-xs font-extrabold uppercase text-slate-400">
                         Rest: <span class="text-slate-200 font-mono">{{ target_rest }}s</span>
                     </span>
                 </div>
             </div>
 
-            <!-- Action Buttons: External Link & Image Toggle -->
+            <!-- Action Buttons -->
             <div class="flex items-center gap-1.5 flex-shrink-0">
                 {% if ex.link %}
                 <a href="{{ ex.link }}" target="_blank" rel="noopener noreferrer" 
@@ -78,16 +77,16 @@
                         class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-950 border border-white/10 text-slate-300 text-xs font-semibold hover:border-emerald-500/30 hover:text-emerald-400 transition active:scale-95">
                     <i class="fa-regular fa-image text-xs"></i>
                     <span>Media</span>
-                    <i id="chevron-{{ ex.id }}" class="fa-solid fa-chevron-down text-[10px] transition-transform duration-300"></i>
+                    <i id="chevron-{{ ex.id }}" class="fa-solid fa-chevron-down text-xs transition-transform duration-300"></i>
                 </button>
                 {% endif %}
             </div>
         </div>
 
-        <!-- Collapsible Media Container -->
+        <!-- Collapsible Media Gallery -->
         {% if has_images %}
         <div id="media-{{ ex.id }}" class="hidden overflow-hidden transition-all duration-300 pt-3 border-t border-white/5 space-y-2">
-            <span class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+            <span class="block text-xs font-extrabold uppercase tracking-wider text-slate-400">
                 Demonstration Gallery
             </span>
             <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -112,7 +111,7 @@
         <!-- Logged Sets Table -->
         <div class="overflow-x-auto rounded-xl border border-white/5 bg-slate-950/60">
             <table class="w-full text-left text-xs text-slate-300" id="table-ex-{{ ex.id }}">
-                <thead class="bg-slate-900/80 text-[10px] uppercase font-extrabold text-slate-400 border-b border-white/5">
+                <thead class="bg-slate-900/80 text-xs uppercase font-extrabold text-slate-400 border-b border-white/5">
                     <tr>
                         <th class="py-2.5 px-3">Set</th>
                         {% if is_aerobic %}
@@ -138,7 +137,7 @@
                         <td class="py-2.5 px-3 text-slate-100 font-bold">{{ set_item.weight or '-' }}</td>
                         {% endif %}
                         <td class="py-2.5 px-3 text-right font-extrabold text-emerald-400">
-                            Logged <i class="fa-solid fa-check text-[10px] ml-0.5"></i>
+                            Logged <i class="fa-solid fa-check text-xs ml-0.5"></i>
                         </td>
                     </tr>
                     {% endfor %}
