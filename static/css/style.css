@@ -1,383 +1,275 @@
 /* ==========================================================================
-   1. CENTRALIZED DESIGN VARIABLES
+   SECTION 1: CORE RESETS & THEME BASE
    ========================================================================== */
-:root {
-  /* Accent Colors (Change these to re-theme the entire application) */
-  --accent-primary: #10b981;              /* Main green theme color */
-  --accent-hover: #059669;                /* Darker green for hover states */
-  --accent-border: #047857;               /* Dark border accent */
-  --accent-text: #34d399;                 /* Bright mint text/icons */
-  --accent-glow: rgba(16, 185, 129, 0.35); /* Button/badge ambient glow */
-  --accent-badge-bg: rgba(16, 185, 129, 0.2);
-
-  /* Page Layout Colors */
-  --color-slate-bg: #020617;
-  --color-card-bg: rgba(15, 23, 42, 0.75);
+*,
+::before,
+::after {
+  box-sizing: border-border;
+  margin: 0;
+  padding: 0;
 }
 
-/* Fix iOS scroll and tap behavior */
-html, body {
-  background-color: var(--color-slate-bg) !important;
-  color: #f8fafc !important;
-  -webkit-tap-highlight-color: transparent;
+:root {
+  --bg-dark: #090d16;
+  --panel-bg: rgba(15, 23, 42, 0.7);
+  --panel-border: rgba(255, 255, 255, 0.08);
+  --accent-emerald: #10b981;
+  --accent-emerald-glow: rgba(16, 185, 129, 0.25);
+  --accent-emerald-border: rgba(16, 185, 129, 0.4);
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --danger-red: rgba(225, 29, 72, 0.9);
+  --danger-red-hover: rgba(225, 29, 72, 1);
+  --danger-bg: rgba(225, 29, 72, 0.2);
+  --danger-border: rgba(225, 29, 72, 0.35);
+  --danger-text: #fda4af;
+}
+
+body {
+  background-color: var(--bg-dark);
+  color: var(--text-main);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
 }
 
 /* ==========================================================================
-   2. BRAND LOGO (CMFit Header)
+   SECTION 2: GLASS & CONTAINER SURFACES
    ========================================================================== */
-.brand-logo-icon {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  width: 2.25rem !important;
-  height: 2.25rem !important;
-  border-radius: 0.75rem !important;
-  background-color: var(--accent-badge-bg) !important;
-  border: 1px solid var(--accent-glow) !important;
-  color: var(--accent-text) !important;
-  font-weight: 900 !important;
-  font-size: 0.875rem !important;
-  letter-spacing: -0.025em !important;
-  box-shadow: 0 0 12px var(--accent-glow) !important;
-  flex-shrink: 0;
+.glass-card {
+  background-color: var(--panel-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--panel-border);
 }
 
-.brand-title {
-  display: block !important;
-  font-size: 0.95rem !important;
-  font-weight: 900 !important;
-  line-height: 1.1 !important;
-  letter-spacing: -0.025em !important;
-  color: #f8fafc !important;
-}
-
-.brand-subtitle {
-  display: block !important;
-  font-size: 0.625rem !important;
-  font-weight: 700 !important;
-  letter-spacing: 0.1em !important;
-  text-transform: uppercase !important;
-  color: var(--accent-text) !important;
-}
-
-/* Header bar layout alignment */
-.ios-header {
-  height: 3.5rem;
-  display: flex;
-  align-items: center;
+.glass-header {
+  background-color: rgba(9, 13, 22, 0.85);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.glass-nav {
+  background-color: rgba(9, 13, 22, 0.9);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid var(--panel-border);
 }
 
 /* ==========================================================================
-   3. BUTTON COMPONENTS
+   SECTION 3: BUTTON COMPONENTS & ACTIONS
    ========================================================================== */
-/* Large Full-Width Primary Buttons */
+/* Primary Emerald Action Button */
 body .btn-emerald-full,
 body a.btn-emerald-full,
-body button.btn-emerald-full,
-body .btn-exercise,
-body a.btn-exercise,
-body button.btn-exercise,
-body form button[type="submit"] {
+body button.btn-emerald-full {
   width: 100% !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
   gap: 0.5rem !important;
   padding: 0.875rem 1.25rem !important;
-  background: var(--accent-primary) !important;
-  background-color: var(--accent-primary) !important;
-  color: #ffffff !important;
-  font-weight: 700 !important;
+  background-color: var(--accent-emerald) !important;
+  color: #022c22 !important;
+  font-weight: 800 !important;
   font-size: 0.875rem !important;
-  border-radius: 0.875rem !important;
-  border: 1px solid var(--accent-hover) !important;
-  box-shadow: 0 4px 20px var(--accent-glow) !important;
+  border-radius: 0.75rem !important;
+  border: none !important;
+  box-shadow: 0 4px 14px var(--accent-emerald-glow) !important;
   cursor: pointer !important;
   text-decoration: none !important;
   transition: all 0.15s ease-in-out !important;
 }
 
-body .btn-emerald-full:hover,
-body .btn-exercise:hover,
-body form button[type="submit"]:hover {
-  background: var(--accent-hover) !important;
-  background-color: var(--accent-hover) !important;
-  border-color: var(--accent-border) !important;
-  color: #ffffff !important;
+body .btn-emerald-full:hover {
+  filter: brightness(1.1) !important;
   transform: translateY(-1px) !important;
 }
 
-/* Small Header/Inline Action Button (+ Exercise) */
-body .btn-emerald-sm,
-body a.btn-emerald-sm,
-body button.btn-emerald-sm {
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  gap: 0.375rem !important;
-  padding: 0.4rem 0.85rem !important;
-  background-color: var(--accent-primary) !important;
-  background: var(--accent-primary) !important;
-  color: #ffffff !important;
-  font-weight: 700 !important;
-  font-size: 0.8125rem !important;
-  border-radius: 0.625rem !important;
-  border: 1px solid var(--accent-hover) !important;
-  box-shadow: 0 4px 20px var(--accent-glow) !important;
-  text-decoration: none !important;
-  cursor: pointer !important;
-  transition: all 0.15s ease-in-out !important;
+body .btn-emerald-full:active {
+  transform: translateY(0) !important;
 }
 
-body .btn-emerald-sm i,
-body .btn-emerald-sm span {
-  color: #ffffff !important;
+/* Cancel / Top Header Link */
+.btn-cancel-link {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: color 0.15s ease-in-out;
 }
 
-body .btn-emerald-sm:hover {
-  background-color: var(--accent-hover) !important;
-  background: var(--accent-hover) !important;
-  border-color: var(--accent-border) !important;
-  color: #ffffff !important;
-  transform: translateY(-1px) !important;
+.btn-cancel-link:hover {
+  color: var(--text-main);
 }
 
-/* Secondary Danger Delete Button */
-body .btn-danger {
+/* Primary Warning/Delete Action (e.g. Delete Exercise) */
+body .btn-warning,
+body a.btn-warning,
+body button.btn-warning {
   width: 100% !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
   gap: 0.5rem !important;
   padding: 0.75rem 1rem !important;
-  background-color: rgba(239, 68, 68, 0.1) !important;
-  color: #f87171 !important;
+  background-color: var(--danger-bg) !important;
+  color: var(--danger-text) !important;
   font-weight: 700 !important;
   font-size: 0.8125rem !important;
-  border-radius: 0.875rem !important;
-  border: 1px solid rgba(239, 68, 68, 0.2) !important;
+  border-radius: 0.75rem !important;
+  border: 1px solid var(--danger-border) !important;
   cursor: pointer !important;
+  text-decoration: none !important;
   transition: all 0.15s ease-in-out !important;
 }
 
-body .btn-danger:hover {
-  background-color: rgba(239, 68, 68, 0.2) !important;
-  color: #ef4444 !important;
+body .btn-warning:hover {
+  background-color: rgba(225, 29, 72, 0.35) !important;
+  color: #f43f5e !important;
+}
+
+/* Discard Draft Action */
+body .btn-discard,
+body a.btn-discard,
+body button.btn-discard {
+  width: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.5rem !important;
+  padding: 0.75rem 1rem !important;
+  background-color: rgba(30, 41, 59, 0.4) !important;
+  color: #94a3b8 !important;
+  font-weight: 700 !important;
+  font-size: 0.8125rem !important;
+  border-radius: 0.75rem !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  cursor: pointer !important;
+  text-decoration: none !important;
+  transition: all 0.15s ease-in-out !important;
+}
+
+body .btn-discard:hover {
+  background-color: rgba(30, 41, 59, 0.7) !important;
+  color: #cbd5e1 !important;
 }
 
 /* ==========================================================================
-   4. COUNTER BADGES & PILLS
+   SECTION 4: FORM CONTROLS & INTERACTIVE INPUTS
    ========================================================================== */
-/* Header Counter Pill */
-body .exercise-counter-badge,
-body span#exerciseCounter.exercise-counter-badge {
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  min-width: 1.5rem !important;
-  height: 1.5rem !important;
-  padding: 0 0.4rem !important;
-  border-radius: 9999px !important;
-  background-color: var(--accent-badge-bg) !important;
-  background: var(--accent-badge-bg) !important;
-  color: var(--accent-text) !important;
-  border: 1px solid var(--accent-glow) !important;
-  font-weight: 800 !important;
-  font-size: 0.75rem !important;
-  line-height: 1 !important;
-  box-shadow: 0 0 10px var(--accent-glow) !important;
-  flex-shrink: 0 !important;
+.form-page-title {
+  font-size: 1.125rem;
+  font-weight: 800;
+  color: var(--text-main);
+  text-align: center;
 }
 
-/* Larger Item Badges */
-body .exercise-badge,
-body .exercise-number-badge,
-body .exercise-count-pill,
-body [class*="exercise-badge"] {
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  width: 2.25rem !important;
-  height: 2.25rem !important;
-  min-width: 2.25rem !important;
-  min-height: 2.25rem !important;
-  border-radius: 9999px !important;
-  background: #064e3b !important;
-  background-color: #064e3b !important;
-  color: var(--accent-text) !important;
-  border: 1px solid var(--accent-glow) !important;
-  font-weight: 800 !important;
-  font-size: 0.875rem !important;
-  line-height: 1 !important;
-  box-shadow: 0 0 10px var(--accent-glow) !important;
-  flex-shrink: 0 !important;
+.form-input:focus {
+  border-color: var(--accent-emerald-border) !important;
+  box-shadow: 0 0 0 2px var(--accent-emerald-glow) !important;
+}
+
+/* Muscle Pill Selection Toggle */
+input[type="checkbox"]:checked + .muscle-toggle-pill {
+  background-color: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border-color: var(--accent-emerald-border);
+}
+
+/* Number Inputs with Custom Styling */
+.custom-stat-input {
+  color: var(--text-main);
+}
+.custom-stat-input::-webkit-outer-spin-button,
+.custom-stat-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.custom-stat-input[type=number] {
+  -moz-appearance: textfield;
+}
+
+/* File Upload Target Box */
+.file-upload-box:hover {
+  border-color: var(--accent-emerald-border);
+  background-color: rgba(15, 23, 42, 0.9);
+}
+
+.file-upload-box:hover .upload-icon {
+  color: var(--accent-emerald);
+}
+
+.accent-text {
+  color: #34d399;
 }
 
 /* ==========================================================================
-   5. CARDS & MEDIA UTILITIES
+   SECTION 5: MEDIA UTILITIES & PREVIEW BADGES
    ========================================================================== */
-.glass-card {
-  background-color: var(--color-card-bg);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-}
-
-.media-gallery-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.5rem;
-}
-
-.media-gallery-item {
-  position: relative;
-  aspect-ratio: 1 / 1;
-  border-radius: 0.75rem;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.media-gallery-item img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.btn-delete-image {
+/* Pre-upload Dynamic Image Delete 'X' Button */
+.btn-preview-delete {
   position: absolute;
   top: 0.25rem;
   right: 0.25rem;
   width: 1.5rem;
   height: 1.5rem;
   border-radius: 9999px;
-  background-color: rgba(0, 0, 0, 0.75);
-  color: #ef4444;
+  background-color: var(--danger-red);
+  color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.75rem;
+  font-size: 0.625rem;
+  font-weight: 700;
   border: none;
   cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  transition: background-color 0.15s ease-in-out;
 }
 
-/* ==========================================================================
-   FORM INPUTS & CHECKBOXES
-   ========================================================================== */
-.form-input:focus {
-  border-color: var(--accent-glow) !important;
-  box-shadow: 0 0 0 2px var(--accent-badge-bg) !important;
+.btn-preview-delete:hover {
+  background-color: var(--danger-red-hover);
 }
 
-.form-checkbox {
-  color: var(--accent-primary) !important;
+/* Saved Image Overlay Badges */
+.btn-delete-saved-img {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.25rem;
+  background-color: var(--danger-red);
+  color: #ffffff;
+  font-size: 0.625rem;
+  font-weight: 800;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  transition: background-color 0.15s ease-in-out;
 }
 
-.form-checkbox:focus {
-  --tw-ring-color: var(--accent-glow) !important;
+.btn-delete-saved-img:hover {
+  background-color: var(--danger-red-hover);
 }
 
-/* Custom Number Inputs (Sets, Reps, Rest) */
-.custom-stat-input {
-  color: var(--accent-text) !important;
+.img-deleting-overlay {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(69, 10, 10, 0.85);
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #fca5a5;
+  gap: 0.25rem;
+  border: 2px solid #ef4444;
+  border-radius: 0.5rem;
+  cursor: pointer;
 }
-
-.custom-stat-input:focus {
-  border-color: var(--accent-glow) !important;
-}
-
-/* Dynamic Selected Card State */
-.exercise-card:hover {
-  border-color: var(--accent-glow) !important;
-}
-
-.exercise-card.card-selected {
-  border-left-color: var(--accent-primary) !important;
-  background-color: var(--accent-badge-bg) !important;
-}
-
-/* Accordion Summary Hover */
-.accordion-summary:hover {
-  color: var(--accent-text) !important;
-}
-
-.accent-icon {
-  color: var(--accent-text) !important;
-}
-
-.accent-text {
-  color: var(--accent-text) !important;
-}
-
-/* Muscle Group Toggle Pills */
-.peer:checked + .muscle-toggle-pill {
-  background-color: var(--accent-badge-bg) !important;
-  color: var(--accent-text) !important;
-  border-color: var(--accent-glow) !important;
-}
-
-/* Drag & Drop File Upload Box */
-.file-upload-box:hover {
-  border-color: var(--accent-glow) !important;
-}
-
-.file-upload-box:hover .upload-icon {
-  color: var(--accent-text) !important;
-}
-
-.file-upload-box:hover #file-label {
-  color: #e2e8f0 !important;
-}
-
-/* Image Preview Border Glow */
-.preview-box-accent {
-  border: 1px solid var(--accent-glow) !important;
-}
-
-/* Alert / Flash Banners */
-.alert-error {
-  background-color: rgba(244, 63, 94, 0.1) !important;
-  border-color: rgba(244, 63, 94, 0.2) !important;
-  color: #fb7185 !important;
-}
-
-/* Tab Active State */
-.tab-active {
-  border-color: var(--accent-glow) !important;
-  color: var(--accent-text) !important;
-}
-
-/* Success Alert / Flash Banner */
-.alert-success {
-  background-color: var(--accent-badge-bg) !important;
-  border-color: var(--accent-badge-border) !important;
-  color: var(--accent-text) !important;
-}
-
-/* Custom Toggle Switches */
-.peer:checked ~ .toggle-switch {
-  background-color: var(--accent-glow) !important;
-}
-
-/* Audio Library Play Button */
-.btn-audio-play {
-  background-color: var(--accent-badge-bg) !important;
-  border: 1px solid var(--accent-badge-border) !important;
-  color: var(--accent-text) !important;
-}
-
-.btn-audio-play:hover {
-  background-color: rgba(16, 185, 129, 0.25) !important;
-}
-
-/* Reusable Square Icon Danger Button */
-.btn-icon-danger {
-  background-color: rgba(244, 63, 94, 0.1) !important;
-  border: 1px solid rgba(244, 63, 94, 0.2) !important;
-  color: #fb7185 !important;
-}
-
-.btn-icon-danger:hover {
-  background-color: rgba(244, 63, 94, 0.2) !important;
-}
-

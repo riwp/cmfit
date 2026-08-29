@@ -96,13 +96,11 @@
                     <input type="file" id="image" name="images" accept="image/*" multiple class="hidden" onchange="handleFileSelect(this)">
                 </label>
 
-                <!-- Dynamic multi-image preview grid with individual delete buttons -->
                 <div id="image-preview-container" class="mt-3 hidden">
                     <span class="block text-[10px] font-extrabold uppercase text-slate-400 mb-1.5">New Image Previews</span>
                     <div id="preview-grid" class="grid grid-cols-3 sm:grid-cols-4 gap-2"></div>
                 </div>
 
-                <!-- Saved Image Deletion Section -->
                 {% if exercise and (exercise.image_urls or exercise.image) %}
                 <div class="mt-4">
                     <span class="block text-[10px] font-extrabold uppercase text-slate-400 mb-1.5">
@@ -115,12 +113,12 @@
                             
                             <img src="{{ url_for('static', filename='uploads/' + img) }}" class="w-full h-full object-cover transition duration-200 peer-checked:opacity-20 peer-checked:grayscale">
                             
-                            <label for="del_img_{{ loop.index }}" class="absolute top-1 right-1 bg-red-600/90 hover:bg-red-600 text-white text-[10px] font-extrabold px-2 py-1 rounded-md cursor-pointer transition flex items-center gap-1 peer-checked:hidden shadow-lg">
+                            <label for="del_img_{{ loop.index }}" class="btn-delete-saved-img peer-checked:hidden">
                                 <i class="fa-solid fa-trash-can text-[9px]"></i>
                                 <span>Delete</span>
                             </label>
 
-                            <label for="del_img_{{ loop.index }}" class="absolute inset-0 bg-red-950/80 hidden peer-checked:flex flex-col items-center justify-center text-red-400 gap-1 border-2 border-red-500 rounded-lg cursor-pointer">
+                            <label for="del_img_{{ loop.index }}" class="img-deleting-overlay peer-checked:flex">
                                 <i class="fa-solid fa-trash-can text-base"></i>
                                 <span class="text-[9px] font-black uppercase tracking-wider">Will Be Deleted</span>
                                 <span class="text-[8px] text-slate-400 underline">Tap to keep</span>
@@ -158,14 +156,14 @@
     {% if exercise %}
     <form action="{{ url_for('delete_exercise', exercise_id=exercise.id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete {{ exercise.name }}? This action cannot be undone.');" class="pt-1">
         <input type="hidden" name="return_workout_id" value="{{ return_workout_id or '' }}">
-        <button type="submit" class="btn-danger w-full flex items-center justify-center gap-2 py-3 bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30 rounded-xl font-bold text-xs transition">
+        <button type="submit" class="btn-warning">
             <i class="fa-regular fa-trash-can text-xs"></i>
             <span>Delete Exercise</span>
         </button>
     </form>
     {% else %}
     <div class="pt-1">
-        <a href="{{ url_for('add_exercise', workout_id=return_workout_id) if return_workout_id else url_for('exercise_list') }}" class="w-full flex items-center justify-center gap-2 py-3 bg-slate-800/40 hover:bg-slate-800/60 text-slate-400 border border-white/5 rounded-xl font-bold text-xs transition">
+        <a href="{{ url_for('add_exercise', workout_id=return_workout_id) if return_workout_id else url_for('exercise_list') }}" class="btn-discard">
             <i class="fa-solid fa-xmark text-xs"></i>
             <span>Discard Exercise</span>
         </a>
@@ -174,12 +172,10 @@
 </div>
 
 <script>
-// Array to maintain uploaded File objects before submitting
 let selectedFiles = [];
 
 function handleFileSelect(input) {
     if (input.files) {
-        // Add new files to our working array
         Array.from(input.files).forEach(file => {
             selectedFiles.push(file);
         });
@@ -188,7 +184,6 @@ function handleFileSelect(input) {
 }
 
 function removeSelectedFile(index) {
-    // Remove selected file from array
     selectedFiles.splice(index, 1);
     updateFileInputAndPreview();
 }
@@ -199,7 +194,6 @@ function updateFileInputAndPreview() {
     const container = document.getElementById('image-preview-container');
     const previewGrid = document.getElementById('preview-grid');
 
-    // Sync JavaScript files array back to HTML input files using DataTransfer
     const dt = new DataTransfer();
     selectedFiles.forEach(file => dt.items.add(file));
     fileInput.files = dt.files;
@@ -222,10 +216,9 @@ function updateFileInputAndPreview() {
                 img.src = e.target.result;
                 img.className = 'w-full h-full object-cover';
 
-                // Red 'X' removal button for unsaved pre-upload previews
                 const deleteBtn = document.createElement('button');
                 deleteBtn.type = 'button';
-                deleteBtn.className = 'absolute top-1 right-1 bg-red-600/90 hover:bg-red-600 text-white w-6 h-6 rounded-full flex items-center justify-center transition shadow-lg text-[10px] font-bold';
+                deleteBtn.className = 'btn-preview-delete';
                 deleteBtn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
                 deleteBtn.onclick = function(event) {
                     event.preventDefault();
