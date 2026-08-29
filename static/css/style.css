@@ -500,3 +500,21 @@ input[type="checkbox"]:checked + .muscle-toggle-pill {
   transform: scale(0.95);
 }
 
+/* Off State */
+.toggle-switch {
+  background-color: #1e293b; /* slate-800 */
+  transition: background-color 0.2s ease-in-out;
+}
+
+/* On State - Vivid Emerald Accent */
+.peer:checked ~ .toggle-switch {
+  background-color: #10b981; /* emerald-500 */
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+}
+
+/* White slider thumb styling */
+.peer:checked ~ .toggle-switch::after {
+  transform: translateX(100%);
+  background-color: #ffffff;
+  border-color: #ffffff;
+}

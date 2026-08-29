@@ -4,7 +4,7 @@
     <!-- Header -->
     <div class="flex items-center justify-between pb-3 border-b border-white/5">
         <h2 class="text-xl font-black text-slate-100 tracking-tight flex items-center gap-2">
-            <i class="fa-solid fa-sliders accent-text"></i> Admin Settings
+            <i class="fa-solid fa-sliders text-emerald-400"></i> Admin Settings
         </h2>
     </div>
 
@@ -69,7 +69,7 @@
                     <span class="text-xs font-bold text-slate-200">Start Workout Sound</span>
                     <label class="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" name="start_enabled" class="sr-only peer" {% if settings.start_enabled %}checked{% endif %}>
-                        <div class="toggle-switch w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-300 after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all"></div>
+                        <div class="toggle-switch"></div>
                     </label>
                 </div>
                 <div class="relative">
@@ -89,7 +89,7 @@
                     <span class="text-xs font-bold text-slate-200">Timer Warning Notice</span>
                     <label class="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" name="notice_enabled" class="sr-only peer" {% if settings.notice_enabled %}checked{% endif %}>
-                        <div class="toggle-switch w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-300 after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all"></div>
+                        <div class="toggle-switch"></div>
                     </label>
                 </div>
                 <div class="grid grid-cols-3 gap-2">
@@ -116,7 +116,7 @@
                     <span class="text-xs font-bold text-slate-200">End Round / Rest Timer End</span>
                     <label class="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" name="rest_end_enabled" class="sr-only peer" {% if settings.rest_end_enabled %}checked{% endif %}>
-                        <div class="toggle-switch w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-300 after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all"></div>
+                        <div class="toggle-switch"></div>
                     </label>
                 </div>
                 <div class="relative">
@@ -137,7 +137,7 @@
                     <span class="text-xs font-bold text-slate-200">End Workout Sound</span>
                     <label class="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" name="end_enabled" class="sr-only peer" {% if settings.end_enabled %}checked{% endif %}>
-                        <div class="toggle-switch w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-300 after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all"></div>
+                        <div class="toggle-switch"></div>
                     </label>
                 </div>
                 <div class="relative">
@@ -205,7 +205,7 @@ function updateAudioFileName(input) {
     if (input.files && input.files[0]) {
         label.textContent = input.files[0].name;
         label.classList.remove('text-slate-400');
-        label.classList.add('accent-text', 'font-bold');
+        label.classList.add('text-emerald-400', 'font-bold');
     }
 }
 </script>
