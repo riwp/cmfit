@@ -325,7 +325,7 @@ def display_exercise(id):
 
     muscle_groups = ['Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps', 'Legs', 'Abs', 'Cardio']
     return render_template(
-        'add_new_exercise.html',  # Or display_exercise.html
+        'add_new_exercise.html',
         exercise=exercise,
         muscle_groups=muscle_groups,
         valid_exercise_types=VALID_EXERCISE_TYPES,
@@ -578,47 +578,55 @@ def admin():
                 flash('Please provide a sound name and valid file.', 'error')
 
         elif action == 'save_sound_settings':
-            settings = {
-                'sound_start_enabled': 'true' if request.form.get('start_enabled') else 'false',
+            # Collect all inputs; getlist returns ['0', '1'] if checked, or ['0'] if unchecked.
+            # Checking if '1' is in the resulting list gives exact toggle state.
+            start_on = '1' in request.form.getlist('start_enabled')
+            notice_on = '1' in request.form.getlist('notice_enabled')
+            rest_end_on = '1' in request.form.getlist('rest_end_enabled')
+            end_on = '1' in request.form.getlist('end_enabled')
+
+            settings_to_update = {
+                'sound_start_enabled': 'true' if start_on else 'false',
                 'sound_start_file_id': request.form.get('start_file_id', ''),
-                'sound_notice_enabled': 'true' if request.form.get('notice_enabled') else 'false',
+                'sound_notice_enabled': 'true' if notice_on else 'false',
                 'sound_notice_file_id': request.form.get('notice_file_id', ''),
                 'sound_notice_seconds': request.form.get('notice_seconds', '5'),
-                'rest_end_enabled': 'true' if request.form.get('rest_end_enabled') else 'false',
-                'rest_end_file_id': request.form.get('rest_end_file_id', ''),
-                'sound_end_enabled': 'true' if request.form.get('end_enabled') else 'false',
+                'sound_rest_end_enabled': 'true' if rest_end_on else 'false',
+                'sound_rest_end_file_id': request.form.get('rest_end_file_id', ''),
+                'sound_end_enabled': 'true' if end_on else 'false',
                 'sound_end_file_id': request.form.get('end_file_id', ''),
             }
 
-            for key, val in settings.items():
+            for key, val in settings_to_update.items():
                 setting = AppSetting.query.filter_by(key=key).first()
                 if not setting:
                     setting = AppSetting(key=key, value=val)
                     db.session.add(setting)
                 else:
-                    setting.value = val
+                    setting.value = str(val)
 
             db.session.commit()
             flash('Sound settings updated.', 'success')
 
         return redirect(url_for('admin'))
 
+    # GET request processing
     sounds = SoundFile.query.order_by(SoundFile.name.asc()).all()
     raw_settings = {s.key: s.value for s in AppSetting.query.all()}
 
     settings = {
-        'start_enabled': raw_settings.get('sound_start_enabled', 'false') == 'true',
+        'start_enabled': raw_settings.get('sound_start_enabled') == 'true',
         'start_file_id': safe_int(raw_settings.get('sound_start_file_id'), None),
-        'notice_enabled': raw_settings.get('sound_notice_enabled', 'false') == 'true',
+        'notice_enabled': raw_settings.get('sound_notice_enabled') == 'true',
         'notice_file_id': safe_int(raw_settings.get('sound_notice_file_id'), None),
         'notice_seconds': safe_int(raw_settings.get('sound_notice_seconds'), 5),
-        'rest_end_enabled': raw_settings.get('sound_rest_end_enabled', 'false') == 'true',
+        'rest_end_enabled': raw_settings.get('sound_rest_end_enabled') == 'true',
         'rest_end_file_id': safe_int(raw_settings.get('sound_rest_end_file_id'), None),
-        'end_enabled': raw_settings.get('sound_end_enabled', 'false') == 'true',
+        'end_enabled': raw_settings.get('sound_end_enabled') == 'true',
         'end_file_id': safe_int(raw_settings.get('sound_end_file_id'), None),
     }
-    return render_template('admin.html', sounds=sounds, settings=settings)
 
+    return render_template('admin.html', sounds=sounds, settings=settings)
 
 @app.route('/admin/sound/<int:sound_id>/delete', methods=['POST'])
 def delete_sound(sound_id):

@@ -68,7 +68,8 @@
                 <div class="flex items-center justify-between">
                     <span class="text-xs font-bold text-slate-200">Start Workout Sound</span>
                     <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" name="start_enabled" class="sr-only peer" {% if settings.start_enabled %}checked{% endif %}>
+                        <input type="hidden" name="start_enabled" value="0">
+                        <input type="checkbox" name="start_enabled" value="1" class="sr-only peer" {% if settings.start_enabled %}checked{% endif %}>
                         <div class="toggle-switch"></div>
                     </label>
                 </div>
@@ -88,7 +89,8 @@
                 <div class="flex items-center justify-between">
                     <span class="text-xs font-bold text-slate-200">Timer Warning Notice</span>
                     <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" name="notice_enabled" class="sr-only peer" {% if settings.notice_enabled %}checked{% endif %}>
+                        <input type="hidden" name="notice_enabled" value="0">
+                        <input type="checkbox" name="notice_enabled" value="1" class="sr-only peer" {% if settings.notice_enabled %}checked{% endif %}>
                         <div class="toggle-switch"></div>
                     </label>
                 </div>
@@ -115,7 +117,8 @@
                 <div class="flex items-center justify-between">
                     <span class="text-xs font-bold text-slate-200">End Round / Rest Timer End</span>
                     <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" name="rest_end_enabled" class="sr-only peer" {% if settings.rest_end_enabled %}checked{% endif %}>
+                        <input type="hidden" name="rest_end_enabled" value="0">
+                        <input type="checkbox" name="rest_end_enabled" value="1" class="sr-only peer" {% if settings.rest_end_enabled %}checked{% endif %}>
                         <div class="toggle-switch"></div>
                     </label>
                 </div>
@@ -136,7 +139,8 @@
                 <div class="flex items-center justify-between">
                     <span class="text-xs font-bold text-slate-200">End Workout Sound</span>
                     <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" name="end_enabled" class="sr-only peer" {% if settings.end_enabled %}checked{% endif %}>
+                        <input type="hidden" name="end_enabled" value="0">
+                        <input type="checkbox" name="end_enabled" value="1" class="sr-only peer" {% if settings.end_enabled %}checked{% endif %}>
                         <div class="toggle-switch"></div>
                     </label>
                 </div>
