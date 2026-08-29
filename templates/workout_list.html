@@ -7,13 +7,13 @@
         <div>
             <div class="flex items-center gap-2 mb-1">
                 <h1 class="text-xl font-black text-slate-100 tracking-tight">Workouts</h1>
-                <span class="exercise-counter-badge">
+                <span class="exercise-count-badge">
                     {{ workouts|length }}
                 </span>
             </div>
             <p class="text-xs text-slate-400 font-medium">Select or create new workout</p>
         </div>
-        <a href="{{ url_for('add_workout') }}" class="btn-emerald-sm shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30">
+        <a href="{{ url_for('add_workout') }}" class="btn-add-exercise">
             <i class="fa-solid fa-plus text-xs"></i>
             <span>Workout</span>
         </a>

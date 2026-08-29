@@ -6,13 +6,13 @@
         <div>
             <div class="flex items-center gap-2 mb-1">
                 <h2 class="text-xl font-black text-slate-100 tracking-tight">Exercise Library</h2>
-                <span id="exerciseCounter" class="exercise-counter-badge">
+                <span id="exerciseCounter" class="exercise-count-badge">
                     {{ all_exercises|length }}
                 </span>
             </div>
             <p class="text-xs text-slate-400 font-medium">Explore and manage movement library</p>
         </div>
-        <a href="{{ url_for('add_new_exercise') }}" class="btn-emerald-sm">
+        <a href="{{ url_for('add_new_exercise') }}" class="btn-add-exercise">
             <i class="fa-solid fa-plus text-xs"></i>
             <span>Exercise</span>
         </a>

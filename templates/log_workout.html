@@ -14,7 +14,7 @@
             </p>
         </div>
         <form action="{{ url_for('finish_workout', log_id=log.id) }}" method="POST">
-            <button type="submit" class="btn-emerald-sm shadow-md shadow-emerald-500/20">
+            <button type="submit" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs transition-all duration-200 shadow-lg shadow-emerald-500/25 active:scale-95">
                 <i class="fa-solid fa-flag-checkered text-xs"></i>
                 <span>Finish</span>
             </button>
@@ -97,12 +97,12 @@
                     {% else %}
                         {% set final_src = url_for('static', filename='uploads/' + img_path) %}
                     {% endif %}
-                    <a href="{{ final_src }}" target="_blank" rel="noopener noreferrer" class="group relative aspect-video rounded-xl overflow-hidden border border-white/10 bg-slate-950">
+                    <button type="button" onclick="openLightbox('{{ final_src }}')" class="group relative aspect-video rounded-xl overflow-hidden border border-white/10 bg-slate-950 w-full text-left">
                         <img src="{{ final_src }}" alt="{{ ex.name }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" loading="lazy">
                         <div class="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition duration-200">
                             <i class="fa-solid fa-magnifying-glass-plus text-white text-xs"></i>
                         </div>
-                    </a>
+                    </button>
                 {% endfor %}
             </div>
         </div>
@@ -147,7 +147,7 @@
 
         <!-- Dynamic Input Row -->
         {% set next_set_num = logged_sets | length + 1 %}
-        <form class="set-log-form flex items-center gap-2 pt-1" data-exercise-id="{{ ex.id }}" data-log-id="{{ log.id }}">
+        <form class="set-log-form flex items-center gap-2 pt-1" data-exercise-id="{{ ex.id }}" data-log-id="{{ log.id }}" data-rest-seconds="{{ target_rest }}">
             <input type="hidden" name="exercise_id" value="{{ ex.id }}">
             <input type="hidden" name="set_number" value="{{ next_set_num }}">
             
@@ -173,6 +173,33 @@
     {% endfor %}
 </div>
 
+<!-- Image Lightbox Modal -->
+<div id="imageLightbox" class="lightbox-overlay hidden" onclick="closeLightbox()">
+    <button type="button" onclick="closeLightbox()" class="btn-lightbox-close" aria-label="Close Lightbox">
+        <i class="fa-solid fa-xmark"></i>
+    </button>
+    
+    <div class="lightbox-content-wrapper" onclick="event.stopPropagation()">
+        <img id="lightboxImage" src="" alt="Exercise Demonstration" class="lightbox-img">
+    </div>
+</div>
+
+<!-- Rest Timer Modal -->
+<div id="restTimerModal" class="rest-timer-overlay hidden">
+    <div class="rest-timer-card">
+        <span class="rest-timer-label">Rest Period</span>
+        <div id="restTimerDisplay" class="rest-timer-time">00:00</div>
+        <div class="rest-timer-actions">
+            <button type="button" onclick="addRestTime(30)" class="btn-rest-add">
+                +30s
+            </button>
+            <button type="button" onclick="stopRestTimer()" class="btn-rest-skip">
+                Skip Rest
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
 function toggleMedia(containerId, chevronId) {
     const container = document.getElementById(containerId);
@@ -190,10 +217,84 @@ function toggleMedia(containerId, chevronId) {
     }
 }
 
+function openLightbox(src) {
+    const lightbox = document.getElementById('imageLightbox');
+    const lightboxImg = document.getElementById('lightboxImage');
+    lightboxImg.src = src;
+    lightbox.classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
+}
+
+function closeLightbox() {
+    const lightbox = document.getElementById('imageLightbox');
+    lightbox.classList.add('hidden');
+    document.body.classList.remove('overflow-hidden');
+}
+
+/* --- Rest Timer Logic --- */
+let restInterval = null;
+let restTimeRemaining = 0;
+
+function formatTime(seconds) {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+}
+
+function startRestTimer(seconds) {
+    if (restInterval) {
+        clearInterval(restInterval);
+        restInterval = null;
+    }
+    
+    restTimeRemaining = parseInt(seconds, 10) || 60;
+    const modal = document.getElementById('restTimerModal');
+    const display = document.getElementById('restTimerDisplay');
+    
+    display.textContent = formatTime(restTimeRemaining);
+    modal.classList.remove('hidden');
+
+    restInterval = setInterval(() => {
+        restTimeRemaining--;
+        if (restTimeRemaining <= 0) {
+            display.textContent = "00:00";
+            if ('vibrate' in navigator) {
+                navigator.vibrate([200, 100, 200]);
+            }
+            dismissAndReload();
+        } else {
+            display.textContent = formatTime(restTimeRemaining);
+        }
+    }, 1000);
+}
+
+function addRestTime(seconds) {
+    restTimeRemaining += seconds;
+    const display = document.getElementById('restTimerDisplay');
+    display.textContent = formatTime(restTimeRemaining);
+}
+
+function stopRestTimer() {
+    dismissAndReload();
+}
+
+function dismissAndReload() {
+    if (restInterval) {
+        clearInterval(restInterval);
+        restInterval = null;
+    }
+    const modal = document.getElementById('restTimerModal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+    window.location.reload();
+}
+
 document.querySelectorAll('.set-log-form').forEach(form => {
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
         const logId = form.dataset.logId;
+        const restSeconds = form.dataset.restSeconds || 60;
         const formData = new FormData(form);
         const data = Object.fromEntries(formData.entries());
 
@@ -208,7 +309,7 @@ document.querySelectorAll('.set-log-form').forEach(form => {
             });
 
             if (response.ok) {
-                window.location.reload();
+                startRestTimer(restSeconds);
             } else {
                 alert('Error saving set log.');
             }

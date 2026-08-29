@@ -4,7 +4,7 @@
 *,
 ::before,
 ::after {
-  box-sizing: border-border;
+  box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
@@ -60,7 +60,7 @@ body {
 /* ==========================================================================
    SECTION 3: BUTTON COMPONENTS & ACTIONS
    ========================================================================== */
-/* Primary Emerald Action Button */
+/* Primary Emerald Action Button (Full Width) */
 body .btn-emerald-full,
 body a.btn-emerald-full,
 body button.btn-emerald-full {
@@ -89,6 +89,33 @@ body .btn-emerald-full:hover {
 
 body .btn-emerald-full:active {
   transform: translateY(0) !important;
+}
+
+/* Compact Add Exercise Button (+ Exercise) */
+body .btn-add-exercise,
+body a.btn-add-exercise,
+body button.btn-add-exercise {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.375rem !important;
+  padding: 0.4rem 0.75rem !important;
+  background-color: var(--accent-emerald) !important;
+  color: #022c22 !important;
+  font-weight: 700 !important;
+  font-size: 0.75rem !important;
+  border-radius: 0.5rem !important;
+  border: none !important;
+  box-shadow: 0 2px 8px var(--accent-emerald-glow) !important;
+  cursor: pointer !important;
+  text-decoration: none !important;
+  transition: all 0.15s ease-in-out !important;
+  white-space: nowrap !important;
+}
+
+body .btn-add-exercise:hover {
+  filter: brightness(1.1) !important;
+  transform: translateY(-1px) !important;
 }
 
 /* Cancel / Top Header Link */
@@ -209,8 +236,23 @@ input[type="checkbox"]:checked + .muscle-toggle-pill {
 }
 
 /* ==========================================================================
-   SECTION 5: MEDIA UTILITIES & PREVIEW BADGES
+   SECTION 5: EXERCISE LIST BADGES & MEDIA UTILITIES
    ========================================================================== */
+/* Exercise Count Pill/Badge */
+.exercise-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.2rem 0.5rem;
+  background-color: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 9999px;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.025em;
+}
+
 /* Pre-upload Dynamic Image Delete 'X' Button */
 .btn-preview-delete {
   position: absolute;
@@ -273,3 +315,188 @@ input[type="checkbox"]:checked + .muscle-toggle-pill {
   border-radius: 0.5rem;
   cursor: pointer;
 }
+
+/* Finish Button Styling */
+.btn-finish-workout {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 0.875rem;
+  border-radius: 0.75rem;
+  background-color: #10b981; /* Vibrant Emerald Green */
+  color: #020617;
+  font-size: 0.75rem;
+  font-weight: 900;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.25);
+  transition: all 0.2s ease-in-out;
+}
+
+.btn-finish-workout:hover {
+  background-color: #34d399;
+}
+
+.btn-finish-workout:active {
+  transform: scale(0.95);
+}
+
+/* Lightbox Overlay */
+/* Lightbox Overlay */
+.lightbox-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background-color: rgba(2, 6, 23, 0.92);
+  backdrop-filter: blur(8px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+/* Lightbox Close Button - Layered above the image */
+.btn-lightbox-close {
+  position: absolute;
+  top: 1.25rem;
+  right: 1.25rem;
+  z-index: 10; /* Ensures button stays on top of lightbox image */
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 9999px;
+  background-color: #10b981; /* Emerald Green */
+  color: #020617; /* Dark Slate Icon */
+  font-size: 1.5rem; /* Larger Icon */
+  font-weight: 900;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.4);
+  transition: all 0.2s ease-in-out;
+}
+
+.btn-lightbox-close:hover {
+  background-color: #34d399;
+  transform: scale(1.05);
+}
+
+.btn-lightbox-close:active {
+  transform: scale(0.95);
+}
+
+/* Lightbox Content & Image Container */
+.lightbox-content-wrapper {
+  position: relative;
+  max-width: 100%;
+  max-height: 85vh;
+  overflow: hidden;
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background-color: #020617;
+}
+
+.lightbox-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  max-height: 85vh;
+}
+
+/* Rest Timer Overlay */
+.rest-timer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background-color: rgba(2, 6, 23, 0.85);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+/* Rest Timer Container Card */
+.rest-timer-card {
+  background-color: #020617;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 1.5rem;
+  padding: 1.5rem 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 0 30px rgba(16, 185, 129, 0.15);
+  max-width: 300px;
+  width: 100%;
+}
+
+.rest-timer-label {
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #94a3b8;
+}
+
+.rest-timer-time {
+  font-size: 3rem;
+  font-weight: 900;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  color: #10b981;
+  line-height: 1;
+}
+
+.rest-timer-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.btn-rest-add {
+  flex: 1;
+  padding: 0.625rem;
+  border-radius: 0.75rem;
+  background-color: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+  font-weight: 800;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.btn-rest-add:hover {
+  border-color: rgba(16, 185, 129, 0.4);
+  color: #10b981;
+}
+
+.btn-rest-add:active {
+  transform: scale(0.95);
+}
+
+.btn-rest-skip {
+  flex: 1;
+  padding: 0.625rem;
+  border-radius: 0.75rem;
+  background-color: #10b981;
+  border: none;
+  color: #020617;
+  font-weight: 900;
+  font-size: 0.875rem;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+  transition: all 0.2s ease-in-out;
+}
+
+.btn-rest-skip:hover {
+  background-color: #34d399;
+}
+
+.btn-rest-skip:active {
+  transform: scale(0.95);
+}
+
