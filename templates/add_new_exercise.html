@@ -2,241 +2,185 @@
 
 {% block content %}
 <div class="space-y-5">
-    <div class="form-header-bar flex items-center justify-between mb-2">
-        <a href="{{ url_for('add_exercise', workout_id=return_workout_id) if return_workout_id else url_for('exercise_list') }}" class="btn-cancel-link">
-            <i class="fa-solid fa-chevron-left text-xs"></i>
-            <span>Cancel</span>
+    <div class="flex items-center justify-between pb-3 border-b border-white/5">
+        <a href="{{ url_for('exercise_list') }}" class="flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-slate-200 transition">
+            <i class="fa-solid fa-chevron-left text-xs"></i><span>Cancel</span>
         </a>
-        <h1 class="form-page-title">
+        <h1 class="text-base font-black text-slate-100 tracking-tight">
             {% if exercise %}Edit Exercise{% else %}Create Exercise{% endif %}
         </h1>
-        <div class="w-16"></div>
+        <div class="w-10"></div>
     </div>
 
-    <form action="{{ url_for('display_exercise', id=exercise.id) if exercise else url_for('add_new_exercise') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
+    <form action="{{ url_for('display_exercise', id=exercise.id) if exercise else url_for('add_new_exercise') }}"
+          method="POST" enctype="multipart/form-data" class="space-y-4">
         <input type="hidden" name="return_workout_id" value="{{ return_workout_id or '' }}">
+        <input type="hidden" name="next_url" value="{{ next_url or '' }}">
+        <div id="deleted-images-container"></div>
 
         <div class="glass-card rounded-2xl p-4 space-y-4 border border-white/5">
             <div>
-                <label for="name" class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">
-                    Exercise Name
-                </label>
-                <input type="text" id="name" name="name" required placeholder="e.g., Dumbbell Incline Bench"
-                       value="{{ exercise.name if exercise else '' }}"
-                       class="form-input w-full bg-slate-950/80 border border-white/10 rounded-xl px-3.5 py-3 text-slate-100 placeholder-slate-500 text-xs font-medium focus:outline-none transition">
-            </div>
-
-            <div>
-                <label for="exercise_type" class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">
-                    Category / Type
-                </label>
-                <div class="relative">
-                    <select id="exercise_type" name="exercise_type"
-                            class="form-input w-full bg-slate-950/80 border border-white/10 rounded-xl px-3.5 py-3 text-slate-100 text-xs font-medium focus:outline-none transition appearance-none pr-10">
-                        {% for t in valid_exercise_types %}
-                        <option value="{{ t }}" class="bg-slate-950 text-slate-100" {% if exercise and exercise.exercise_type == t %}selected{% elif not exercise and t == 'Strength' %}selected{% endif %}>{{ t }}</option>
-                        {% endfor %}
-                    </select>
-                    <i class="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
-                </div>
+                <label for="name" class="block text-xs font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">Exercise Name</label>
+                <input type="text" id="name" name="name" required placeholder="e.g., Dumbbell Incline Bench" value="{{ exercise.name if exercise else '' }}"
+                       class="w-full bg-slate-950/80 border border-white/10 rounded-xl px-3.5 py-3 text-slate-100 placeholder-slate-500 text-xs font-medium focus:outline-none focus:border-emerald-500/50 transition">
             </div>
         </div>
 
         <div class="glass-card rounded-2xl p-4 border border-white/5">
-            <span class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-3">
-                Default Targets
-            </span>
+            <span class="block text-xs font-extrabold uppercase tracking-wider text-slate-400 mb-3">Default Targets</span>
+            <div class="space-y-2">
+                {% set stored_categories = exercise.categories if exercise and exercise.categories else ([exercise.exercise_type] if exercise else ['Strength']) %}
+                {% set stored_targets = exercise.category_targets if exercise and exercise.category_targets else {} %}
+                {% for category in valid_exercise_types %}
+                {% set target = stored_targets.get(category, {}) %}
+                {% set selected = category in stored_categories %}
+                <div class="category-card rounded-xl border {% if selected %}border-emerald-500/30{% else %}border-white/5{% endif %} bg-slate-950/50 p-3" data-category-card="{{ category|replace(' ','-')|replace('(','')|replace(')','') }}">
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <input type="checkbox" name="categories" value="{{ category }}" class="category-checkbox form-checkbox w-4 h-4 rounded border-slate-700 bg-slate-900 focus:ring-offset-0" data-category="{{ category }}" {% if selected %}checked{% endif %}>
+                        <div class="flex-1">
+                            <div class="text-xs font-bold text-slate-200">{{ category }}</div>
+                            <div class="text-[10px] text-slate-500 mt-0.5 category-summary">
+                                {% if category in ['Strength', 'Speed'] %}{{ target.get('sets', 3) }} sets × {{ target.get('reps', 10) }} reps{% else %}{{ target.get('sets', 3) }} sets × {{ target.get('duration', 30) }} sec{% endif %} · {{ target.get('weight', 0) }} weight · {{ target.get('rest', 60) }} sec rest
+                            </div>
+                        </div>
+                        <i class="fa-solid fa-chevron-down text-[10px] text-slate-500 category-chevron transition-transform {% if selected %}rotate-180{% endif %}"></i>
+                    </label>
+                    <div class="category-values {% if not selected %}hidden{% endif %} mt-3 pt-3 border-t border-white/5">
+                        <div class="grid grid-cols-2 gap-2.5">
+                            <div><label class="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Sets</label><input type="number" name="sets_{{ category }}" value="{{ target.get('sets', 3) }}" min="1" class="custom-stat-input w-full bg-slate-950/80 border border-white/10 rounded-xl px-2.5 py-1.5 text-xs text-center font-bold"></div>
+                            {% if category in ['Strength', 'Speed'] %}
+                            <div><label class="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Reps</label><input type="number" name="reps_{{ category }}" value="{{ target.get('reps', 10) }}" min="1" class="custom-stat-input w-full bg-slate-950/80 border border-white/10 rounded-xl px-2.5 py-1.5 text-xs text-center font-bold"></div>
+                            {% else %}
+                            <div><label class="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Duration (s)</label><input type="number" step="0.1" name="duration_{{ category }}" value="{{ target.get('duration', 30) }}" min="0" class="custom-stat-input w-full bg-slate-950/80 border border-white/10 rounded-xl px-2.5 py-1.5 text-xs text-center font-bold"></div>
+                            {% endif %}
+                            <div><label class="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Weight</label><input type="number" step="0.1" name="weight_{{ category }}" value="{{ target.get('weight', 0) }}" min="0" class="custom-stat-input w-full bg-slate-950/80 border border-white/10 rounded-xl px-2.5 py-1.5 text-xs text-center font-bold"></div>
+                            <div><label class="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Rest (s)</label><input type="number" name="rest_{{ category }}" value="{{ target.get('rest', 60) }}" min="0" step="5" class="custom-stat-input w-full bg-slate-950/80 border border-white/10 rounded-xl px-2.5 py-1.5 text-xs text-center font-bold"></div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="glass-card rounded-2xl p-4 border border-white/5">
+            <span class="block text-xs font-extrabold uppercase tracking-wider text-slate-400 mb-3">Default Targets</span>
             <div class="grid grid-cols-3 gap-2.5">
                 <div class="bg-slate-950/60 p-2.5 rounded-xl border border-white/5 text-center">
-                    <label for="sets" class="block text-[10px] font-extrabold uppercase text-slate-400 mb-1">Sets</label>
-                    <input type="number" id="sets" name="sets" value="{{ exercise.sets if exercise else 3 }}" min="1"
-                           class="custom-stat-input w-full bg-transparent text-center text-lg font-black focus:outline-none">
+                    <label for="sets" class="block text-xs font-extrabold uppercase text-slate-400 mb-1">Sets</label>
+                    <input type="number" id="sets" name="sets" value="{{ exercise.sets if exercise else 3 }}" min="1" class="w-full bg-transparent text-center text-lg font-black text-emerald-400 focus:outline-none">
                 </div>
                 <div class="bg-slate-950/60 p-2.5 rounded-xl border border-white/5 text-center">
-                    <label for="reps" class="block text-[10px] font-extrabold uppercase text-slate-400 mb-1">Reps</label>
-                    <input type="number" id="reps" name="reps" value="{{ exercise.reps if exercise else 10 }}" min="1"
-                           class="custom-stat-input w-full bg-transparent text-center text-lg font-black focus:outline-none">
+                    <label for="reps" class="block text-xs font-extrabold uppercase text-slate-400 mb-1">Reps</label>
+                    <input type="number" id="reps" name="reps" value="{{ exercise.reps if exercise else 10 }}" min="1" class="w-full bg-transparent text-center text-lg font-black text-emerald-400 focus:outline-none">
                 </div>
                 <div class="bg-slate-950/60 p-2.5 rounded-xl border border-white/5 text-center">
-                    <label for="rest" class="block text-[10px] font-extrabold uppercase text-slate-400 mb-1">Rest (s)</label>
-                    <input type="number" id="rest" name="rest" value="{{ exercise.rest if exercise else 60 }}" min="0" step="5"
-                           class="custom-stat-input w-full bg-transparent text-center text-lg font-black focus:outline-none">
+                    <label for="rest" class="block text-xs font-extrabold uppercase text-slate-400 mb-1">Rest (s)</label>
+                    <input type="number" id="rest" name="rest" value="{{ exercise.rest if exercise else 60 }}" min="0" step="5" class="w-full bg-transparent text-center text-lg font-black text-emerald-400 focus:outline-none">
                 </div>
             </div>
         </div>
 
         <div class="glass-card rounded-2xl p-4 border border-white/5">
-            <label class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-3">
-                Target Muscle Groups
-            </label>
+            <label class="block text-xs font-extrabold uppercase tracking-wider text-slate-400 mb-3">Target Muscle Groups</label>
             <div class="flex flex-wrap gap-2">
                 {% for muscle in muscle_groups %}
                 <label class="cursor-pointer">
-                    <input type="checkbox" name="muscles" value="{{ muscle }}" class="peer sr-only" {% if exercise and exercise.muscles and muscle in exercise.muscles %}checked{% endif %}>
-                    <span class="muscle-toggle-pill inline-block px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-950/60 text-slate-300 border border-white/5 transition active:scale-95">
-                        {{ muscle }}
-                    </span>
+                    <input type="checkbox" name="muscles" value="{{ muscle }}" class="peer sr-only"
+                           {% if exercise and exercise.muscles and muscle in exercise.muscles %}checked{% endif %}>
+                    <span class="inline-block px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-950/60 text-slate-300 border border-white/5 peer-checked:bg-emerald-500/20 peer-checked:text-emerald-400 peer-checked:border-emerald-500/40 transition active:scale-95">{{ muscle }}</span>
                 </label>
                 {% endfor %}
             </div>
         </div>
 
         <div class="glass-card rounded-2xl p-4 space-y-4 border border-white/5">
-            <span class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
-                Media & Form Details
-            </span>
-
+            <span class="block text-xs font-extrabold uppercase tracking-wider text-slate-400">Media & Form Details</span>
             <div>
-                <label class="block text-xs font-semibold text-slate-400 mb-1.5">Add Demo Images / GIFs</label>
-                <label class="file-upload-box flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded-xl p-4 bg-slate-950/40 cursor-pointer transition group">
-                    <i class="upload-icon fa-solid fa-cloud-arrow-up text-xl text-slate-400 mb-1.5 transition"></i>
-                    <span id="file-label" class="text-xs font-medium text-slate-400 transition text-center">
-                        Tap to select one or more image/GIF files
-                    </span>
-                    <input type="file" id="image" name="images" accept="image/*" multiple class="hidden" onchange="handleFileSelect(this)">
-                </label>
-
-                <div id="image-preview-container" class="mt-3 hidden">
-                    <span class="block text-[10px] font-extrabold uppercase text-slate-400 mb-1.5">New Image Previews</span>
-                    <div id="preview-grid" class="grid grid-cols-3 sm:grid-cols-4 gap-2"></div>
-                </div>
-
-                {% if exercise and (exercise.image_urls or exercise.image) %}
-                <div class="mt-4">
-                    <span class="block text-[10px] font-extrabold uppercase text-slate-400 mb-1.5">
-                        Current Saved Images <span class="text-slate-500 font-normal lowercase">(tap 'Delete' to remove)</span>
-                    </span>
-                    <div class="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                        {% for img in (exercise.image_urls if exercise.image_urls else [exercise.image]) %}
-                        <div class="relative w-full aspect-square rounded-lg overflow-hidden border border-white/10 bg-slate-950 group">
-                            <input type="checkbox" id="del_img_{{ loop.index }}" name="delete_images" value="{{ img }}" class="peer hidden">
-                            
-                            <img src="{{ url_for('static', filename='uploads/' + img) }}" class="w-full h-full object-cover transition duration-200 peer-checked:opacity-20 peer-checked:grayscale">
-                            
-                            <label for="del_img_{{ loop.index }}" class="btn-delete-saved-img peer-checked:hidden">
-                                <i class="fa-solid fa-trash-can text-[9px]"></i>
-                                <span>Delete</span>
-                            </label>
-
-                            <label for="del_img_{{ loop.index }}" class="img-deleting-overlay peer-checked:flex">
-                                <i class="fa-solid fa-trash-can text-base"></i>
-                                <span class="text-[9px] font-black uppercase tracking-wider">Will Be Deleted</span>
-                                <span class="text-[8px] text-slate-400 underline">Tap to keep</span>
-                            </label>
-                        </div>
-                        {% endfor %}
+                <label class="block text-xs font-semibold text-slate-400 mb-1.5">Exercise Gallery</label>
+                {% set images = [] %}
+                {% if exercise %}
+                    {% if exercise.image_urls and exercise.image_urls is iterable and exercise.image_urls is not string %}
+                        {% set images = exercise.image_urls %}
+                    {% elif exercise.image %}
+                        {% set images = [exercise.image] %}
+                    {% endif %}
+                {% endif %}
+                {% if images %}
+                <div class="media-gallery-grid mb-3">
+                    {% for img in images %}
+                    <div class="media-gallery-item" id="img-card-{{ loop.index }}">
+                        <img src="{{ url_for('static', filename='uploads/' ~ img) }}" alt="{{ exercise.name }}">
+                        <button type="button" class="btn-delete-image" onclick="removeImage('{{ img|e }}', 'img-card-{{ loop.index }}')"><i class="fa-solid fa-xmark"></i></button>
                     </div>
+                    {% endfor %}
                 </div>
                 {% endif %}
+                <label class="flex flex-col items-center justify-center border-2 border-dashed border-white/10 hover:border-emerald-500/40 rounded-xl p-4 bg-slate-950/40 cursor-pointer transition group">
+                    <i class="fa-solid fa-cloud-arrow-up text-xl text-slate-400 group-hover:text-emerald-400 mb-1.5 transition"></i>
+                    <span id="file-label" class="text-xs font-medium text-slate-400 group-hover:text-slate-200 transition">Tap to upload image file(s)</span>
+                    <input type="file" id="images" name="images" accept="image/*" multiple class="hidden" onchange="updateFileNames(this)">
+                </label>
             </div>
-
             <div>
                 <label for="link" class="block text-xs font-semibold text-slate-400 mb-1.5">Demonstration Video Link</label>
                 <div class="relative">
                     <i class="fa-solid fa-link absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
-                    <input type="url" id="link" name="link" placeholder="https://youtube.com/..."
-                           value="{{ exercise.link if exercise else '' }}"
-                           class="form-input w-full bg-slate-950/80 border border-white/10 rounded-xl pl-9 pr-3.5 py-2.5 text-slate-100 placeholder-slate-500 text-xs font-medium focus:outline-none transition">
+                    <input type="url" id="link" name="link" placeholder="https://youtube.com/..." value="{{ exercise.link if exercise else '' }}"
+                           class="w-full bg-slate-950/80 border border-white/10 rounded-xl pl-9 pr-3.5 py-2.5 text-slate-100 placeholder-slate-500 text-xs font-medium focus:outline-none focus:border-emerald-500/50 transition">
                 </div>
             </div>
-
             <div>
                 <label for="instructions" class="block text-xs font-semibold text-slate-400 mb-1.5">Technique & Instructions</label>
-                <textarea id="instructions" name="instructions" rows="3" placeholder="Enter key form cues or execution tips..."
-                          class="form-input w-full bg-slate-950/80 border border-white/10 rounded-xl p-3 text-slate-100 placeholder-slate-500 text-xs font-medium focus:outline-none transition resize-none">{{ exercise.instructions if exercise else '' }}</textarea>
+                <textarea id="instructions" name="instructions" rows="3" placeholder="Enter key form cues or execution tips..." class="w-full bg-slate-950/80 border border-white/10 rounded-xl p-3 text-slate-100 placeholder-slate-500 text-xs font-medium focus:outline-none focus:border-emerald-500/50 transition resize-none">{{ exercise.instructions if exercise else '' }}</textarea>
             </div>
         </div>
 
-        <button type="submit" class="btn-emerald-full">
-            <i class="fa-solid {% if exercise %}fa-check{% else %}fa-plus{% endif %} text-xs"></i>
+        <button type="submit" class="btn-emerald-full shadow-lg shadow-emerald-500/20">
+            <i class="fa-solid {% if exercise %}fa-check{% else %}fa-plus{% endif %} text-sm"></i>
             <span>{% if exercise %}Save Changes{% else %}Save Exercise{% endif %}</span>
         </button>
     </form>
 
     {% if exercise %}
-    <form action="{{ url_for('delete_exercise', exercise_id=exercise.id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete {{ exercise.name }}? This action cannot be undone.');" class="pt-1">
+    <form action="{{ url_for('delete_exercise', exercise_id=exercise.id) }}" method="POST"
+          onsubmit="return confirm('Are you sure you want to delete {{ exercise.name|e }}? This action cannot be undone.');" class="pt-2">
         <input type="hidden" name="return_workout_id" value="{{ return_workout_id or '' }}">
-        <button type="submit" class="btn-warning">
-            <i class="fa-regular fa-trash-can text-xs"></i>
-            <span>Delete Exercise</span>
-        </button>
+        <button type="submit" class="w-full flex items-center justify-center gap-2 rounded-xl bg-red-500/15 border border-red-500/40 text-red-400 hover:bg-red-500 hover:text-white px-4 py-3 text-xs font-black transition active:scale-95"><i class="fa-regular fa-trash-can text-sm"></i><span>Delete Exercise</span></button>
     </form>
-    {% else %}
-    <div class="pt-1">
-        <a href="{{ url_for('add_exercise', workout_id=return_workout_id) if return_workout_id else url_for('exercise_list') }}" class="btn-discard">
-            <i class="fa-solid fa-xmark text-xs"></i>
-            <span>Discard Exercise</span>
-        </a>
-    </div>
     {% endif %}
 </div>
 
 <script>
-let selectedFiles = [];
+document.querySelectorAll('.category-checkbox').forEach(cb => {
+    cb.addEventListener('change', () => {
+        const card = cb.closest('.category-card');
+        const values = card.querySelector('.category-values');
+        const chevron = card.querySelector('.category-chevron');
+        values.classList.toggle('hidden', !cb.checked);
+        chevron.classList.toggle('rotate-180', cb.checked);
+        card.classList.toggle('border-emerald-500/30', cb.checked);
+        card.classList.toggle('border-white/5', !cb.checked);
+    });
+});
 
-function handleFileSelect(input) {
-    if (input.files) {
-        Array.from(input.files).forEach(file => {
-            selectedFiles.push(file);
-        });
-        updateFileInputAndPreview();
-    }
-}
-
-function removeSelectedFile(index) {
-    selectedFiles.splice(index, 1);
-    updateFileInputAndPreview();
-}
-
-function updateFileInputAndPreview() {
-    const fileInput = document.getElementById('image');
+function updateFileNames(input) {
     const label = document.getElementById('file-label');
-    const container = document.getElementById('image-preview-container');
-    const previewGrid = document.getElementById('preview-grid');
-
-    const dt = new DataTransfer();
-    selectedFiles.forEach(file => dt.items.add(file));
-    fileInput.files = dt.files;
-
-    previewGrid.innerHTML = '';
-
-    if (selectedFiles.length > 0) {
-        label.textContent = `${selectedFiles.length} ${selectedFiles.length === 1 ? 'file' : 'files'} selected`;
+    if (input.files && input.files.length > 0) {
+        label.textContent = input.files.length === 1 ? input.files[0].name : `${input.files.length} files selected`;
         label.classList.remove('text-slate-400');
-        label.classList.add('accent-text', 'font-bold');
-        container.classList.remove('hidden');
-
-        selectedFiles.forEach((file, index) => {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const itemBox = document.createElement('div');
-                itemBox.className = 'w-full aspect-square relative rounded-lg overflow-hidden border border-white/10 bg-slate-950 group';
-
-                const img = document.createElement('img');
-                img.src = e.target.result;
-                img.className = 'w-full h-full object-cover';
-
-                const deleteBtn = document.createElement('button');
-                deleteBtn.type = 'button';
-                deleteBtn.className = 'btn-preview-delete';
-                deleteBtn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
-                deleteBtn.onclick = function(event) {
-                    event.preventDefault();
-                    removeSelectedFile(index);
-                };
-
-                itemBox.appendChild(img);
-                itemBox.appendChild(deleteBtn);
-                previewGrid.appendChild(itemBox);
-            };
-            reader.readAsDataURL(file);
-        });
-    } else {
-        label.textContent = 'Tap to select one or more image/GIF files';
-        label.classList.remove('accent-text', 'font-bold');
-        label.classList.add('text-slate-400');
-        container.classList.add('hidden');
+        label.classList.add('text-emerald-400', 'font-bold');
     }
+}
+
+function removeImage(filename, cardId) {
+    const card = document.getElementById(cardId);
+    if (card) card.remove();
+    const container = document.getElementById('deleted-images-container');
+    const hiddenInput = document.createElement('input');
+    hiddenInput.type = 'hidden';
+    hiddenInput.name = 'delete_images';
+    hiddenInput.value = filename;
+    container.appendChild(hiddenInput);
 }
 </script>
 {% endblock %}

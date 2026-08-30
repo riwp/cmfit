@@ -1,96 +1,144 @@
 {% extends 'base.html' %}
+
 {% block content %}
-<!-- Page Header -->
+
 <div class="flex justify-between items-center mb-5 px-1">
     <div>
         <h2 class="text-xl font-black text-slate-100 tracking-tight">Select Exercises</h2>
-        <p class="text-xs text-slate-400 font-medium mt-0.5">Customize movement list for this workout</p>
+        <p class="text-xs text-slate-400 font-medium mt-0.5">Choose exercises and the categories you want to train</p>
     </div>
-    <a href="{{ url_for('add_new_exercise', return_workout_id=workout['id']) }}" class="btn-emerald-sm">
+    <a href="{{ url_for('add_new_exercise', return_workout_id=workout.id) }}" class="btn-emerald-sm">
         <i class="fa-solid fa-plus text-xs mr-1.5"></i> Create New
     </a>
 </div>
 
-<!-- Controls: Search Input & Selected Toggle Filter -->
 <div class="glass-card p-3.5 rounded-2xl mb-5 space-y-3">
-    <!-- Search Bar -->
     <div class="relative">
         <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
-        <input type="search" id="exerciseSearch" placeholder="Search exercises or muscle groups..." 
+        <input type="search" id="exerciseSearch" placeholder="Search exercises or muscle groups..."
                class="form-input w-full pl-10 pr-4 py-2.5 text-xs text-slate-100 placeholder-slate-500 rounded-xl bg-slate-900/80 border border-white/5 focus:outline-none transition">
     </div>
-
-    <!-- Filter Toggle Bar -->
     <div class="flex items-center justify-between text-xs px-1">
         <label class="flex items-center gap-2 cursor-pointer select-none">
-            <input type="checkbox" id="showOnlySelected" class="form-checkbox w-4 h-4 rounded border-slate-700 bg-slate-900 focus:ring-offset-0 transition cursor-pointer">
+            <input type="checkbox" id="showOnlySelected"
+                   class="form-checkbox w-4 h-4 rounded border-slate-700 bg-slate-900 focus:ring-offset-0 transition cursor-pointer">
             <span class="text-slate-300 font-medium">Show selected only</span>
         </label>
         <span id="matchCount" class="text-[11px] font-semibold text-slate-400 bg-slate-900/80 border border-white/5 px-2 py-0.5 rounded-full"></span>
     </div>
 </div>
 
-<form method="POST">
-    <!-- Exercise List -->
+<form method="POST" id="exerciseSelectionForm">
     <div id="exerciseList" class="space-y-3 mb-6">
         {% for ex in all_exercises %}
-        {% set custom = existing_map.get(ex.id, {}) %}
-        {% set is_checked = ex.id in existing_map %}
+        {% set existing = existing_map.get(ex.id, {}) %}
+        {% set existing_categories = existing.get('categories', []) %}
+        {% set existing_targets = existing.get('targets', {}) %}
+        {% set exercise_selected = ex.id in existing_map %}
+
         <div class="exercise-card glass-card p-4 rounded-2xl transition-all duration-200 border border-white/5 border-l-4 border-l-transparent"
              data-name="{{ ex.name|lower }}"
              data-instructions="{{ ex.instructions|lower if ex.instructions else '' }}"
              data-muscles="{{ ex.muscles|join(' ')|lower if ex.muscles else '' }}">
-            
-            <label class="flex items-start gap-3.5 cursor-pointer">
-                <input type="checkbox" name="exercise_ids" value="{{ ex.id }}" 
-                       {{ 'checked' if is_checked }} 
-                       class="exercise-checkbox form-checkbox mt-0.5 w-5 h-5 rounded-md border-slate-700 bg-slate-950 focus:ring-offset-0 transition cursor-pointer flex-shrink-0">
-                
+
+            <div class="flex items-start gap-3.5">
+                <div class="pt-0.5">
+                    <input type="checkbox" name="exercise_ids" value="{{ ex.id }}"
+                           class="exercise-checkbox form-checkbox w-5 h-5 rounded-md border-slate-700 bg-slate-950 focus:ring-offset-0 transition cursor-pointer"
+                           data-exercise-id="{{ ex.id }}" {% if exercise_selected %}checked{% endif %}>
+                </div>
                 <div class="flex-1 min-w-0">
                     <h4 class="font-bold text-slate-100 text-sm tracking-tight leading-snug">{{ ex.name }}</h4>
                     <div class="flex items-center gap-1.5 flex-wrap mt-1">
                         {% if ex.muscles %}
                             {% for muscle in ex.muscles %}
-                                <span class="badge-type text-[10px]">{{ muscle }}</span>
+                            <span class="badge-type text-[10px]">{{ muscle }}</span>
                             {% endfor %}
                         {% else %}
                             <span class="badge-type text-[10px]">General</span>
                         {% endif %}
                     </div>
                 </div>
-            </label>
+            </div>
 
-            <!-- Customization Settings -->
-            <details class="accordion-details group mt-3 pt-3 border-t border-white/5">
-                <summary class="accordion-summary flex items-center justify-between text-xs font-semibold text-slate-400 cursor-pointer select-none transition">
-                    <span class="flex items-center gap-1.5">
-                        <i class="fa-solid fa-sliders text-[10px] accent-icon"></i> Customize Sets & Reps
-                    </span>
-                    <i class="fa-solid fa-chevron-down text-[10px] transition-transform group-open:rotate-180"></i>
-                </summary>
-                
-                <div class="grid grid-cols-3 gap-2.5 mt-3 pt-1">
+            <div class="category-section hidden mt-4 pt-4 border-t border-white/5" data-category-section="{{ ex.id }}">
+                <div class="flex items-center justify-between mb-3">
                     <div>
-                        <label class="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Sets</label>
-                        <input type="number" name="sets_{{ ex.id }}" value="{{ custom.get('sets', ex.sets) }}" min="1" 
-                               class="custom-stat-input w-full bg-slate-950/80 border border-white/10 rounded-xl px-2.5 py-1.5 text-xs text-center font-bold focus:outline-none">
+                        <div class="text-xs font-bold text-slate-200">Training Categories</div>
+                        <div class="text-[10px] text-slate-500 mt-0.5">Select one or more</div>
                     </div>
-                    <div>
-                        <label class="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Reps</label>
-                        <input type="number" name="reps_{{ ex.id }}" value="{{ custom.get('reps', ex.reps) }}" min="1" 
-                               class="custom-stat-input w-full bg-slate-950/80 border border-white/10 rounded-xl px-2.5 py-1.5 text-xs text-center font-bold focus:outline-none">
-                    </div>
-                    <div>
-                        <label class="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Rest (s)</label>
-                        <input type="number" name="rest_{{ ex.id }}" value="{{ custom.get('rest', ex.rest) }}" min="0" 
-                               class="custom-stat-input w-full bg-slate-950/80 border border-white/10 rounded-xl px-2.5 py-1.5 text-xs text-center font-bold focus:outline-none">
-                    </div>
+                    <span class="category-count text-[10px] font-bold text-slate-500">0 selected</span>
                 </div>
-            </details>
+
+                <div class="space-y-2">
+                    {% for category in ex.types_list %}
+                    {% set defaults = ex.category_targets.get(category, {}) %}
+                    {% set target = existing_targets.get(category, defaults) if existing_targets else defaults %}
+                    {% set is_selected = category in existing_categories %}
+
+                    <div class="category-card rounded-xl border border-white/5 bg-slate-950/50 p-3 transition-all"
+                         data-category-card="{{ ex.id }}-{{ loop.index }}">
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" name="categories_{{ ex.id }}" value="{{ category }}"
+                                   class="category-checkbox form-checkbox w-4 h-4 rounded border-slate-700 bg-slate-900 focus:ring-offset-0"
+                                   data-exercise-id="{{ ex.id }}" data-category="{{ category }}"
+                                   {% if is_selected %}checked{% endif %}>
+                            <div class="flex-1">
+                                <div class="text-xs font-bold text-slate-200">{{ category }}</div>
+                                <div class="text-[10px] text-slate-500 mt-0.5">
+                                    {% if category in ['Strength', 'Speed'] %}
+                                        {{ target.get('sets', 3) }} sets × {{ target.get('reps', 10) }} reps
+                                    {% else %}
+                                        {{ target.get('sets', 3) }} sets × {{ target.get('duration', 30) }} sec
+                                    {% endif %}
+                                    · {{ target.get('rest', 60) }} sec rest
+                                </div>
+                            </div>
+                            <i class="fa-solid fa-chevron-down text-[10px] text-slate-500 category-chevron transition-transform"></i>
+                        </label>
+
+                        <div class="category-values hidden mt-3 pt-3 border-t border-white/5">
+                            <div class="grid grid-cols-2 gap-2.5">
+                                <div>
+                                    <label class="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Sets</label>
+                                    <input type="number" name="sets_{{ ex.id }}_{{ category }}" value="{{ target.get('sets', 3) }}" min="1"
+                                           class="custom-stat-input w-full bg-slate-950/80 border border-white/10 rounded-xl px-2.5 py-1.5 text-xs text-center font-bold focus:outline-none">
+                                </div>
+
+                                {% if category in ['Strength', 'Speed'] %}
+                                <div>
+                                    <label class="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Reps</label>
+                                    <input type="number" name="reps_{{ ex.id }}_{{ category }}" value="{{ target.get('reps', 10) }}" min="1"
+                                           class="custom-stat-input w-full bg-slate-950/80 border border-white/10 rounded-xl px-2.5 py-1.5 text-xs text-center font-bold focus:outline-none">
+                                </div>
+                                {% else %}
+                                <div>
+                                    <label class="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Duration (s)</label>
+                                    <input type="number" step="0.1" name="duration_{{ ex.id }}_{{ category }}" value="{{ target.get('duration', 30) }}" min="0"
+                                           class="custom-stat-input w-full bg-slate-950/80 border border-white/10 rounded-xl px-2.5 py-1.5 text-xs text-center font-bold focus:outline-none">
+                                </div>
+                                {% endif %}
+
+                                <div>
+                                    <label class="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Weight</label>
+                                    <input type="number" step="0.1" name="weight_{{ ex.id }}_{{ category }}" value="{{ target.get('weight', 0) }}" min="0"
+                                           class="custom-stat-input w-full bg-slate-950/80 border border-white/10 rounded-xl px-2.5 py-1.5 text-xs text-center font-bold focus:outline-none">
+                                </div>
+
+                                <div>
+                                    <label class="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Rest (s)</label>
+                                    <input type="number" name="rest_{{ ex.id }}_{{ category }}" value="{{ target.get('rest', 60) }}" min="0"
+                                           class="custom-stat-input w-full bg-slate-950/80 border border-white/10 rounded-xl px-2.5 py-1.5 text-xs text-center font-bold focus:outline-none">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
         </div>
         {% endfor %}
 
-        <!-- Empty Results Message -->
         <div id="noResultsMsg" class="hidden glass-card p-8 text-center rounded-2xl">
             <i class="fa-solid fa-magnifying-glass text-slate-600 text-3xl mb-3"></i>
             <h3 class="text-sm font-bold text-slate-200 mb-1">No Exercises Match</h3>
@@ -98,11 +146,9 @@
         </div>
     </div>
 
-    <!-- Submit Floating / Action Bar -->
     <div class="sticky bottom-20 z-10 pt-2 pb-1">
         <button type="submit" class="btn-emerald-full">
-            <i class="fa-solid fa-check text-xs"></i>
-            <span>Save Exercise Selection</span>
+            <i class="fa-solid fa-check text-xs"></i><span>Save Exercise Selection</span>
         </button>
     </div>
 </form>
@@ -114,13 +160,41 @@ document.addEventListener('DOMContentLoaded', () => {
     const cards = document.querySelectorAll('.exercise-card');
     const noResultsMsg = document.getElementById('noResultsMsg');
     const matchCount = document.getElementById('matchCount');
+    const form = document.getElementById('exerciseSelectionForm');
 
-    function updateCardHighlight(card, isChecked) {
-        if (isChecked) {
+    function updateCategoryCount(card) {
+        const checkboxes = card.querySelectorAll('.category-checkbox');
+        const selected = [...checkboxes].filter(cb => cb.checked).length;
+        const count = card.querySelector('.category-count');
+        if (count) count.textContent = `${selected} selected`;
+
+        checkboxes.forEach(cb => {
+            const categoryCard = cb.closest('.category-card');
+            const values = categoryCard.querySelector('.category-values');
+            const chevron = categoryCard.querySelector('.category-chevron');
+            if (cb.checked) {
+                categoryCard.classList.add('border-emerald-500/30');
+                values.classList.remove('hidden');
+                chevron.classList.add('rotate-180');
+            } else {
+                categoryCard.classList.remove('border-emerald-500/30');
+                values.classList.add('hidden');
+                chevron.classList.remove('rotate-180');
+            }
+        });
+    }
+
+    function updateExerciseCard(card) {
+        const exerciseCheckbox = card.querySelector('.exercise-checkbox');
+        const categorySection = card.querySelector('.category-section');
+        if (exerciseCheckbox.checked) {
             card.classList.add('card-selected');
+            categorySection.classList.remove('hidden');
         } else {
             card.classList.remove('card-selected');
+            categorySection.classList.add('hidden');
         }
+        updateCategoryCount(card);
     }
 
     function filterExercises() {
@@ -129,17 +203,13 @@ document.addEventListener('DOMContentLoaded', () => {
         let visibleCount = 0;
 
         cards.forEach(card => {
-            const name = card.dataset.name || '';
-            const instructions = card.dataset.instructions || '';
-            const muscles = card.dataset.muscles || '';
-            const checkbox = card.querySelector('.exercise-checkbox');
-            const isChecked = checkbox.checked;
-
-            updateCardHighlight(card, isChecked);
-
-            const matchesSearch = !query || name.includes(query) || instructions.includes(query) || muscles.includes(query);
-            const matchesSelectedFilter = !showSelectedOnly || isChecked;
-
+            const exerciseCheckbox = card.querySelector('.exercise-checkbox');
+            const matchesSearch = !query ||
+                (card.dataset.name || '').includes(query) ||
+                (card.dataset.instructions || '').includes(query) ||
+                (card.dataset.muscles || '').includes(query);
+            const matchesSelectedFilter = !showSelectedOnly || exerciseCheckbox.checked;
+            updateExerciseCard(card);
             if (matchesSearch && matchesSelectedFilter) {
                 card.classList.remove('hidden');
                 visibleCount++;
@@ -148,24 +218,53 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        if (visibleCount === 0) {
-            noResultsMsg.classList.remove('hidden');
-        } else {
-            noResultsMsg.classList.add('hidden');
-        }
-
+        noResultsMsg.classList.toggle('hidden', visibleCount !== 0);
         matchCount.textContent = `${visibleCount} of ${cards.length}`;
     }
 
+    cards.forEach(card => {
+        const exerciseCheckbox = card.querySelector('.exercise-checkbox');
+        const categoryCheckboxes = card.querySelectorAll('.category-checkbox');
+
+        exerciseCheckbox.addEventListener('change', () => {
+            updateExerciseCard(card);
+            filterExercises();
+        });
+
+        categoryCheckboxes.forEach(cb => {
+            cb.addEventListener('change', () => {
+                if (cb.checked) exerciseCheckbox.checked = true;
+                updateExerciseCard(card);
+            });
+        });
+
+        updateExerciseCard(card);
+    });
+
     searchInput.addEventListener('input', filterExercises);
     selectedFilter.addEventListener('change', filterExercises);
-    
-    cards.forEach(card => {
-        const cb = card.querySelector('.exercise-checkbox');
-        cb.addEventListener('change', filterExercises);
+
+    form.addEventListener('submit', event => {
+        let valid = true;
+        cards.forEach(card => {
+            const exerciseCheckbox = card.querySelector('.exercise-checkbox');
+            if (!exerciseCheckbox.checked) return;
+            const selectedCategories = card.querySelectorAll('.category-checkbox:checked');
+            if (selectedCategories.length === 0) {
+                valid = false;
+                card.classList.add('border-red-500/50');
+            } else {
+                card.classList.remove('border-red-500/50');
+            }
+        });
+        if (!valid) {
+            event.preventDefault();
+            alert('Please select at least one category for every selected exercise.');
+        }
     });
 
     filterExercises();
 });
 </script>
+
 {% endblock %}

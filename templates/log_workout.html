@@ -2,7 +2,6 @@
 
 {% block content %}
 <div class="space-y-5">
-    <!-- Active Workout Header -->
     <div class="glass-card p-4 rounded-2xl flex items-center justify-between border border-emerald-500/20 shadow-lg shadow-emerald-500/10">
         <div>
             <h1 class="text-base font-black text-slate-100 tracking-tight flex items-center gap-2">
@@ -15,21 +14,20 @@
         </div>
         <form action="{{ url_for('finish_workout', log_id=log.id) }}" method="POST">
             <button type="submit" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs transition-all duration-200 shadow-lg shadow-emerald-500/25 active:scale-95">
-                <i class="fa-solid fa-flag-checkered text-xs"></i>
-                <span>Finish</span>
+                <i class="fa-solid fa-flag-checkered text-xs"></i><span>Finish</span>
             </button>
         </form>
     </div>
 
-    <!-- Exercise Cards Loop -->
-    {% for item in log.workout.exercises | sort(attribute='order') %}
-    {% set ex = item.exercise %}
-    {% set target_sets = item.custom_sets or ex.sets %}
-    {% set target_rest = item.custom_rest or ex.rest %}
-    {% set is_aerobic = ex.exercise_type == 'Aerobic Capacity' %}
-    {% set ex_stats = exercise_history.get(ex.id, {'max_weight': '-', 'last_weight': '-'}) %}
-    
-    <!-- Build normalized media list -->
+    {% for card in exercise_cards %}
+    {% set item = card.item %}
+    {% set ex = card.exercise %}
+    {% set category = card.category %}
+    {% set target = card.target %}
+    {% set target_sets = target.get('sets', ex.sets or 3) %}
+    {% set target_rest = card.last_rest if card.last_rest is not none else target.get('rest', ex.rest or 60) %}
+    {% set is_rep_category = category in ['Strength', 'Speed'] %}
+
     {% set media_list = [] %}
     {% if ex.image_urls %}
         {% if ex.image_urls is string %}
@@ -40,66 +38,67 @@
     {% elif ex.image %}
         {% set media_list = [ex.image] %}
     {% endif %}
-    
     {% set has_images = media_list | length > 0 %}
-    
-    <div class="glass-card p-4 rounded-2xl space-y-4 border border-white/5" id="exercise-card-{{ ex.id }}">
-        <!-- Header -->
+
+    <div class="glass-card p-4 rounded-2xl space-y-4 border border-white/5" id="exercise-card-{{ item.id }}">
         <div class="flex items-center justify-between gap-3">
             <div class="flex-1 min-w-0">
-                <h3 class="font-black text-slate-100 text-sm truncate tracking-tight">{{ ex.name }}</h3>
-                <div class="flex flex-wrap items-center gap-2 mt-1">
+                <h3 class="font-black text-slate-100 text-sm tracking-tight">{{ ex.name }} <span class="text-emerald-400">— {{ category }}</span></h3>
+                <div class="flex items-center gap-1.5 mt-1 flex-wrap">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-black bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        {{ category }}
+                    </span>
                     <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold bg-slate-950 text-emerald-400 border border-emerald-500/20">
-                        {% if is_aerobic %}
-                            {{ target_sets }} Sets × {{ item.custom_duration or ex.duration or 0 }} min
+                        {{ target_sets }} Sets ×
+                        {% if is_rep_category %}
+                            {{ target.get('reps', ex.reps or 10) }} Reps
                         {% else %}
-                            {{ target_sets }} Sets × {{ item.custom_reps or ex.reps }} Reps
+                            {{ target.get('duration', ex.duration or 30) }} sec
                         {% endif %}
                     </span>
+                    {% if target.get('weight', 0) is not none and target.get('weight', 0) > 0 %}
+                    <span class="text-xs font-extrabold uppercase text-slate-400">
+                        Weight: <span class="text-slate-200 font-mono">{{ target.get('weight') }}</span>
+                    </span>
+                    {% endif %}
                     <span class="text-xs font-extrabold uppercase text-slate-400">
                         Rest: <span class="text-slate-200 font-mono">{{ target_rest }}s</span>
                     </span>
-
-                    {% if not is_aerobic %}
-                    <!-- Max & Last Weight Stats -->
-                    <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-extrabold bg-slate-900 text-slate-300 border border-white/10">
-                        Max: <span class="text-amber-400 font-mono ml-1">{{ ex_stats.max_weight }}{% if ex_stats.max_weight != '-' %} lbs{% endif %}</span>
-                    </span>
-                    <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-extrabold bg-slate-900 text-slate-300 border border-white/10">
-                        Last: <span class="text-cyan-400 font-mono ml-1">{{ ex_stats.last_weight }}{% if ex_stats.last_weight != '-' %} lbs{% endif %}</span>
-                    </span>
+                </div>
+                <div class="flex items-center gap-3 mt-2 text-[10px] font-bold text-slate-500 flex-wrap">
+                    {% if card.history_max_weight is not none %}
+                    <span>Max Weight: <span class="text-slate-300">{{ card.history_max_weight|round(1) }} lbs</span></span>
+                    {% endif %}
+                    {% if card.history_max_duration is not none %}
+                    <span>Max Duration: <span class="text-slate-300">{{ card.history_max_duration|round(1) }} sec</span></span>
+                    {% endif %}
+                    {% if card.history_max_weight is none and card.history_max_duration is none %}
+                    <span>No previous history</span>
                     {% endif %}
                 </div>
             </div>
 
-            <!-- Action Buttons -->
             <div class="flex items-center gap-1.5 flex-shrink-0">
                 {% if ex.link %}
-                <a href="{{ ex.link }}" target="_blank" rel="noopener noreferrer" 
-                   class="p-2 rounded-xl bg-slate-950 border border-white/10 text-slate-300 hover:text-emerald-400 hover:border-emerald-500/30 transition active:scale-95" 
+                <a href="{{ ex.link }}" target="_blank" rel="noopener noreferrer"
+                   class="p-2 rounded-xl bg-slate-950 border border-white/10 text-slate-300 hover:text-emerald-400 hover:border-emerald-500/30 transition active:scale-95"
                    title="Watch Demonstration Video">
                     <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
                 </a>
                 {% endif %}
-
                 {% if has_images %}
-                <button type="button" 
-                        onclick="toggleMedia('media-{{ ex.id }}', 'chevron-{{ ex.id }}')"
+                <button type="button" onclick="toggleMedia('media-{{ item.id }}', 'chevron-{{ item.id }}')"
                         class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-950 border border-white/10 text-slate-300 text-xs font-semibold hover:border-emerald-500/30 hover:text-emerald-400 transition active:scale-95">
-                    <i class="fa-regular fa-image text-xs"></i>
-                    <span>Media</span>
-                    <i id="chevron-{{ ex.id }}" class="fa-solid fa-chevron-down text-xs transition-transform duration-300"></i>
+                    <i class="fa-regular fa-image text-xs"></i><span>Media</span>
+                    <i id="chevron-{{ item.id }}" class="fa-solid fa-chevron-down text-xs transition-transform duration-300"></i>
                 </button>
                 {% endif %}
             </div>
         </div>
 
-        <!-- Collapsible Media Gallery -->
         {% if has_images %}
-        <div id="media-{{ ex.id }}" class="hidden overflow-hidden transition-all duration-300 pt-3 border-t border-white/5 space-y-2">
-            <span class="block text-xs font-extrabold uppercase tracking-wider text-slate-400">
-                Demonstration Gallery
-            </span>
+        <div id="media-{{ item.id }}" class="hidden overflow-hidden transition-all duration-300 pt-3 border-t border-white/5 space-y-2">
+            <span class="block text-xs font-extrabold uppercase tracking-wider text-slate-400">Demonstration Gallery</span>
             <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {% for img in media_list %}
                     {% set img_path = img.strip() %}
@@ -108,7 +107,7 @@
                     {% else %}
                         {% set final_src = url_for('static', filename='uploads/' + img_path) %}
                     {% endif %}
-                    <button type="button" onclick="openLightbox('{{ final_src }}')" class="group relative aspect-video rounded-xl overflow-hidden border border-white/10 bg-slate-950 w-full text-left">
+                    <button type="button" onclick="openLightbox('{{ final_src|e }}')" class="group relative aspect-video rounded-xl overflow-hidden border border-white/10 bg-slate-950 w-full text-left">
                         <img src="{{ final_src }}" alt="{{ ex.name }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" loading="lazy">
                         <div class="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition duration-200">
                             <i class="fa-solid fa-magnifying-glass-plus text-white text-xs"></i>
@@ -119,322 +118,299 @@
         </div>
         {% endif %}
 
-        <!-- Logged Sets Table -->
         <div class="overflow-x-auto rounded-xl border border-white/5 bg-slate-950/60">
-            <table class="w-full text-left text-xs text-slate-300" id="table-ex-{{ ex.id }}">
+            <table class="w-full text-left text-xs text-slate-300" id="table-we-{{ item.id }}">
                 <thead class="bg-slate-900/80 text-xs uppercase font-extrabold text-slate-400 border-b border-white/5">
                     <tr>
                         <th class="py-2.5 px-3">Set</th>
-                        {% if is_aerobic %}
-                        <th class="py-2.5 px-3">Duration (min)</th>
-                        <th class="py-2.5 px-3">Rest (s)</th>
-                        {% else %}
+                        {% if is_rep_category %}
                         <th class="py-2.5 px-3">Reps</th>
                         <th class="py-2.5 px-3">Weight (lbs)</th>
+                        <th class="py-2.5 px-3">Rest (s)</th>
+                        {% else %}
+                        <th class="py-2.5 px-3">Duration (sec)</th>
+                        <th class="py-2.5 px-3">Weight</th>
+                        <th class="py-2.5 px-3">Rest (s)</th>
                         {% endif %}
                         <th class="py-2.5 px-3 text-right">Status</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-white/5 font-medium">
-                    {% set logged_sets = log.sets | selectattr('exercise_id', 'equalto', ex.id) | list %}
-                    {% for set_item in logged_sets %}
+                    {% for set_item in card.logged_sets %}
                     <tr class="hover:bg-white/[0.02] transition">
                         <td class="py-2.5 px-3 font-bold text-slate-400">#{{ set_item.set_number }}</td>
-                        {% if is_aerobic %}
-                        <td class="py-2.5 px-3 text-slate-100 font-bold">{{ set_item.duration or '-' }} min</td>
-                        <td class="py-2.5 px-3 text-slate-100 font-bold">{{ target_rest }}s</td>
+                        {% if is_rep_category %}
+                        <td class="py-2.5 px-3 text-slate-100 font-bold">{{ set_item.reps if set_item.reps is not none else '-' }}</td>
+                        <td class="py-2.5 px-3 text-slate-100 font-bold">{{ set_item.weight if set_item.weight is not none else '-' }}</td>
+                        <td class="py-2.5 px-3 text-slate-100 font-bold">{{ set_item.rest if set_item.rest is not none else '-' }}</td>
                         {% else %}
-                        <td class="py-2.5 px-3 text-slate-100 font-bold">{{ set_item.reps or '-' }}</td>
-                        <td class="py-2.5 px-3 text-slate-100 font-bold">{{ set_item.weight or '-' }}</td>
+                        <td class="py-2.5 px-3 text-slate-100 font-bold">{{ set_item.duration if set_item.duration is not none else '-' }}</td>
+                        <td class="py-2.5 px-3 text-slate-100 font-bold">{{ set_item.weight if set_item.weight is not none else '-' }}</td>
+                        <td class="py-2.5 px-3 text-slate-100 font-bold">{{ set_item.rest if set_item.rest is not none else '-' }}</td>
                         {% endif %}
-                        <td class="py-2.5 px-3 text-right font-extrabold text-emerald-400">
-                            Logged <i class="fa-solid fa-check text-xs ml-0.5"></i>
-                        </td>
+                        <td class="py-2.5 px-3 text-right font-extrabold text-emerald-400">Logged <i class="fa-solid fa-check text-xs ml-0.5"></i></td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
 
-        <!-- Dynamic Input Row -->
-        {% set next_set_num = logged_sets | length + 1 %}
-        <form class="set-log-form flex items-center gap-2 pt-1" data-exercise-id="{{ ex.id }}" data-log-id="{{ log.id }}" data-rest-seconds="{{ target_rest }}">
-            <input type="hidden" name="exercise_id" value="{{ ex.id }}">
+        {% set next_set_num = card.logged_sets|length + 1 %}
+        <form class="set-log-form flex items-center gap-2 pt-1"
+              data-workout-exercise-id="{{ item.id }}"
+              data-log-id="{{ log.id }}"
+              data-rest-seconds="{{ target_rest }}">
+            <input type="hidden" name="workout_exercise_id" value="{{ item.id }}">
             <input type="hidden" name="set_number" value="{{ next_set_num }}">
-            
-            <div class="w-8 h-9 rounded-xl bg-slate-950 border border-white/10 flex items-center justify-center font-black text-xs text-slate-400 flex-shrink-0">
-                #{{ next_set_num }}
-            </div>
+            <div class="w-8 h-9 rounded-xl bg-slate-950 border border-white/10 flex items-center justify-center font-black text-xs text-slate-400 flex-shrink-0">#{{ next_set_num }}</div>
 
-            {% if is_aerobic %}
-                <input type="number" step="0.5" name="duration" placeholder="Duration (min)" value="{{ item.custom_duration or ex.duration or '' }}" required 
+            {% if is_rep_category %}
+                <input type="number" name="reps" placeholder="Reps" value="{{ card.last_reps if card.last_reps is not none else target.get('reps', ex.reps or 10) }}" required
+                       class="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-xs text-slate-100 font-bold text-center placeholder-slate-600 focus:outline-none focus:border-emerald-500/50 transition">
+                <input type="number" step="0.5" name="weight" placeholder="Weight (lbs)" value="{{ card.last_weight if card.last_weight is not none else (target.get('weight', 0) if target.get('weight', 0) > 0 else '') }}"
                        class="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-xs text-slate-100 font-bold text-center placeholder-slate-600 focus:outline-none focus:border-emerald-500/50 transition">
             {% else %}
-                <input type="number" name="reps" placeholder="Reps" value="{{ item.custom_reps or ex.reps }}" required 
+                <input type="number" step="0.1" name="duration" placeholder="Duration (sec)" value="{{ card.last_duration if card.last_duration is not none else target.get('duration', ex.duration or 30) }}" required
                        class="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-xs text-slate-100 font-bold text-center placeholder-slate-600 focus:outline-none focus:border-emerald-500/50 transition">
-                <input type="number" step="0.5" name="weight" placeholder="Weight (lbs)" 
-                       value="{{ ex_stats.last_weight if ex_stats.last_weight != '-' else '' }}"
+                <input type="number" step="0.5" name="weight" placeholder="Weight" value="{{ card.last_weight if card.last_weight is not none else (target.get('weight', 0) if target.get('weight', 0) > 0 else '') }}"
                        class="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-xs text-slate-100 font-bold text-center placeholder-slate-600 focus:outline-none focus:border-emerald-500/50 transition">
             {% endif %}
 
-            <button type="submit" class="px-4 py-2 bg-slate-800 hover:bg-emerald-500 hover:text-slate-950 text-emerald-400 border border-emerald-500/30 rounded-xl font-extrabold text-xs whitespace-nowrap transition active:scale-95 flex-shrink-0">
-                Save
-            </button>
+            <input type="number" name="rest" min="0" step="5" value="{{ card.last_rest if card.last_rest is not none else target.get('rest', ex.rest or 60) }}"
+                   class="w-20 bg-slate-950 border border-white/10 rounded-xl px-2 py-2 text-xs text-slate-100 font-bold text-center placeholder-slate-600 focus:outline-none focus:border-emerald-500/50 transition" title="Rest (seconds)">
+
+            <button type="submit" class="px-4 py-2 bg-slate-800 hover:bg-emerald-500 hover:text-slate-950 text-emerald-400 border border-emerald-500/30 rounded-xl font-extrabold text-xs whitespace-nowrap transition active:scale-95 flex-shrink-0">Save</button>
         </form>
     </div>
     {% endfor %}
 </div>
 
-<!-- Image Lightbox Modal -->
 <div id="imageLightbox" class="lightbox-overlay hidden" onclick="closeLightbox()">
-    <button type="button" onclick="closeLightbox()" class="btn-lightbox-close" aria-label="Close Lightbox">
-        <i class="fa-solid fa-xmark"></i>
-    </button>
-    
-    <div class="lightbox-content-wrapper" onclick="event.stopPropagation()">
-        <img id="lightboxImage" src="" alt="Exercise Demonstration" class="lightbox-img">
-    </div>
+    <button type="button" onclick="closeLightbox()" class="btn-lightbox-close" aria-label="Close Lightbox"><i class="fa-solid fa-xmark"></i></button>
+    <div class="lightbox-content-wrapper" onclick="event.stopPropagation()"><img id="lightboxImage" src="" alt="Exercise Demonstration" class="lightbox-img"></div>
 </div>
 
-<!-- Rest Timer Modal -->
 <div id="restTimerModal" class="rest-timer-overlay hidden"
-     data-notice-seconds="{{ sound_config.notice_seconds | default(10) }}"
+     data-notice-seconds="{{ sound_config.notice_seconds | default(5) }}"
      data-notice-enabled="{{ 'true' if sound_config.notice_enabled else 'false' }}"
      data-notice-src="{{ sound_config.notice_url or '' }}"
-     data-rest-end-enabled="{{ 'true' if sound_config.rest_end_enabled else 'false' }}"
-     data-rest-end-src="{{ sound_config.rest_end_url or '' }}"
+     data-end-enabled="{{ 'true' if sound_config.rest_end_enabled else 'false' }}"
+     data-end-src="{{ sound_config.rest_end_url or '' }}"
+     data-start-enabled="{{ 'true' if sound_config.start_enabled else 'false' }}"
+     data-start-src="{{ sound_config.start_url or '' }}"
      data-log-set-enabled="{{ 'true' if sound_config.log_set_enabled else 'false' }}"
      data-log-set-src="{{ sound_config.log_set_url or '' }}">
     <div class="rest-timer-card">
         <span class="rest-timer-label">Rest Period</span>
         <div id="restTimerDisplay" class="rest-timer-time">00:00</div>
         <div class="rest-timer-actions">
-            <button type="button" onclick="addRestTime(30)" class="btn-rest-add">
-                +30s
-            </button>
-            <button type="button" onclick="stopRestTimer()" class="btn-rest-skip">
-                Skip Rest
-            </button>
+            <button type="button" onclick="addRestTime(30)" class="btn-rest-add">+30s</button>
+            <button type="button" onclick="stopRestTimer()" class="btn-rest-skip">Skip Rest</button>
         </div>
     </div>
 </div>
 
 <script>
 function toggleMedia(containerId, chevronId) {
-    const container = document.getElementById(containerId);
-    const chevron = document.getElementById(chevronId);
-
+    const container = document.getElementById(containerId), chevron = document.getElementById(chevronId);
     if (!container) return;
-
-    const isHidden = container.classList.contains('hidden');
-    if (isHidden) {
-        container.classList.remove('hidden');
-        if (chevron) chevron.classList.add('rotate-180');
-    } else {
-        container.classList.add('hidden');
-        if (chevron) chevron.classList.remove('rotate-180');
-    }
+    const hidden = container.classList.contains('hidden');
+    container.classList.toggle('hidden', !hidden);
+    if (chevron) chevron.classList.toggle('rotate-180', hidden);
 }
-
 function openLightbox(src) {
-    const lightbox = document.getElementById('imageLightbox');
-    const lightboxImg = document.getElementById('lightboxImage');
-    lightboxImg.src = src;
-    lightbox.classList.remove('hidden');
-    document.body.classList.add('overflow-hidden');
+    const box = document.getElementById('imageLightbox'), img = document.getElementById('lightboxImage');
+    if (!box || !img) return;
+    img.src = src; box.classList.remove('hidden'); document.body.classList.add('overflow-hidden');
 }
-
 function closeLightbox() {
-    const lightbox = document.getElementById('imageLightbox');
-    lightbox.classList.add('hidden');
-    document.body.classList.remove('overflow-hidden');
+    const box = document.getElementById('imageLightbox');
+    if (box) box.classList.add('hidden'); document.body.classList.remove('overflow-hidden');
 }
 
-/* --- Rest Timer Logic & Toggle-Gated Audio Triggers --- */
 let restInterval = null;
 let restTimeRemaining = 0;
-
-let globalNoticeAudio = null;
-let globalRestEndAudio = null;
-let globalLogSetAudio = null;
+let timerNoticePlayed = false;
+let timerEndPlayed = false;
+let activeAudio = null;
+let audioContext = null;
 
 function getSoundSettings() {
     const modal = document.getElementById('restTimerModal');
     if (!modal) return {};
     return {
-        noticeSeconds: parseInt(modal.dataset.noticeSeconds, 10) || 10,
+        noticeSeconds: parseInt(modal.dataset.noticeSeconds, 10) || 5,
         noticeEnabled: modal.dataset.noticeEnabled === 'true',
         noticeSrc: modal.dataset.noticeSrc || '',
-        restEndEnabled: modal.dataset.restEndEnabled === 'true',
-        restEndSrc: modal.dataset.restEndSrc || '',
+        endEnabled: modal.dataset.endEnabled === 'true',
+        endSrc: modal.dataset.endSrc || '',
+        startEnabled: modal.dataset.startEnabled === 'true',
+        startSrc: modal.dataset.startSrc || '',
         logSetEnabled: modal.dataset.logSetEnabled === 'true',
         logSetSrc: modal.dataset.logSetSrc || ''
     };
 }
 
-// Triggers the Log Set audio if enabled in admin settings
-function playLogSetSound() {
-    const settings = getSoundSettings();
-
-    if (settings.logSetEnabled) {
-        if (!globalLogSetAudio && settings.logSetSrc) {
-            globalLogSetAudio = new Audio(settings.logSetSrc);
+/*
+ * iOS Safari requires audio playback to originate from a user gesture.
+ * The Save button is a user gesture, so use it to resume an AudioContext
+ * and, when configured, play the Log Set sound immediately.  Timer sounds
+ * then reuse the same audio element instead of creating a new autoplay
+ * element at the time the timer expires.
+ */
+function unlockAudio() {
+    try {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) {
+            if (!audioContext) audioContext = new AudioContextClass();
+            if (audioContext.state === 'suspended') audioContext.resume().catch(() => {});
         }
-        if (globalLogSetAudio) {
-            globalLogSetAudio.currentTime = 0;
-            globalLogSetAudio.play().catch(err => console.warn("Log set audio error:", err));
-        }
+    } catch (err) {
+        console.warn('Audio context unlock failed:', err);
     }
 }
 
-// Unlocks audio contexts synchronously on user tap while honoring toggles
-function unlockAndPlayStartSound() {
-    const settings = getSoundSettings();
+function playAudioFile(src) {
+    if (!src) return Promise.resolve(false);
 
-    if (settings.noticeSrc && !globalNoticeAudio) {
-        globalNoticeAudio = new Audio(settings.noticeSrc);
-    }
-    if (settings.restEndSrc && !globalRestEndAudio) {
-        globalRestEndAudio = new Audio(settings.restEndSrc);
-    }
-    if (settings.logSetSrc && !globalLogSetAudio) {
-        globalLogSetAudio = new Audio(settings.logSetSrc);
-    }
-
-    // Direct playback of the Log Set Sound when user hits Save
-    playLogSetSound();
-}
-
-function playWarningSound() {
-    const settings = getSoundSettings();
-
-    if (settings.noticeEnabled) {
-        if (!globalNoticeAudio && settings.noticeSrc) {
-            globalNoticeAudio = new Audio(settings.noticeSrc);
+    try {
+        if (!activeAudio) {
+            activeAudio = document.createElement('audio');
+            activeAudio.preload = 'auto';
+            activeAudio.playsInline = true;
+            activeAudio.setAttribute('playsinline', '');
+            activeAudio.setAttribute('webkit-playsinline', '');
+            activeAudio.volume = 1.0;
+            activeAudio.style.display = 'none';
+            document.body.appendChild(activeAudio);
         }
-        if (globalNoticeAudio) {
-            globalNoticeAudio.currentTime = 0;
-            globalNoticeAudio.play().catch(err => console.warn("Notice audio play error:", err));
-        }
-    }
-}
 
-function playEndSound() {
-    const settings = getSoundSettings();
+        activeAudio.pause();
+        activeAudio.currentTime = 0;
+        if (activeAudio.src !== new URL(src, window.location.href).href) {
+            activeAudio.src = src;
+            activeAudio.load();
+        }
 
-    if (settings.restEndEnabled) {
-        if (!globalRestEndAudio && settings.restEndSrc) {
-            globalRestEndAudio = new Audio(settings.restEndSrc);
+        const result = activeAudio.play();
+        if (result && typeof result.then === 'function') {
+            return result.then(() => true).catch(err => {
+                console.warn('Audio playback blocked/failed:', err);
+                return false;
+            });
         }
-        if (globalRestEndAudio) {
-            globalRestEndAudio.currentTime = 0;
-            globalRestEndAudio.play().catch(err => console.warn("End audio play error:", err));
-        }
+        return Promise.resolve(true);
+    } catch (err) {
+        console.warn('Audio playback error:', err);
+        return Promise.resolve(false);
     }
 }
 
 function formatTime(seconds) {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    seconds = Math.max(0, seconds);
+    return `${Math.floor(seconds/60).toString().padStart(2,'0')}:${(seconds%60).toString().padStart(2,'0')}`;
 }
-
-function startRestTimer(seconds) {
-    if (restInterval) {
-        clearInterval(restInterval);
-        restInterval = null;
+function triggerNoticeIfNeeded() {
+    const s = getSoundSettings();
+    if (!timerNoticePlayed && s.noticeEnabled && s.noticeSrc && restTimeRemaining === s.noticeSeconds) {
+        timerNoticePlayed = true;
+        playAudioFile(s.noticeSrc);
     }
-    
-    restTimeRemaining = parseInt(seconds, 10) || 60;
-    const modal = document.getElementById('restTimerModal');
-    const display = document.getElementById('restTimerDisplay');
-    const settings = getSoundSettings();
-    
+}
+function triggerEndIfNeeded() {
+    const s = getSoundSettings();
+    if (!timerEndPlayed && s.endEnabled && s.endSrc) {
+        timerEndPlayed = true;
+        playAudioFile(s.endSrc);
+    }
+}
+function startRestTimer(seconds) {
+    if (restInterval) { clearInterval(restInterval); restInterval = null; }
+    restTimeRemaining = Math.max(0, parseInt(seconds,10) || 0);
+    timerNoticePlayed = false;
+    timerEndPlayed = false;
+    const modal = document.getElementById('restTimerModal'), display = document.getElementById('restTimerDisplay');
+    if (!modal || !display) return;
     display.textContent = formatTime(restTimeRemaining);
     modal.classList.remove('hidden');
-
-    if (restTimeRemaining === settings.noticeSeconds) {
-        playWarningSound();
+    triggerNoticeIfNeeded();
+    if (restTimeRemaining === 0) {
+        triggerEndIfNeeded();
+        setTimeout(dismissAndReload, 1200);
+        return;
     }
-
     restInterval = setInterval(() => {
-        restTimeRemaining--;
-
-        if (restTimeRemaining === settings.noticeSeconds) {
-            playWarningSound();
-        }
-
-        if (restTimeRemaining <= 0) {
+        restTimeRemaining = Math.max(0, restTimeRemaining - 1);
+        display.textContent = formatTime(restTimeRemaining);
+        triggerNoticeIfNeeded();
+        if (restTimeRemaining === 0) {
             clearInterval(restInterval);
             restInterval = null;
-            display.textContent = "00:00";
-            
-            if ('vibrate' in navigator) {
-                navigator.vibrate([200, 100, 200]);
-            }
-
-            playEndSound();
-
-            setTimeout(() => {
-                dismissAndReload();
-            }, 1000);
-        } else {
-            display.textContent = formatTime(restTimeRemaining);
+            if ('vibrate' in navigator) navigator.vibrate([200,100,200]);
+            triggerEndIfNeeded();
+            setTimeout(dismissAndReload, 1200);
         }
-    }, 1000);
+    },1000);
 }
-
 function addRestTime(seconds) {
-    restTimeRemaining += seconds;
+    restTimeRemaining = Math.max(0, restTimeRemaining + seconds);
+    timerNoticePlayed = false;
+    timerEndPlayed = false;
     const display = document.getElementById('restTimerDisplay');
-    display.textContent = formatTime(restTimeRemaining);
+    if (display) display.textContent = formatTime(restTimeRemaining);
+    triggerNoticeIfNeeded();
 }
-
-function stopRestTimer() {
-    dismissAndReload();
-}
-
+function stopRestTimer() { dismissAndReload(); }
 function dismissAndReload() {
-    if (restInterval) {
-        clearInterval(restInterval);
-        restInterval = null;
-    }
+    if (restInterval) { clearInterval(restInterval); restInterval = null; }
     const modal = document.getElementById('restTimerModal');
-    if (modal) {
-        modal.classList.add('hidden');
-    }
+    if (modal) modal.classList.add('hidden');
     window.location.reload();
 }
 
-document.querySelectorAll('.set-log-form').forEach(form => {
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
+document.addEventListener('DOMContentLoaded', () => {
+    const settings = getSoundSettings();
 
-        unlockAndPlayStartSound();
+    // iOS Safari will not reliably autoplay this after navigation. Desktop
+    // browsers may still play it as before; the Save gesture unlocks audio
+    // for subsequent timer sounds on iPhone/iPad.
+    if (settings.startEnabled && settings.startSrc) {
+        setTimeout(() => playAudioFile(settings.startSrc), 100);
+    }
 
-        const logId = form.dataset.logId;
-        const restSeconds = form.dataset.restSeconds || 60;
-        const formData = new FormData(form);
-        const data = Object.fromEntries(formData.entries());
+    document.querySelectorAll('.set-log-form').forEach(form => {
+        form.addEventListener('submit', async e => {
+            e.preventDefault();
 
-        try {
-            const response = await fetch(`/log/${logId}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify(data)
-            });
-
-            if (response.ok) {
-                startRestTimer(restSeconds);
-            } else {
-                alert('Error saving set log.');
+            // MUST happen synchronously from the tap/click. This is the key
+            // iOS Safari compatibility fix.
+            unlockAudio();
+            if (settings.logSetEnabled && settings.logSetSrc) {
+                playAudioFile(settings.logSetSrc);
             }
-        } catch (err) {
-            console.error('Failed to log set:', err);
-        }
+
+            const logId = form.dataset.logId;
+            const data = Object.fromEntries(new FormData(form).entries());
+            const restSeconds = data.rest || form.dataset.restSeconds || 60;
+
+            try {
+                const response = await fetch(`/log/${logId}`, {
+                    method:'POST',
+                    headers:{'Content-Type':'application/json','Accept':'application/json'},
+                    body:JSON.stringify(data)
+                });
+                if (response.ok) {
+                    startRestTimer(restSeconds);
+                } else {
+                    let message = 'Error saving set log.';
+                    try { const body = await response.json(); if (body.message) message = body.message; } catch (_) {}
+                    alert(message);
+                }
+            } catch (err) {
+                console.error('Failed to log set:', err);
+                alert('Unable to save this set. Please try again.');
+            }
+        });
     });
 });
 </script>
