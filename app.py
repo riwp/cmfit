@@ -530,6 +530,9 @@ def start_workout(workout_id):
 def log_exercise(log_id):
     log = WorkoutLog.query.get_or_404(log_id)
 
+    # ---------------------------------------------------------
+    # POST METHOD: Save set log
+    # ---------------------------------------------------------
     if request.method == 'POST':
         data = request.get_json() if request.is_json else request.form
 
@@ -566,7 +569,47 @@ def log_exercise(log_id):
 
         return redirect(url_for('log_exercise', log_id=log.id))
 
-    return render_template('log_workout.html', log=log)
+    # ---------------------------------------------------------
+    # GET METHOD: Query history for exercises & render template
+    # ---------------------------------------------------------
+    exercise_history = {}
+
+    for item in log.workout.exercises:
+        ex_id = item.exercise_id
+
+        # 1. All-time max weight logged for this exercise
+        max_set = db.session.query(db.func.max(SetLog.weight)).filter(
+            SetLog.exercise_id == ex_id,
+            SetLog.weight.isnot(None)
+        ).scalar()
+
+        # 2. Find the most recent prior log (excluding current active log)
+        last_log = WorkoutLog.query.join(SetLog).filter(
+            SetLog.exercise_id == ex_id,
+            WorkoutLog.id != log_id
+        ).order_by(WorkoutLog.start_time.desc()).first()
+
+        last_weight = None
+        if last_log:
+            # Last logged set from that most recent log
+            last_set = SetLog.query.filter_by(
+                workout_log_id=last_log.id,
+                exercise_id=ex_id
+            ).order_by(SetLog.set_number.desc()).first()
+
+            if last_set and last_set.weight is not None:
+                last_weight = last_set.weight
+
+        exercise_history[ex_id] = {
+            'max_weight': max_set or '-',
+            'last_weight': last_weight if last_weight is not None else '-'
+        }
+
+    return render_template(
+        'log_workout.html',
+        log=log,
+        exercise_history=exercise_history
+    )
 
 
 @app.route('/log/<int:log_id>/finish', methods=['POST'])

@@ -27,6 +27,7 @@
     {% set target_sets = item.custom_sets or ex.sets %}
     {% set target_rest = item.custom_rest or ex.rest %}
     {% set is_aerobic = ex.exercise_type == 'Aerobic Capacity' %}
+    {% set ex_stats = exercise_history.get(ex.id, {'max_weight': '-', 'last_weight': '-'}) %}
     
     <!-- Build normalized media list -->
     {% set media_list = [] %}
@@ -47,7 +48,7 @@
         <div class="flex items-center justify-between gap-3">
             <div class="flex-1 min-w-0">
                 <h3 class="font-black text-slate-100 text-sm truncate tracking-tight">{{ ex.name }}</h3>
-                <div class="flex items-center gap-2 mt-1">
+                <div class="flex flex-wrap items-center gap-2 mt-1">
                     <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold bg-slate-950 text-emerald-400 border border-emerald-500/20">
                         {% if is_aerobic %}
                             {{ target_sets }} Sets × {{ item.custom_duration or ex.duration or 0 }} min
@@ -58,6 +59,16 @@
                     <span class="text-xs font-extrabold uppercase text-slate-400">
                         Rest: <span class="text-slate-200 font-mono">{{ target_rest }}s</span>
                     </span>
+
+                    {% if not is_aerobic %}
+                    <!-- Max & Last Weight Stats -->
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-extrabold bg-slate-900 text-slate-300 border border-white/10">
+                        Max: <span class="text-amber-400 font-mono ml-1">{{ ex_stats.max_weight }}{% if ex_stats.max_weight != '-' %} lbs{% endif %}</span>
+                    </span>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-extrabold bg-slate-900 text-slate-300 border border-white/10">
+                        Last: <span class="text-cyan-400 font-mono ml-1">{{ ex_stats.last_weight }}{% if ex_stats.last_weight != '-' %} lbs{% endif %}</span>
+                    </span>
+                    {% endif %}
                 </div>
             </div>
 
@@ -162,6 +173,7 @@
                 <input type="number" name="reps" placeholder="Reps" value="{{ item.custom_reps or ex.reps }}" required 
                        class="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-xs text-slate-100 font-bold text-center placeholder-slate-600 focus:outline-none focus:border-emerald-500/50 transition">
                 <input type="number" step="0.5" name="weight" placeholder="Weight (lbs)" 
+                       value="{{ ex_stats.last_weight if ex_stats.last_weight != '-' else '' }}"
                        class="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-xs text-slate-100 font-bold text-center placeholder-slate-600 focus:outline-none focus:border-emerald-500/50 transition">
             {% endif %}
 
@@ -296,7 +308,6 @@ function unlockAndPlayStartSound() {
 function playWarningSound() {
     const settings = getSoundSettings();
 
-    // STRICT CHECK: Only trigger warning sound if notice toggle is ON
     if (settings.noticeEnabled) {
         if (!globalNoticeAudio && settings.noticeSrc) {
             globalNoticeAudio = new Audio(settings.noticeSrc);
@@ -311,7 +322,6 @@ function playWarningSound() {
 function playEndSound() {
     const settings = getSoundSettings();
 
-    // STRICT CHECK: Only trigger end round sound if rest end toggle is ON
     if (settings.restEndEnabled) {
         if (!globalRestEndAudio && settings.restEndSrc) {
             globalRestEndAudio = new Audio(settings.restEndSrc);
@@ -343,7 +353,6 @@ function startRestTimer(seconds) {
     display.textContent = formatTime(restTimeRemaining);
     modal.classList.remove('hidden');
 
-    // Trigger warning sound at startup if timer matches admin configured notice seconds
     if (restTimeRemaining === settings.noticeSeconds) {
         playWarningSound();
     }
@@ -351,12 +360,10 @@ function startRestTimer(seconds) {
     restInterval = setInterval(() => {
         restTimeRemaining--;
 
-        // Trigger warning sound when remaining time reaches configured notice seconds (if toggle is ON)
         if (restTimeRemaining === settings.noticeSeconds) {
             playWarningSound();
         }
 
-        // Trigger end sound when remaining time reaches 0 (if toggle is ON)
         if (restTimeRemaining <= 0) {
             clearInterval(restInterval);
             restInterval = null;
@@ -403,7 +410,6 @@ document.querySelectorAll('.set-log-form').forEach(form => {
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
 
-        // Unlock audio context on click gesture stack & trigger sound if enabled
         unlockAndPlayStartSound();
 
         const logId = form.dataset.logId;
