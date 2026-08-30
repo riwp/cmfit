@@ -185,13 +185,14 @@
 </div>
 
 <!-- Rest Timer Modal -->
-<!-- Rest Timer Modal -->
 <div id="restTimerModal" class="rest-timer-overlay hidden"
-     data-notice-seconds="{{ sound_config.notice_seconds | default(5) }}"
+     data-notice-seconds="{{ sound_config.notice_seconds | default(10) }}"
      data-notice-enabled="{{ 'true' if sound_config.notice_enabled else 'false' }}"
      data-notice-src="{{ sound_config.notice_url or '' }}"
      data-rest-end-enabled="{{ 'true' if sound_config.rest_end_enabled else 'false' }}"
-     data-rest-end-src="{{ sound_config.rest_end_url or '' }}">
+     data-rest-end-src="{{ sound_config.rest_end_url or '' }}"
+     data-log-set-enabled="{{ 'true' if sound_config.log_set_enabled else 'false' }}"
+     data-log-set-src="{{ sound_config.log_set_url or '' }}">
     <div class="rest-timer-card">
         <span class="rest-timer-label">Rest Period</span>
         <div id="restTimerDisplay" class="rest-timer-time">00:00</div>
@@ -237,9 +238,13 @@ function closeLightbox() {
     document.body.classList.remove('overflow-hidden');
 }
 
-/* --- Rest Timer Logic & Audio Triggers --- */
+/* --- Rest Timer Logic & Toggle-Gated Audio Triggers --- */
 let restInterval = null;
 let restTimeRemaining = 0;
+
+let globalNoticeAudio = null;
+let globalRestEndAudio = null;
+let globalLogSetAudio = null;
 
 function getSoundSettings() {
     const modal = document.getElementById('restTimerModal');
@@ -249,14 +254,73 @@ function getSoundSettings() {
         noticeEnabled: modal.dataset.noticeEnabled === 'true',
         noticeSrc: modal.dataset.noticeSrc || '',
         restEndEnabled: modal.dataset.restEndEnabled === 'true',
-        restEndSrc: modal.dataset.restEndSrc || ''
+        restEndSrc: modal.dataset.restEndSrc || '',
+        logSetEnabled: modal.dataset.logSetEnabled === 'true',
+        logSetSrc: modal.dataset.logSetSrc || ''
     };
 }
 
-function playAudioFile(src) {
-    if (!src) return;
-    const audio = new Audio(src);
-    audio.play().catch(err => console.error("Audio playback error:", err));
+// Triggers the Log Set audio if enabled in admin settings
+function playLogSetSound() {
+    const settings = getSoundSettings();
+
+    if (settings.logSetEnabled) {
+        if (!globalLogSetAudio && settings.logSetSrc) {
+            globalLogSetAudio = new Audio(settings.logSetSrc);
+        }
+        if (globalLogSetAudio) {
+            globalLogSetAudio.currentTime = 0;
+            globalLogSetAudio.play().catch(err => console.warn("Log set audio error:", err));
+        }
+    }
+}
+
+// Unlocks audio contexts synchronously on user tap while honoring toggles
+function unlockAndPlayStartSound() {
+    const settings = getSoundSettings();
+
+    if (settings.noticeSrc && !globalNoticeAudio) {
+        globalNoticeAudio = new Audio(settings.noticeSrc);
+    }
+    if (settings.restEndSrc && !globalRestEndAudio) {
+        globalRestEndAudio = new Audio(settings.restEndSrc);
+    }
+    if (settings.logSetSrc && !globalLogSetAudio) {
+        globalLogSetAudio = new Audio(settings.logSetSrc);
+    }
+
+    // Direct playback of the Log Set Sound when user hits Save
+    playLogSetSound();
+}
+
+function playWarningSound() {
+    const settings = getSoundSettings();
+
+    // STRICT CHECK: Only trigger warning sound if notice toggle is ON
+    if (settings.noticeEnabled) {
+        if (!globalNoticeAudio && settings.noticeSrc) {
+            globalNoticeAudio = new Audio(settings.noticeSrc);
+        }
+        if (globalNoticeAudio) {
+            globalNoticeAudio.currentTime = 0;
+            globalNoticeAudio.play().catch(err => console.warn("Notice audio play error:", err));
+        }
+    }
+}
+
+function playEndSound() {
+    const settings = getSoundSettings();
+
+    // STRICT CHECK: Only trigger end round sound if rest end toggle is ON
+    if (settings.restEndEnabled) {
+        if (!globalRestEndAudio && settings.restEndSrc) {
+            globalRestEndAudio = new Audio(settings.restEndSrc);
+        }
+        if (globalRestEndAudio) {
+            globalRestEndAudio.currentTime = 0;
+            globalRestEndAudio.play().catch(err => console.warn("End audio play error:", err));
+        }
+    }
 }
 
 function formatTime(seconds) {
@@ -279,19 +343,20 @@ function startRestTimer(seconds) {
     display.textContent = formatTime(restTimeRemaining);
     modal.classList.remove('hidden');
 
-    // Check immediately in case timer is initialized equal to warning threshold
-    if (settings.noticeEnabled && restTimeRemaining === settings.noticeSeconds) {
-        playAudioFile(settings.noticeSrc);
+    // Trigger warning sound at startup if timer matches admin configured notice seconds
+    if (restTimeRemaining === settings.noticeSeconds) {
+        playWarningSound();
     }
 
     restInterval = setInterval(() => {
         restTimeRemaining--;
 
-        // Check for Timer Notice sound match
-        if (settings.noticeEnabled && restTimeRemaining === settings.noticeSeconds) {
-            playAudioFile(settings.noticeSrc);
+        // Trigger warning sound when remaining time reaches configured notice seconds (if toggle is ON)
+        if (restTimeRemaining === settings.noticeSeconds) {
+            playWarningSound();
         }
 
+        // Trigger end sound when remaining time reaches 0 (if toggle is ON)
         if (restTimeRemaining <= 0) {
             clearInterval(restInterval);
             restInterval = null;
@@ -301,15 +366,11 @@ function startRestTimer(seconds) {
                 navigator.vibrate([200, 100, 200]);
             }
 
-            // Play Rest/Round End audio if enabled, then reload after short delay
-            if (settings.restEndEnabled && settings.restEndSrc) {
-                playAudioFile(settings.restEndSrc);
-                setTimeout(() => {
-                    dismissAndReload();
-                }, 1000);
-            } else {
+            playEndSound();
+
+            setTimeout(() => {
                 dismissAndReload();
-            }
+            }, 1000);
         } else {
             display.textContent = formatTime(restTimeRemaining);
         }
@@ -341,6 +402,10 @@ function dismissAndReload() {
 document.querySelectorAll('.set-log-form').forEach(form => {
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
+
+        // Unlock audio context on click gesture stack & trigger sound if enabled
+        unlockAndPlayStartSound();
+
         const logId = form.dataset.logId;
         const restSeconds = form.dataset.restSeconds || 60;
         const formData = new FormData(form);

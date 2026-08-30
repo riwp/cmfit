@@ -155,6 +155,15 @@ def save_sound(file):
     if file and file.filename != '':
         filename = secure_filename(file.filename)
         filepath = os.path.join(app.config['SOUND_FOLDER'], filename)
+        
+        # Ensure distinct filenames if duplicates are uploaded
+        base, ext = os.path.splitext(filename)
+        counter = 1
+        while os.path.exists(filepath):
+            filename = f"{base}_{counter}{ext}"
+            filepath = os.path.join(app.config['SOUND_FOLDER'], filename)
+            counter += 1
+
         file.save(filepath)
         return filename
     return None
@@ -182,6 +191,7 @@ def get_sound_settings():
         return SoundFile.query.get(file_id) if file_id > 0 else None
 
     start_file = get_file('sound_start_file_id')
+    log_set_file = get_file('sound_log_set_file_id')
     notice_file = get_file('sound_notice_file_id')
     rest_end_file = get_file('sound_rest_end_file_id')
     end_file = get_file('sound_end_file_id')
@@ -189,14 +199,34 @@ def get_sound_settings():
     return {
         'start_enabled': settings.get('sound_start_enabled', 'false') == 'true',
         'start_url': url_for('static', filename=f'sounds/{start_file.filename}') if start_file else None,
+        'start_file_id': safe_int(settings.get('sound_start_file_id'), None),
+        
+        'log_set_enabled': settings.get('sound_log_set_enabled', 'false') == 'true',
+        'log_set_url': url_for('static', filename=f'sounds/{log_set_file.filename}') if log_set_file else None,
+        'log_set_file_id': safe_int(settings.get('sound_log_set_file_id'), None),
+
         'notice_enabled': settings.get('sound_notice_enabled', 'false') == 'true',
         'notice_url': url_for('static', filename=f'sounds/{notice_file.filename}') if notice_file else None,
-        'notice_seconds': safe_int(settings.get('sound_notice_seconds'), 5),
+        'notice_file_id': safe_int(settings.get('sound_notice_file_id'), None),
+        'notice_seconds': safe_int(settings.get('sound_notice_seconds'), 10),
+
         'rest_end_enabled': settings.get('sound_rest_end_enabled', 'false') == 'true',
         'rest_end_url': url_for('static', filename=f'sounds/{rest_end_file.filename}') if rest_end_file else None,
+        'rest_end_file_id': safe_int(settings.get('sound_rest_end_file_id'), None),
+
         'end_enabled': settings.get('sound_end_enabled', 'false') == 'true',
         'end_url': url_for('static', filename=f'sounds/{end_file.filename}') if end_file else None,
+        'end_file_id': safe_int(settings.get('sound_end_file_id'), None),
     }
+
+
+def set_app_setting(key, value):
+    setting = AppSetting.query.filter_by(key=key).first()
+    if not setting:
+        setting = AppSetting(key=key, value=str(value) if value is not None else '')
+        db.session.add(setting)
+    else:
+        setting.value = str(value) if value is not None else ''
 
 
 @app.context_processor
@@ -538,6 +568,7 @@ def log_exercise(log_id):
 
     return render_template('log_workout.html', log=log)
 
+
 @app.route('/log/<int:log_id>/finish', methods=['POST'])
 def finish_workout(log_id):
     log = WorkoutLog.query.get_or_404(log_id)
@@ -563,73 +594,68 @@ def admin():
     if request.method == 'POST':
         action = request.form.get('action')
 
+        # Upload sound action
         if action == 'upload_sound':
             sound_name = request.form.get('sound_name', '').strip()
             file = request.files.get('sound_file')
-            if file and sound_name:
+
+            if not sound_name or not file or file.filename == '':
+                flash('Please provide both a label and a valid audio file.', 'error')
+            else:
                 filename = save_sound(file)
                 if filename:
                     sf = SoundFile(name=sound_name, filename=filename)
                     db.session.add(sf)
                     db.session.commit()
-                    flash('Sound file uploaded to library.', 'success')
-            else:
-                flash('Please provide a sound name and valid file.', 'error')
-
-        elif action == 'save_sound_settings':
-            # Collect all inputs; getlist returns ['0', '1'] if checked, or ['0'] if unchecked.
-            # Checking if '1' is in the resulting list gives exact toggle state.
-            start_on = '1' in request.form.getlist('start_enabled')
-            notice_on = '1' in request.form.getlist('notice_enabled')
-            rest_end_on = '1' in request.form.getlist('rest_end_enabled')
-            end_on = '1' in request.form.getlist('end_enabled')
-
-            settings_to_update = {
-                'sound_start_enabled': 'true' if start_on else 'false',
-                'sound_start_file_id': request.form.get('start_file_id', ''),
-                'sound_notice_enabled': 'true' if notice_on else 'false',
-                'sound_notice_file_id': request.form.get('notice_file_id', ''),
-                'sound_notice_seconds': request.form.get('notice_seconds', '5'),
-                'sound_rest_end_enabled': 'true' if rest_end_on else 'false',
-                'sound_rest_end_file_id': request.form.get('rest_end_file_id', ''),
-                'sound_end_enabled': 'true' if end_on else 'false',
-                'sound_end_file_id': request.form.get('end_file_id', ''),
-            }
-
-            for key, val in settings_to_update.items():
-                setting = AppSetting.query.filter_by(key=key).first()
-                if not setting:
-                    setting = AppSetting(key=key, value=val)
-                    db.session.add(setting)
+                    flash(f'Sound "{sound_name}" uploaded successfully.', 'success')
                 else:
-                    setting.value = str(val)
+                    flash('Error saving audio file.', 'error')
+            return redirect(url_for('admin'))
+
+        # Save sound settings action
+        elif action == 'save_sound_settings':
+            set_app_setting('sound_start_enabled', 'true' if '1' in request.form.getlist('start_enabled') else 'false')
+            set_app_setting('sound_start_file_id', request.form.get('start_file_id') or '')
+
+            set_app_setting('sound_log_set_enabled', 'true' if '1' in request.form.getlist('log_set_enabled') else 'false')
+            set_app_setting('sound_log_set_file_id', request.form.get('log_set_file_id') or '')
+
+            set_app_setting('sound_notice_enabled', 'true' if '1' in request.form.getlist('notice_enabled') else 'false')
+            set_app_setting('sound_notice_file_id', request.form.get('notice_file_id') or '')
+            set_app_setting('sound_notice_seconds', request.form.get('notice_seconds', '10'))
+
+            set_app_setting('sound_rest_end_enabled', 'true' if '1' in request.form.getlist('rest_end_enabled') else 'false')
+            set_app_setting('sound_rest_end_file_id', request.form.get('rest_end_file_id') or '')
+
+            set_app_setting('sound_end_enabled', 'true' if '1' in request.form.getlist('end_enabled') else 'false')
+            set_app_setting('sound_end_file_id', request.form.get('end_file_id') or '')
 
             db.session.commit()
-            flash('Sound settings updated.', 'success')
+            flash('Sound preferences updated successfully.', 'success')
+            return redirect(url_for('admin'))
 
-        return redirect(url_for('admin'))
-
-    # GET request processing
+    settings = get_sound_settings()
     sounds = SoundFile.query.order_by(SoundFile.name.asc()).all()
-    raw_settings = {s.key: s.value for s in AppSetting.query.all()}
+    return render_template('admin.html', settings=settings, sounds=sounds)
 
-    settings = {
-        'start_enabled': raw_settings.get('sound_start_enabled') == 'true',
-        'start_file_id': safe_int(raw_settings.get('sound_start_file_id'), None),
-        'notice_enabled': raw_settings.get('sound_notice_enabled') == 'true',
-        'notice_file_id': safe_int(raw_settings.get('sound_notice_file_id'), None),
-        'notice_seconds': safe_int(raw_settings.get('sound_notice_seconds'), 5),
-        'rest_end_enabled': raw_settings.get('sound_rest_end_enabled') == 'true',
-        'rest_end_file_id': safe_int(raw_settings.get('sound_rest_end_file_id'), None),
-        'end_enabled': raw_settings.get('sound_end_enabled') == 'true',
-        'end_file_id': safe_int(raw_settings.get('sound_end_file_id'), None),
-    }
-
-    return render_template('admin.html', sounds=sounds, settings=settings)
 
 @app.route('/admin/sound/<int:sound_id>/delete', methods=['POST'])
+@app.route('/admin/delete-sound/<int:sound_id>', methods=['POST'])
 def delete_sound(sound_id):
     sf = SoundFile.query.get_or_404(sound_id)
+
+    # Clean up referenced setting IDs before deleting
+    for setting_key in [
+        'sound_start_file_id',
+        'sound_log_set_file_id',
+        'sound_notice_file_id',
+        'sound_rest_end_file_id',
+        'sound_end_file_id'
+    ]:
+        s = AppSetting.query.filter_by(key=setting_key).first()
+        if s and s.value == str(sf.id):
+            s.value = ''
+
     try:
         os.remove(os.path.join(app.config['SOUND_FOLDER'], sf.filename))
     except OSError:
@@ -637,7 +663,7 @@ def delete_sound(sound_id):
 
     db.session.delete(sf)
     db.session.commit()
-    flash('Sound file deleted.', 'success')
+    flash(f'Sound "{sf.name}" deleted successfully.', 'success')
     return redirect(url_for('admin'))
 
 

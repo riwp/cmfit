@@ -84,7 +84,29 @@
                 </div>
             </div>
 
-            <!-- 2. Timer Notice Sound -->
+            <!-- 2. Log Set Sound -->
+            <div class="space-y-2 pt-2 border-t border-white/5">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-slate-200">Log Set Sound</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="hidden" name="log_set_enabled" value="0">
+                        <input type="checkbox" name="log_set_enabled" value="1" class="sr-only peer" {% if settings.log_set_enabled %}checked{% endif %}>
+                        <div class="toggle-switch"></div>
+                    </label>
+                </div>
+                <div class="relative">
+                    <select name="log_set_file_id" class="form-input w-full bg-slate-950/80 border border-white/10 rounded-xl px-3.5 py-2.5 text-slate-100 text-xs font-medium focus:outline-none transition appearance-none pr-10">
+                        <option value="">-- Select Sound File --</option>
+                        {% for sound in sounds %}
+                        <option value="{{ sound.id }}" class="bg-slate-950 text-slate-100" {% if settings.log_set_file_id == sound.id %}selected{% endif %}>{{ sound.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <i class="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
+                </div>
+                <p class="text-[10px] text-slate-500 font-medium">Plays when a set is logged/saved during an active workout.</p>
+            </div>
+
+            <!-- 3. Timer Notice Sound -->
             <div class="space-y-2 pt-2 border-t border-white/5">
                 <div class="flex items-center justify-between">
                     <span class="text-xs font-bold text-slate-200">Timer Warning Notice</span>
@@ -112,7 +134,7 @@
                 <p class="text-[10px] text-slate-500 font-medium">Plays when timer reaches this remaining number of seconds.</p>
             </div>
 
-            <!-- 3. End Round / Rest Timer End Sound -->
+            <!-- 4. End Round / Rest Timer End Sound -->
             <div class="space-y-2 pt-2 border-t border-white/5">
                 <div class="flex items-center justify-between">
                     <span class="text-xs font-bold text-slate-200">End Round / Rest Timer End</span>
@@ -134,7 +156,7 @@
                 <p class="text-[10px] text-slate-500 font-medium">Plays when rest timer reaches 0 seconds.</p>
             </div>
 
-            <!-- 4. End Workout Sound -->
+            <!-- 5. End Workout Sound -->
             <div class="space-y-2 pt-2 border-t border-white/5">
                 <div class="flex items-center justify-between">
                     <span class="text-xs font-bold text-slate-200">End Workout Sound</span>
