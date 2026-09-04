@@ -14,7 +14,7 @@
         </div>
     </div>
 
-    <div class="space-y-3">
+    <div id="workout-exercise-list" class="space-y-3" data-reorder-url="{{ url_for('reorder_workout_exercises', workout_id=workout.id) }}">
         {% for item in sorted_exercises %}
         {% set ex = item.exercise %}
         {% set category = item.category or (item.categories[0] if item.categories else ex.exercise_type) %}
@@ -23,8 +23,11 @@
         {% set reps = target.get('reps', item.custom_reps or ex.reps or 10) %}
         {% set duration = target.get('duration', item.custom_duration if item.custom_duration is not none else (ex.duration or 30)) %}
         {% set rest = target.get('rest', item.custom_rest if item.custom_rest is not none else (ex.rest or 60)) %}
-        <div class="glass-card p-4 rounded-2xl border border-white/5">
+        <div class="glass-card p-4 rounded-2xl border border-white/5 workout-exercise-card" data-workout-exercise-id="{{ item.id }}">
             <div class="flex items-center justify-between gap-3">
+                <div class="workout-drag-handle flex items-center justify-center flex-shrink-0 w-9 h-9 rounded-xl bg-slate-950 border border-white/10 text-slate-500 active:text-emerald-400 active:border-emerald-500/40 transition" role="button" tabindex="0" aria-label="Move {{ ex.name }}" title="Touch and hold to move">
+                    <i class="fa-solid fa-grip-vertical text-sm"></i>
+                </div>
                 <div class="flex-1 min-w-0">
                     <h3 class="font-black text-slate-100 text-sm tracking-tight">{{ ex.name }} <span class="text-emerald-400">— {{ category }}</span></h3>
                     <div class="flex items-center gap-1.5 mt-1 flex-wrap">
@@ -49,9 +52,265 @@
     </div>
 
     {% if sorted_exercises %}
+    <div id="reorder-status" class="min-h-[1.25rem] text-center text-[11px] font-bold text-slate-500" aria-live="polite"></div>
     <a href="{{ url_for('start_workout', workout_id=workout.id) }}" class="btn-emerald-full">
         <i class="fa-solid fa-play text-xs"></i><span>Start Workout</span>
     </a>
     {% endif %}
 </div>
+
+{% if sorted_exercises %}
+<script>
+(function () {
+    const list = document.getElementById('workout-exercise-list');
+    const status = document.getElementById('reorder-status');
+    if (!list) return;
+
+    let activeCard = null;
+    let startY = 0;
+    let initialTouchY = 0;
+    let dragging = false;
+    let longPressTimer = null;
+    let placeholder = null;
+    let previousOrder = [];
+    const LONG_PRESS_MS = 150;
+
+    function cards() {
+        return Array.from(list.querySelectorAll('.workout-exercise-card'));
+    }
+
+    function captureOrder() {
+        return cards().map(card => card.dataset.workoutExerciseId);
+    }
+
+    function clearTimer() {
+        if (longPressTimer) {
+            clearTimeout(longPressTimer);
+            longPressTimer = null;
+        }
+    }
+
+    function showStatus(message, error) {
+        if (!status) return;
+        status.textContent = message || '';
+        status.classList.toggle('text-red-400', !!error);
+        status.classList.toggle('text-emerald-400', !error && !!message);
+        status.classList.toggle('text-slate-500', !message);
+    }
+
+    function restorePreviousOrder() {
+        const allCards = cards();
+        if (activeCard && !allCards.includes(activeCard)) {
+            allCards.push(activeCard);
+        }
+
+        const byId = {};
+        allCards.forEach(card => {
+            byId[card.dataset.workoutExerciseId] = card;
+        });
+
+        previousOrder.forEach(id => {
+            if (byId[id]) list.appendChild(byId[id]);
+        });
+    }
+
+    function cleanupCard(card) {
+        if (!card) return;
+        card.classList.remove('workout-dragging');
+        card.style.transform = '';
+        card.style.width = '';
+        card.style.top = '';
+        card.style.left = '';
+    }
+
+    function beginDrag() {
+        if (!activeCard || dragging) return;
+
+        dragging = true;
+        const card = activeCard;
+        const rect = card.getBoundingClientRect();
+
+        placeholder = document.createElement('div');
+        placeholder.className = 'workout-drag-placeholder';
+        placeholder.style.height = rect.height + 'px';
+        
+        card.parentNode.insertBefore(placeholder, card);
+
+        card.style.width = rect.width + 'px';
+        card.style.top = rect.top + 'px';
+        card.style.left = rect.left + 'px';
+        card.classList.add('workout-dragging');
+
+        if (window.navigator && window.navigator.vibrate) {
+            window.navigator.vibrate(40);
+        }
+
+        showStatus('Reordering exercise...', false);
+    }
+
+    function movePlaceholder(clientY) {
+        if (!dragging || !placeholder) return;
+
+        if (activeCard) {
+            const deltaY = clientY - startY;
+            activeCard.style.transform = `translateY(${deltaY}px)`;
+        }
+
+        const otherCards = cards().filter(c => c !== activeCard);
+        let inserted = false;
+
+        for (const card of otherCards) {
+            const rect = card.getBoundingClientRect();
+            if (clientY < rect.top + rect.height / 2) {
+                list.insertBefore(placeholder, card);
+                inserted = true;
+                break;
+            }
+        }
+
+        if (!inserted) {
+            list.appendChild(placeholder);
+        }
+    }
+
+    async function saveOrder(newOrder) {
+        showStatus('Saving order…', false);
+        try {
+            const response = await fetch(list.dataset.reorderUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({
+                    order: newOrder.map((id, index) => ({
+                        id: Number(id),
+                        order: index
+                    }))
+                })
+            });
+
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok || result.status !== 'success') {
+                throw new Error(result.message || 'Unable to save order');
+            }
+
+            showStatus('Order saved', false);
+            setTimeout(() => {
+                if (status && status.textContent === 'Order saved') {
+                    showStatus('', false);
+                }
+            }, 1400);
+        } catch (error) {
+            restorePreviousOrder();
+            showStatus('Could not save order — restored previous order', true);
+        }
+    }
+
+    function finishDrag() {
+        clearTimer();
+        if (!activeCard) return;
+
+        const card = activeCard;
+        const wasDragging = dragging;
+
+        if (placeholder && placeholder.parentNode) {
+            placeholder.replaceWith(card);
+        } else if (!card.parentNode) {
+            list.appendChild(card);
+        }
+
+        cleanupCard(card);
+
+        activeCard = null;
+        placeholder = null;
+        dragging = false;
+
+        if (!wasDragging) return;
+
+        const newOrder = captureOrder();
+        if (newOrder.join(',') !== previousOrder.join(',')) {
+            saveOrder(newOrder);
+        }
+    }
+
+    function cancelDrag() {
+        clearTimer();
+        if (!activeCard) return;
+
+        const card = activeCard;
+        cleanupCard(card);
+
+        if (placeholder && placeholder.parentNode) {
+            placeholder.remove();
+        }
+
+        restorePreviousOrder();
+
+        activeCard = null;
+        placeholder = null;
+        dragging = false;
+        showStatus('', false);
+    }
+
+    list.querySelectorAll('.workout-drag-handle').forEach(handle => {
+        handle.addEventListener('touchstart', function (e) {
+            clearTimer();
+            previousOrder = captureOrder();
+            activeCard = handle.closest('.workout-exercise-card');
+            
+            const touch = e.touches[0];
+            startY = touch.clientY;
+            initialTouchY = touch.clientY;
+            dragging = false;
+
+            longPressTimer = setTimeout(beginDrag, LONG_PRESS_MS);
+        }, { passive: true });
+
+        handle.addEventListener('touchmove', function (e) {
+            if (!activeCard) return;
+            const touch = e.touches[0];
+
+            if (!dragging) {
+                if (Math.abs(touch.clientY - initialTouchY) > 10) {
+                    clearTimer();
+                }
+                return;
+            }
+
+            if (e.cancelable) e.preventDefault();
+            movePlaceholder(touch.clientY);
+        }, { passive: false });
+
+        handle.addEventListener('touchend', finishDrag);
+        handle.addEventListener('touchcancel', cancelDrag);
+
+        handle.addEventListener('keydown', function (event) {
+            const card = handle.closest('.workout-exercise-card');
+            if (!card || (event.key !== 'ArrowUp' && event.key !== 'ArrowDown')) return;
+
+            event.preventDefault();
+            const current = cards();
+            const index = current.indexOf(card);
+            const newIndex = event.key === 'ArrowUp' ? index - 1 : index + 1;
+
+            if (newIndex < 0 || newIndex >= current.length) return;
+
+            previousOrder = captureOrder();
+
+            if (newIndex < index) {
+                list.insertBefore(card, current[newIndex]);
+            } else if (current[newIndex].nextElementSibling) {
+                list.insertBefore(card, current[newIndex].nextElementSibling);
+            } else {
+                list.appendChild(card);
+            }
+
+            saveOrder(captureOrder());
+        });
+    });
+})();
+</script>
+{% endif %}
 {% endblock %}

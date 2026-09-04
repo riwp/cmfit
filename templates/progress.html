@@ -1,75 +1,122 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="space-y-5">
+<div class="progress-page">
+  <section class="progress-hero glass-card">
+    <div>
+      <div class="progress-kicker"><i class="fa-solid fa-chart-line"></i> TRAINING DASHBOARD</div>
+      <h1>Workout Progress</h1>
+      <p>Your workout history, training consistency, and exercise performance at a glance.</p>
+    </div>
+    <div class="progress-hero-stat">
+      <strong>{{ stats.total_workouts }}</strong>
+      <span>Completed workouts</span>
+    </div>
+  </section>
 
-    <!-- Page Title Header Card -->
-    <div class="glass-card p-4 rounded-2xl flex items-center justify-between border border-white/10">
-        <div>
-            <h1 class="text-xl font-black text-slate-100 tracking-tight">Workout Progress</h1>
-            <p class="text-xs text-slate-400 font-medium">History of completed workout sessions</p>
-        </div>
-        <div class="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-            <i class="fa-solid fa-chart-line text-base"></i>
-        </div>
+  <section class="progress-stat-grid">
+    <div class="progress-stat-card glass-card"><div class="progress-stat-icon"><i class="fa-solid fa-calendar-check"></i></div><div><b>{{ stats.this_month }}</b><span>This month</span></div></div>
+    <div class="progress-stat-card glass-card"><div class="progress-stat-icon"><i class="fa-solid fa-fire"></i></div><div><b>{{ stats.current_streak }}</b><span>Week streak</span></div></div>
+    <div class="progress-stat-card glass-card"><div class="progress-stat-icon"><i class="fa-solid fa-dumbbell"></i></div><div><b>{{ stats.logged_sets }}</b><span>Sets logged</span></div></div>
+    <div class="progress-stat-card glass-card"><div class="progress-stat-icon"><i class="fa-solid fa-bolt"></i></div><div><b>{{ stats.active_exercises }}</b><span>Exercises trained</span></div></div>
+  </section>
+
+  <section class="progress-calendar glass-card">
+    <div class="progress-section-header">
+      <div><span class="progress-section-kicker">CONSISTENCY</span><h2>Training Calendar</h2></div>
+      <div class="progress-calendar-nav">
+        <a class="progress-icon-btn" href="{{ url_for('progress', month=calendar.prev_month, year=calendar.prev_year) }}"><i class="fa-solid fa-chevron-left"></i></a>
+        <strong>{{ calendar.month_name }} {{ calendar.year }}</strong>
+        <a class="progress-icon-btn" href="{{ url_for('progress', month=calendar.next_month, year=calendar.next_year) }}"><i class="fa-solid fa-chevron-right"></i></a>
+      </div>
+    </div>
+
+    <div class="progress-calendar-legend">
+      <span><i class="calendar-dot calendar-dot-workout"></i>Workout</span>
+      <span><i class="calendar-dot calendar-dot-strength"></i>Strength</span>
+      <span><i class="calendar-dot calendar-dot-power"></i>Power</span>
+      <span><i class="calendar-dot calendar-dot-aerobic"></i>Aerobic</span>
+    </div>
+
+    <div class="progress-calendar-grid progress-calendar-weekdays">
+      {% for day in ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'] %}<div>{{ day }}</div>{% endfor %}
+    </div>
+    <div class="progress-calendar-grid progress-calendar-days">
+      {% for day in calendar.days %}
+        {% if day.empty %}
+          <div class="calendar-day calendar-day-empty"></div>
+        {% else %}
+          <a class="calendar-day {% if day.has_workout %}calendar-day-workout{% endif %} {% if day.is_today %}calendar-day-today{% endif %}" href="#workout-history">
+            <span>{{ day.day }}</span>
+            {% if day.has_workout %}
+            <small>
+              {% if day.types.Strength %}<i class="calendar-type-marker marker-strength"></i>{% endif %}
+              {% if day.types.Power %}<i class="calendar-type-marker marker-power"></i>{% endif %}
+              {% if day.types.Aerobic %}<i class="calendar-type-marker marker-aerobic"></i>{% endif %}
+            </small>
+            {% endif %}
+          </a>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="progress-training-split">
+    {% for name, icon, css, description in [
+      ('Strength','fa-dumbbell','strength','Resistance and strength-focused work'),
+      ('Power','fa-bolt','power','Explosive and high-output work'),
+      ('Aerobic','fa-heart-pulse','aerobic','Cardio and aerobic-capacity work')
+    ] %}
+    <div class="progress-training-card glass-card">
+      <div class="training-card-heading">
+        <span class="training-card-icon {{ css }}"><i class="fa-solid {{ icon }}"></i></span>
+        <div><h3>{{ name }}</h3><span>{{ type_stats[name] }} sessions this month</span></div>
+      </div>
+      <div class="training-card-bar"><span style="width:{{ type_percent[name] }}%"></span></div>
+      <p>{{ description }}</p>
+    </div>
+    {% endfor %}
+  </section>
+
+  <section id="workout-history" class="progress-history">
+    <div class="progress-section-header">
+      <div><span class="progress-section-kicker">HISTORY</span><h2>Recent Workouts</h2></div>
+      <span class="progress-count-badge">{{ sessions|length }} completed</span>
     </div>
 
     {% if sessions %}
-        <div class="space-y-4">
-            {% for session in sessions %}
-            <div class="glass-card p-4 rounded-2xl space-y-3 border border-white/5 hover:border-emerald-500/30 transition duration-200">
-                <div class="flex items-start justify-between">
-                    <div>
-                        <h2 class="font-black text-slate-100 text-sm tracking-tight">{{ session.workout.title }}</h2>
-                        <p class="text-xs font-extrabold uppercase tracking-wider text-slate-400 mt-0.5">
-                            Completed: <span class="text-slate-300 font-medium">{{ session.end_time.strftime('%b %d, %Y at %I:%M %p') if session.end_time else 'In Progress' }}</span>
-                        </p>
-                    </div>
-                    {% if session.end_time %}
-                    <span class="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                        <i class="fa-solid fa-check text-xs mr-1"></i>Finished
-                    </span>
-                    {% else %}
-                    <span class="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                        <i class="fa-solid fa-clock text-xs mr-1"></i>Active
-                    </span>
-                    {% endif %}
-                </div>
-
-                {% if session.notes %}
-                    <div class="p-2.5 rounded-xl bg-slate-950/60 border border-white/5 text-xs text-slate-300 italic font-medium">
-                        "{{ session.notes }}"
-                    </div>
-                {% endif %}
-
-                <!-- Completed Sets Summary -->
-                {% if session.sets %}
-                    <div class="pt-2 border-t border-white/5 space-y-2">
-                        <p class="text-xs font-extrabold uppercase tracking-wider text-slate-400">Logged Sets</p>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            {% for set_item in session.sets %}
-                                <div class="flex items-center justify-between p-2 rounded-xl bg-slate-950/80 border border-white/5 text-xs">
-                                    <span class="font-bold text-slate-200 truncate mr-2">{{ set_item.exercise.name }}</span>
-                                    <span class="font-mono text-emerald-400 font-black whitespace-nowrap">
-                                        {% if set_item.weight %}{{ set_item.weight }} <span class="text-xs font-normal text-slate-400">lbs</span> × {% endif %}{{ set_item.reps }}
-                                    </span>
-                                </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                {% endif %}
-            </div>
-            {% endfor %}
+    <div class="progress-session-list">
+      {% for session in sessions %}
+      <article class="progress-session-card glass-card">
+        <div class="progress-session-top">
+          <div class="progress-session-date"><strong>{{ session.end_time.strftime('%d') }}</strong><span>{{ session.end_time.strftime('%b') }}<small>{{ session.end_time.strftime('%Y') }}</small></span></div>
+          <div class="progress-session-title"><h3>{{ session.workout.title }}</h3><p>{{ session.end_time.strftime('%A, %B %d at %I:%M %p') }}</p></div>
+          <span class="progress-session-badge"><i class="fa-solid fa-check"></i> Completed</span>
         </div>
+        {% if session.notes %}<div class="progress-session-notes"><i class="fa-regular fa-note-sticky"></i>{{ session.notes }}</div>{% endif %}
+        {% if session.summary %}
+        <div class="progress-exercise-table">
+          <div class="progress-table-head"><span>Exercise / Category</span><span>Sets</span><span>Performance</span></div>
+          {% for item in session.summary %}
+          <div class="progress-exercise-row">
+            <div class="progress-exercise-name"><strong>{{ item.name }}</strong>{% if item.category %}<span>{{ item.category }}</span>{% endif %}</div>
+            <span class="progress-set-count">{{ item.sets }}</span>
+            <span class="progress-performance">
+              {% if item.weight is not none %}<b>{{ item.weight|round(1) }} lbs</b>{% endif %}
+              {% if item.reps is not none %}<b>{{ item.reps }} reps</b>{% endif %}
+              {% if item.duration is not none %}<b>{{ item.duration|round(1) }} min</b>{% endif %}
+              {% if item.time_seconds is not none %}<b>{{ item.time_seconds }} sec</b>{% endif %}
+              {% if item.distance_meters is not none %}<b>{{ item.distance_meters|round(0) }} m</b>{% endif %}
+            </span>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}<div class="progress-empty-inline">No sets were logged for this workout.</div>{% endif %}
+      </article>
+      {% endfor %}
+    </div>
     {% else %}
-        <div class="glass-card p-8 text-center rounded-2xl border border-white/5">
-            <i class="fa-solid fa-calendar-xmark text-slate-600 text-3xl mb-3"></i>
-            <p class="text-sm font-bold text-slate-200 mb-1">No completed workouts yet.</p>
-            <a href="{{ url_for('workout_list') }}" class="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-400 hover:text-emerald-300 transition mt-2">
-                <span>Start a workout</span>
-                <i class="fa-solid fa-arrow-right text-xs"></i>
-            </a>
-        </div>
+    <div class="progress-empty glass-card"><i class="fa-solid fa-calendar-xmark"></i><h3>No completed workouts yet</h3><p>Complete a workout and your history will appear here.</p><a class="btn-emerald-full" href="{{ url_for('workout_list') }}">Start a workout <i class="fa-solid fa-arrow-right"></i></a></div>
     {% endif %}
-
+  </section>
 </div>
 {% endblock %}

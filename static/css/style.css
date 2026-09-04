@@ -534,3 +534,63 @@ input[type="checkbox"]:checked + .muscle-toggle-pill {
 .btn-rest-skip:active {
   transform: scale(0.95);
 }
+
+/* PROGRESS DASHBOARD */
+.progress-page{display:flex;flex-direction:column;gap:1rem;padding-bottom:1.5rem}
+.progress-hero{border-radius:1.25rem;padding:1.25rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;position:relative;overflow:hidden}
+.progress-hero:after{content:'';position:absolute;width:180px;height:180px;right:-65px;top:-80px;border-radius:50%;background:var(--accent-emerald-glow);filter:blur(25px)}
+.progress-kicker,.progress-section-kicker{color:#34d399;font-size:.65rem;font-weight:900;letter-spacing:.14em;display:flex;align-items:center;gap:.4rem}
+.progress-hero h1{margin-top:.25rem;font-size:1.45rem;line-height:1.1;font-weight:900}
+.progress-hero p{margin-top:.45rem;color:var(--text-muted);font-size:.75rem;line-height:1.5;max-width:540px}
+.progress-hero-stat{text-align:right;position:relative;z-index:1;min-width:95px}.progress-hero-stat strong{display:block;color:#34d399;font-size:2rem;line-height:1;font-weight:950}.progress-hero-stat span{display:block;margin-top:.3rem;color:var(--text-muted);font-size:.6rem;font-weight:800;text-transform:uppercase}
+.progress-stat-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem}.progress-stat-card{min-height:74px;border-radius:1rem;padding:.8rem;display:flex;align-items:center;gap:.7rem}.progress-stat-icon{width:2rem;height:2rem;flex:0 0 2rem;border-radius:.65rem;display:flex;align-items:center;justify-content:center;color:#34d399;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.16);font-size:.8rem}.progress-stat-card b{display:block;font-size:1rem;font-weight:950}.progress-stat-card span{display:block;margin-top:.1rem;font-size:.6rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted)}
+.progress-calendar{border-radius:1.25rem;padding:1rem}.progress-section-header{display:flex;align-items:center;justify-content:space-between;gap:.75rem;margin-bottom:.9rem}.progress-section-header h2{margin-top:.18rem;font-size:1rem;font-weight:900}.progress-calendar-nav{display:flex;align-items:center;gap:.45rem}.progress-calendar-nav strong{min-width:105px;text-align:center;font-size:.75rem}.progress-icon-btn{width:2rem;height:2rem;border-radius:.65rem;border:1px solid rgba(255,255,255,.08);background:rgba(15,23,42,.7);color:#cbd5e1;display:flex;align-items:center;justify-content:center;text-decoration:none}
+.progress-calendar-legend{display:flex;flex-wrap:wrap;gap:.55rem .8rem;margin-bottom:.75rem;color:var(--text-muted);font-size:.6rem;font-weight:750}.calendar-dot{display:inline-block;width:.42rem;height:.42rem;border-radius:50%;margin-right:.2rem}.calendar-dot-workout{background:#34d399}.calendar-dot-strength{background:#10b981}.calendar-dot-power{background:#f59e0b}.calendar-dot-aerobic{background:#60a5fa}
+.progress-calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:.3rem}.progress-calendar-weekdays{margin-bottom:.3rem}.progress-calendar-weekdays div{text-align:center;color:#64748b;font-size:.58rem;font-weight:900;text-transform:uppercase}.calendar-day{min-height:43px;border-radius:.7rem;border:1px solid rgba(255,255,255,.035);background:rgba(2,6,23,.28);color:#94a3b8;text-decoration:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.18rem}.calendar-day-empty{background:transparent;border-color:transparent}.calendar-day span{font-size:.7rem;font-weight:800}.calendar-day-workout{background:rgba(16,185,129,.13);border-color:rgba(16,185,129,.32);color:#f8fafc}.calendar-day-today{box-shadow:0 0 0 2px rgba(52,211,153,.8)}.calendar-day small{display:flex;gap:.18rem}.calendar-type-marker{width:.28rem;height:.28rem;border-radius:50%}.marker-strength{background:#10b981}.marker-power{background:#f59e0b}.marker-aerobic{background:#60a5fa}
+.progress-training-split{display:grid;gap:.75rem}.progress-training-card{border-radius:1rem;padding:.9rem}.training-card-heading{display:flex;align-items:center;gap:.65rem}.training-card-icon{width:2.15rem;height:2.15rem;border-radius:.7rem;display:flex;align-items:center;justify-content:center;font-size:.8rem}.training-card-icon.strength{color:#34d399;background:rgba(16,185,129,.12)}.training-card-icon.power{color:#fbbf24;background:rgba(245,158,11,.12)}.training-card-icon.aerobic{color:#93c5fd;background:rgba(59,130,246,.12)}.training-card-heading h3{font-size:.8rem;font-weight:900}.training-card-heading span{display:block;margin-top:.08rem;color:var(--text-muted);font-size:.6rem;font-weight:750}.training-card-bar{height:.3rem;margin:.75rem 0 .55rem;border-radius:99px;background:rgba(30,41,59,.9);overflow:hidden}.training-card-bar span{display:block;height:100%;border-radius:inherit;background:var(--accent-emerald)}.progress-training-card:nth-child(2) .training-card-bar span{background:#f59e0b}.progress-training-card:nth-child(3) .training-card-bar span{background:#60a5fa}.progress-training-card p{color:#64748b;font-size:.61rem;line-height:1.4}
+.progress-history{padding-top:.25rem}.progress-count-badge{border:1px solid rgba(16,185,129,.18);background:rgba(16,185,129,.08);color:#34d399;border-radius:999px;padding:.25rem .5rem;font-size:.58rem;font-weight:850}.progress-session-list{display:flex;flex-direction:column;gap:.8rem}.progress-session-card{border-radius:1.15rem;padding:.95rem}.progress-session-top{display:flex;align-items:center;gap:.7rem}.progress-session-date{display:flex;align-items:center;gap:.4rem;min-width:52px}.progress-session-date>strong{font-size:1.35rem;line-height:1;font-weight:950}.progress-session-date span{font-size:.55rem;text-transform:uppercase;color:#34d399;font-weight:850}.progress-session-date small{display:block;color:#64748b}.progress-session-title{flex:1;min-width:0}.progress-session-title h3{font-size:.8rem;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.progress-session-title p{margin-top:.12rem;color:var(--text-muted);font-size:.58rem}.progress-session-badge{display:inline-flex;align-items:center;gap:.25rem;color:#34d399;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.16);border-radius:.55rem;padding:.25rem .4rem;font-size:.52rem;font-weight:850;white-space:nowrap}.progress-session-notes{margin-top:.75rem;padding:.55rem .65rem;border-radius:.65rem;background:rgba(2,6,23,.42);color:#94a3b8;font-size:.62rem;line-height:1.4}.progress-session-notes i{margin-right:.3rem;color:#64748b}
+.progress-exercise-table{margin-top:.8rem;border-top:1px solid rgba(255,255,255,.05)}.progress-table-head,.progress-exercise-row{display:grid;grid-template-columns:minmax(0,1fr) 38px minmax(90px,auto);align-items:center;gap:.5rem}.progress-table-head{padding:.55rem 0 .35rem;color:#64748b;font-size:.52rem;font-weight:900;text-transform:uppercase;letter-spacing:.06em}.progress-table-head span:nth-child(2){text-align:center}.progress-table-head span:last-child{text-align:right}.progress-exercise-row{padding:.55rem 0;border-top:1px solid rgba(255,255,255,.035)}.progress-exercise-name{min-width:0}.progress-exercise-name strong{display:block;color:#e2e8f0;font-size:.67rem;font-weight:850;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.progress-exercise-name span{display:inline-block;margin-top:.15rem;color:#34d399;font-size:.52rem;font-weight:800}.progress-set-count{text-align:center;color:#94a3b8;font-size:.65rem;font-weight:850}.progress-performance{text-align:right;display:flex;justify-content:flex-end;flex-wrap:wrap;gap:.25rem}.progress-performance b{color:#34d399;background:rgba(16,185,129,.07);border-radius:.35rem;padding:.18rem .3rem;font-size:.52rem;font-weight:850;white-space:nowrap}.progress-empty-inline{margin-top:.7rem;color:#64748b;font-size:.65rem}.progress-empty{border-radius:1.1rem;padding:2rem 1rem;text-align:center}.progress-empty>i{color:#334155;font-size:2rem;margin-bottom:.7rem}.progress-empty h3{font-size:.85rem;font-weight:900}.progress-empty p{margin:.3rem 0 1rem;color:var(--text-muted);font-size:.65rem}.progress-empty .btn-emerald-full{max-width:260px;margin:auto}
+@media(min-width:640px){.progress-stat-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.progress-training-split{grid-template-columns:repeat(3,minmax(0,1fr))}.calendar-day{min-height:55px}}
+
+/* ========================================================================== 
+   WORKOUT EXERCISE REORDER
+   ========================================================================== */
+.workout-drag-handle {
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  cursor: grab;
+}
+
+.workout-drag-handle:active {
+  cursor: grabbing;
+}
+
+.workout-exercise-card {
+  position: relative;
+  transition: transform 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Updated to handle fixed positioning during active iOS drag */
+.workout-exercise-card.workout-dragging {
+  position: fixed !important;
+  z-index: 9999 !important;
+  pointer-events: none !important;
+  opacity: 0.92;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45);
+  transition: none !important; /* Disables lag/latency while actively following touch movement */
+}
+
+/* Styled placeholder to preserve layout height while card is fixed */
+.workout-drag-placeholder {
+  border: 2px dashed rgba(16, 185, 129, 0.4); /* Tailwind emerald-500 equivalent */
+  border-radius: 1rem;
+  background: rgba(16, 185, 129, 0.08);
+  pointer-events: none;
+  box-sizing: border-box;
+  margin-bottom: 0.75rem; /* Matches space-y-3 gap */
+}

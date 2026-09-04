@@ -7,6 +7,10 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import inspect, text
 from werkzeug.utils import secure_filename
 
+import calendar as pycalendar
+from datetime import date, timedelta
+from collections import defaultdict
+
 # Load environment variables
 load_dotenv()
 
@@ -46,6 +50,7 @@ VALID_EXERCISE_TYPES = [
 class Exercise(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
+    order = db.Column('order', db.Integer, default=0, nullable=False)
     muscles = db.Column(db.JSON, nullable=True)
     sets = db.Column(db.Integer, default=3)
     reps = db.Column(db.Integer, default=10)
@@ -249,9 +254,8 @@ def index():
 
 @app.route('/exercises')
 def exercise_list():
-    all_exercises = Exercise.query.order_by(Exercise.name.asc()).all()
+    all_exercises = Exercise.query.order_by(Exercise.order.asc()).all()
     return render_template('exercise_list.html', all_exercises=all_exercises)
-
 
 @app.route('/exercise/new', methods=['GET', 'POST'])
 def add_new_exercise():
@@ -312,6 +316,24 @@ def add_new_exercise():
                            valid_exercise_types=VALID_EXERCISE_TYPES,
                            return_workout_id=return_workout_id)
 
+
+
+@app.route('/exercises/reorder', methods=['POST'])
+def reorder_exercises():
+    data = request.get_json() or {}
+    order_data = data.get('order', [])
+    
+    # Example logic depending on your ORM (SQLAlchemy, Peewee, etc.)
+    for item in order_data:
+        exercise_id = item.get('id')
+        new_order = item.get('order')
+        
+        exercise = Exercise.query.get(exercise_id)
+        if exercise:
+            exercise.order = new_order
+            
+    db.session.commit()
+    return jsonify({'status': 'success', 'message': 'Exercises reordered successfully'})
 
 @app.route('/exercise/<int:id>', methods=['GET', 'POST'])
 def display_exercise(id):
@@ -563,16 +585,33 @@ def add_exercise(workout_id):
 
 @app.route('/workout/<int:workout_id>/reorder', methods=['POST'])
 def reorder_workout_exercises(workout_id):
-    data = request.get_json()
-    if not data or 'order' not in data:
+    workout = Workout.query.get_or_404(workout_id)
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict) or not isinstance(data.get('order'), list):
         return jsonify({'status': 'error', 'message': 'Invalid payload'}), 400
 
-    order_map = {item['id']: item['order'] for item in data['order']}
-    exercises = WorkoutExercise.query.filter_by(workout_id=workout_id).all()
+    exercises = WorkoutExercise.query.filter_by(workout_id=workout.id).all()
+    exercise_map = {ex.id: ex for ex in exercises}
+    submitted_ids = []
+    seen_ids = set()
 
-    for ex in exercises:
-        if ex.id in order_map:
-            ex.order = order_map[ex.id]
+    for item in data['order']:
+        if not isinstance(item, dict):
+            return jsonify({'status': 'error', 'message': 'Invalid order item'}), 400
+        try:
+            exercise_id = int(item.get('id'))
+        except (TypeError, ValueError):
+            return jsonify({'status': 'error', 'message': 'Invalid exercise ID'}), 400
+        if exercise_id not in exercise_map or exercise_id in seen_ids:
+            return jsonify({'status': 'error', 'message': 'Invalid or duplicate exercise ID'}), 400
+        seen_ids.add(exercise_id)
+        submitted_ids.append(exercise_id)
+
+    if len(submitted_ids) != len(exercises):
+        return jsonify({'status': 'error', 'message': 'Incomplete exercise order'}), 400
+
+    for position, exercise_id in enumerate(submitted_ids):
+        exercise_map[exercise_id].order = position
 
     db.session.commit()
     return jsonify({'status': 'success'})
@@ -759,12 +798,123 @@ def finish_workout(log_id):
 
 @app.route('/progress')
 def progress():
-    sessions = (
-        WorkoutLog.query.filter(WorkoutLog.end_time.isnot(None))
-        .order_by(WorkoutLog.end_time.desc())
-        .all()
+    today = date.today()
+    year = safe_int(request.args.get('year'), today.year)
+    month = safe_int(request.args.get('month'), today.month)
+    if not 1 <= month <= 12:
+        month, year = today.month, today.year
+
+    sessions = (WorkoutLog.query
+                .filter(WorkoutLog.end_time.isnot(None))
+                .order_by(WorkoutLog.end_time.desc()).all())
+
+    calendar_data = defaultdict(lambda: {'count': 0, 'types': set()})
+    type_counts = {'Strength': 0, 'Power': 0, 'Aerobic': 0}
+    workout_dates = set()
+    exercise_ids = set()
+    logged_sets = 0
+
+    def training_types(session):
+        result = set()
+        for we in session.workout.exercises:
+            category = (we.category or '').strip().lower()
+            if category == 'strength':
+                result.add('Strength')
+            elif category in ('speed', 'alactic atp', 'anaerobic (hit)'):
+                result.add('Power')
+            elif category == 'aerobic capacity':
+                result.add('Aerobic')
+        return result
+
+    for session in sessions:
+        d = session.end_time.date()
+        workout_dates.add(d)
+        types = training_types(session)
+        calendar_data[d]['count'] += 1
+        calendar_data[d]['types'].update(types)
+        if d.year == year and d.month == month:
+            for t in types:
+                type_counts[t] += 1
+        logged_sets += len(session.sets)
+        exercise_ids.update(s.exercise_id for s in session.sets)
+
+    first_weekday, days_in_month = pycalendar.monthrange(year, month)
+    days = [{'empty': True} for _ in range(first_weekday)]
+    for n in range(1, days_in_month + 1):
+        d = date(year, month, n)
+        entry = calendar_data.get(d, {'count': 0, 'types': set()})
+        days.append({
+            'empty': False,
+            'day': n,
+            'has_workout': entry['count'] > 0,
+            'workout_count': entry['count'],
+            'types': {k: k in entry['types'] for k in ('Strength','Power','Aerobic')},
+            'is_today': d == today
+        })
+    while len(days) % 7:
+        days.append({'empty': True})
+
+    prev_month, prev_year = month - 1, year
+    if prev_month == 0:
+        prev_month, prev_year = 12, year - 1
+    next_month, next_year = month + 1, year
+    if next_month == 13:
+        next_month, next_year = 1, year + 1
+
+    completed_weeks = {(d.isocalendar().year, d.isocalendar().week) for d in workout_dates}
+    streak = 0
+    cursor = today - timedelta(days=today.weekday())
+    while (cursor.isocalendar().year, cursor.isocalendar().week) in completed_weeks:
+        streak += 1
+        cursor -= timedelta(days=7)
+
+    for session in sessions:
+        grouped = {}
+        for s in session.sets:
+            key = (s.exercise_id, s.category or '')
+            item = grouped.setdefault(key, {
+                'name': s.exercise.name, 'category': s.category, 'sets': 0,
+                'weight': None, 'reps': None, 'duration': None,
+                'time_seconds': None, 'distance_meters': None
+            })
+            item['sets'] += 1
+            if s.weight is not None:
+                item['weight'] = s.weight if item['weight'] is None else max(item['weight'], s.weight)
+            if s.reps is not None:
+                item['reps'] = s.reps
+            if s.duration is not None:
+                item['duration'] = s.duration
+            if s.time_seconds is not None:
+                item['time_seconds'] = s.time_seconds
+            if s.distance_meters is not None:
+                item['distance_meters'] = s.distance_meters
+        session.summary = list(grouped.values())
+
+    max_type = max(type_counts.values(), default=0)
+    type_percent = {k: round(v / max_type * 100) if max_type else 0 for k, v in type_counts.items()}
+
+    calendar_obj = {
+        'year': year, 'month': month, 'month_name': pycalendar.month_name[month],
+        'days': days, 'prev_month': prev_month, 'prev_year': prev_year,
+        'next_month': next_month, 'next_year': next_year
+    }
+    stats = {
+        'total_workouts': len(sessions),
+        'this_month': sum(1 for d in workout_dates if d.year == year and d.month == month),
+        'current_streak': streak,
+        'logged_sets': logged_sets,
+        'active_exercises': len(exercise_ids)
+    }
+
+    return render_template(
+        'progress.html',
+        sessions=sessions,
+        calendar=calendar_obj,
+        stats=stats,
+        type_stats=type_counts,
+        type_percent=type_percent
     )
-    return render_template('progress.html', sessions=sessions)
+
 
 
 @app.route('/admin', methods=['GET', 'POST'])
