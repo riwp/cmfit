@@ -60,6 +60,25 @@
     </div>
   </section>
 
+  <section class="progress-week glass-card">
+    <div class="progress-section-header">
+      <div><span class="progress-section-kicker">THIS WEEK</span><h2>{{ week_stats.start.strftime('%b %d') }} – {{ week_stats.end.strftime('%b %d') }}</h2></div>
+      <span class="progress-count-badge">{{ week_stats.total_workouts }} workout{% if week_stats.total_workouts != 1 %}s{% endif %}</span>
+    </div>
+    <div class="progress-week-grid">
+      {% for name, icon, css, description in [
+        ('Strength','fa-dumbbell','strength','Resistance'),
+        ('Power','fa-bolt','power','Explosive'),
+        ('Aerobic','fa-heart-pulse','aerobic','Cardio')
+      ] %}
+      <div class="progress-week-card">
+        <span class="progress-week-icon {{ css }}"><i class="fa-solid {{ icon }}"></i></span>
+        <div><strong>{{ week_stats.type_counts[name] }}</strong><span>{{ name }}</span><small>{{ description }}</small></div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
   <section class="progress-training-split">
     {% for name, icon, css, description in [
       ('Strength','fa-dumbbell','strength','Resistance and strength-focused work'),
@@ -75,6 +94,53 @@
       <p>{{ description }}</p>
     </div>
     {% endfor %}
+  </section>
+
+  <section class="progress-chart glass-card">
+    <div class="progress-section-header">
+      <div><span class="progress-section-kicker">12-MONTH TREND</span><h2>Training by Category</h2></div>
+      <span class="progress-chart-total">{{ long_term.total }} sessions</span>
+    </div>
+
+    <div class="progress-chart-legend">
+      <span><i class="chart-legend-dot chart-legend-strength"></i>Strength</span>
+      <span><i class="chart-legend-dot chart-legend-power"></i>Power</span>
+      <span><i class="chart-legend-dot chart-legend-aerobic"></i>Aerobic</span>
+    </div>
+
+    {% if long_term.total %}
+    <div class="progress-bar-chart" aria-label="Sessions by category over the last 12 months">
+      {% for month in chart_months %}
+      <div class="progress-chart-column">
+        <div class="progress-chart-value">{{ month.total }}</div>
+        <div class="progress-chart-bars" title="{{ month.label }} {{ month.year }}: {{ month.total }} sessions">
+          {% set chart_max = long_term.max_chart_total or 1 %}
+          <span class="progress-chart-segment chart-segment-strength" style="height:{{ (month.counts.Strength / chart_max * 100)|round(2) }}%"></span>
+          <span class="progress-chart-segment chart-segment-power" style="height:{{ (month.counts.Power / chart_max * 100)|round(2) }}%"></span>
+          <span class="progress-chart-segment chart-segment-aerobic" style="height:{{ (month.counts.Aerobic / chart_max * 100)|round(2) }}%"></span>
+        </div>
+        <span class="progress-chart-label {% if month.is_current %}progress-chart-label-current{% endif %}">{{ month.label }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="progress-chart-empty"><i class="fa-solid fa-chart-column"></i><span>Complete workouts to build your 12-month training trend.</span></div>
+    {% endif %}
+  </section>
+
+  <section class="progress-insights">
+    <div class="progress-insight-card glass-card">
+      <span class="progress-insight-icon"><i class="fa-solid fa-calendar-days"></i></span>
+      <div><strong>{{ long_term.total }}</strong><span>Sessions in 12 months</span><small>Average {{ long_term.avg_monthly }} per month</small></div>
+    </div>
+    <div class="progress-insight-card glass-card">
+      <span class="progress-insight-icon"><i class="fa-solid fa-ranking-star"></i></span>
+      <div><strong>{{ long_term.busiest_category }}</strong><span>Top training category</span><small>{{ long_term.busiest_category_count }} sessions in 12 months</small></div>
+    </div>
+    <div class="progress-insight-card glass-card">
+      <span class="progress-insight-icon"><i class="fa-solid fa-calendar-week"></i></span>
+      <div><strong>{{ week_stats.total_workouts }}</strong><span>Workouts this week</span><small>Mon–Sun training week</small></div>
+    </div>
   </section>
 
   <section id="workout-history" class="progress-history">

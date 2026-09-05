@@ -1,0 +1,343 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="plan-page">
+  <section class="plan-hero glass-card">
+    <div>
+      <div class="plan-kicker"><i class="fa-solid fa-calendar-days"></i> PERIODIZED TRAINING</div>
+      <h1>12-Month Training Plan</h1>
+      <p>Build your year around the training qualities you want to emphasize. Each month has a target category mix, weekly session target, phase and focus.</p>
+    </div>
+    <div class="plan-hero-icon"><i class="fa-solid fa-route"></i></div>
+  </section>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="plan-flashes">
+        {% for category, message in messages %}
+          <div class="plan-flash {% if category == 'error' %}plan-flash-error{% endif %}">
+            <i class="fa-solid {% if category == 'error' %}fa-circle-exclamation{% else %}fa-circle-check{% endif %}"></i>
+            <span>{{ message }}</span>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  {% if not selected_plan %}
+  <section class="plan-create glass-card">
+    <div class="plan-section-heading">
+      <div>
+        <span class="plan-section-kicker">GET STARTED</span>
+        <h2>Create your annual plan</h2>
+        <p>Start with a sensible four-phase template, then tune every month to your needs.</p>
+      </div>
+    </div>
+    <form method="POST" action="{{ url_for('create_plan') }}" class="plan-create-form">
+      <label>
+        <span>Plan name</span>
+        <input class="plan-input" type="text" name="title" value="12-Month Training Plan" maxlength="120" required>
+      </label>
+      <label>
+        <span>Start date</span>
+        <input class="plan-input" type="date" name="start_date" value="{{ now_date if now_date is defined else '' }}" required>
+      </label>
+      <button class="plan-primary-btn" type="submit"><i class="fa-solid fa-plus"></i> Create 12-Month Plan</button>
+    </form>
+    <div class="plan-template-preview">
+      {% for item in default_months %}
+      <div class="plan-preview-month">
+        <span>{{ item.month_number }}</span>
+        <strong>{{ item.phase }}</strong>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% else %}
+  <section class="plan-toolbar glass-card">
+    <div class="plan-toolbar-main">
+      <div class="plan-selector-wrap">
+        <span class="plan-section-kicker">YOUR PLANS</span>
+        <div class="plan-selector-row">
+          <select class="plan-select" onchange="if(this.value) window.location=this.value">
+            {% for p in plans %}
+              <option value="{{ url_for('plan', id=p.id) }}" {% if p.id == selected_plan.id %}selected{% endif %}>{{ p.title }}</option>
+            {% endfor %}
+          </select>
+          <button type="button" class="plan-secondary-btn" onclick="document.getElementById('newPlanModal').showModal()"><i class="fa-solid fa-plus"></i><span>New</span></button>
+        </div>
+      </div>
+      <div class="plan-toolbar-stats">
+        <div><strong>12</strong><span>Months</span></div>
+        <div><strong id="planTotalSessions">—</strong><span>Avg sessions / week</span></div>
+        <div><strong id="planDominant">—</strong><span>Current emphasis</span></div>
+      </div>
+    </div>
+  </section>
+
+  <form id="planForm" method="POST" action="{{ url_for('save_plan', plan_id=selected_plan.id) }}">
+    <section class="plan-overview glass-card">
+      <div class="plan-section-heading">
+        <div>
+          <span class="plan-section-kicker">PLAN SETTINGS</span>
+          <h2>Annual cycle</h2>
+        </div>
+        <span class="plan-save-state" id="planSaveState"><i class="fa-solid fa-cloud"></i> Saved when submitted</span>
+      </div>
+      <div class="plan-settings-grid">
+        <label class="plan-field plan-field-wide"><span>Plan name</span><input class="plan-input" name="title" value="{{ selected_plan.title }}" maxlength="120" required></label>
+        <label class="plan-field"><span>Start date</span><input class="plan-input" type="date" name="start_date" value="{{ selected_plan.start_date.isoformat() }}" required></label>
+        <label class="plan-field plan-field-wide"><span>Plan notes</span><textarea class="plan-input plan-textarea" name="plan_notes" rows="2" placeholder="Goals, competition dates, constraints, or anything else that should guide the year.">{{ selected_plan.notes or '' }}</textarea></label>
+      </div>
+    </section>
+
+    <section class="plan-visual glass-card">
+      <div class="plan-section-heading">
+        <div>
+          <span class="plan-section-kicker">YEAR AT A GLANCE</span>
+          <h2>Training emphasis across the year</h2>
+        </div>
+        <span class="plan-total-badge" id="yearMixStatus">100% each month</span>
+      </div>
+      <div class="plan-timeline">
+        {% for month in selected_plan.months %}
+        <button type="button" class="plan-timeline-month" data-month="{{ month.month_number }}" onclick="scrollToMonth({{ month.month_number }})">
+          <span class="plan-timeline-number">{{ '%02d'|format(month.month_number) }}</span>
+          <strong>{{ month.phase or 'Phase' }}</strong>
+          <small>{{ month.name }}</small>
+        </button>
+        {% endfor %}
+      </div>
+      <div class="plan-visual-legend">
+        {% for category in plan_categories %}
+        <span><i class="plan-dot plan-dot-{{ loop.index }}"></i>{{ category_short[category] }}</span>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="plan-months-section">
+      <div class="plan-section-heading plan-months-heading">
+        <div>
+          <span class="plan-section-kicker">MONTH-BY-MONTH</span>
+          <h2>Build the cycle</h2>
+          <p>Use percentages as your intended training emphasis. They describe the mix of your sessions, not the amount of work inside each session.</p>
+        </div>
+        <div class="plan-quick-actions">
+          <button type="button" class="plan-secondary-btn" onclick="applyFourPhaseTemplate()"><i class="fa-solid fa-wand-magic-sparkles"></i><span>4-Phase Template</span></button>
+          <button type="button" class="plan-secondary-btn" onclick="balanceAllMonths()"><i class="fa-solid fa-scale-balanced"></i><span>Balance Mixes</span></button>
+        </div>
+      </div>
+
+      <div class="plan-month-grid">
+        {% for month in selected_plan.months %}
+        <article class="plan-month-card glass-card" id="plan-month-{{ month.month_number }}" data-month-card="{{ month.month_number }}">
+          <div class="plan-month-top">
+            <div class="plan-month-number">{{ '%02d'|format(month.month_number) }}</div>
+            <div class="plan-month-heading">
+              <div class="plan-month-label">MONTH {{ month.month_number }}</div>
+              <input class="plan-month-name" name="name_{{ month.month_number }}" value="{{ month.name }}" maxlength="80" aria-label="Month {{ month.month_number }} name">
+            </div>
+            <button type="button" class="plan-collapse-btn" onclick="toggleMonth({{ month.month_number }})" aria-label="Collapse month {{ month.month_number }}"><i class="fa-solid fa-chevron-up"></i></button>
+          </div>
+
+          <div class="plan-month-meta">
+            <label><span>Phase</span><input class="plan-input plan-input-small" name="phase_{{ month.month_number }}" value="{{ month.phase or '' }}" maxlength="80"></label>
+            <label><span>Focus</span><input class="plan-input plan-input-small" name="focus_{{ month.month_number }}" value="{{ month.focus or '' }}" maxlength="160"></label>
+            <label><span>Sessions / week</span><input class="plan-input plan-input-small plan-session-input" type="number" name="sessions_{{ month.month_number }}" value="{{ month.sessions_per_week or 3 }}" min="0" max="14" step="0.5"></label>
+          </div>
+
+          <div class="plan-mix-heading">
+            <div><span class="plan-section-kicker">CATEGORY MIX</span><strong>Training emphasis</strong></div>
+            <span class="plan-mix-total" data-total-for="{{ month.month_number }}">100%</span>
+          </div>
+
+          <div class="plan-mix-list">
+            {% for category in plan_categories %}
+            {% set value = month.category_mix.get(category, 0) if month.category_mix else 0 %}
+            <div class="plan-mix-row" data-category-row="{{ month.month_number }}" data-category="{{ category }}">
+              <div class="plan-mix-name"><i class="plan-dot plan-dot-{{ loop.index }}"></i><span>{{ category_short[category] }}</span></div>
+              <input class="plan-range" type="range" min="0" max="100" step="1" value="{{ value }}" data-mix-range="{{ month.month_number }}" data-category="{{ category }}" aria-label="{{ category }} percentage for month {{ month.month_number }}">
+              <input class="plan-percent-input" type="number" min="0" max="100" step="1" value="{{ value }}" name="mix_{{ month.month_number }}_{{ category }}" data-mix-input="{{ month.month_number }}" data-category="{{ category }}" aria-label="{{ category }} percentage">
+              <span class="plan-percent-sign">%</span>
+            </div>
+            <progress class="plan-mix-progress plan-progress-{{ loop.index }}" max="100" value="{{ value }}" data-mix-progress="{{ month.month_number }}" data-category="{{ category }}"></progress>
+            {% endfor %}
+          </div>
+
+          <div class="plan-month-note-row">
+            <label><span>Month notes</span><textarea class="plan-input plan-textarea" name="notes_{{ month.month_number }}" rows="2" placeholder="Key adaptations, deload, testing, events, or reminders...">{{ month.notes or '' }}</textarea></label>
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+    </section>
+
+    <div class="plan-save-bar">
+      <div><strong id="planValidationText">Ready to save</strong><span>Every month must total exactly 100%.</span></div>
+      <button id="savePlanButton" class="plan-primary-btn plan-save-btn" type="submit"><i class="fa-solid fa-floppy-disk"></i> Save Training Plan</button>
+    </div>
+  </form>
+
+  <section class="plan-danger-zone glass-card">
+    <div><span class="plan-section-kicker">PLAN MANAGEMENT</span><h2>Delete this plan</h2><p>This removes the saved 12-month plan. Your workouts and exercise library are not affected.</p></div>
+    <form method="POST" action="{{ url_for('delete_plan', plan_id=selected_plan.id) }}" onsubmit="return confirm('Delete this 12-month training plan? This cannot be undone.');">
+      <button class="plan-danger-btn" type="submit"><i class="fa-solid fa-trash"></i> Delete Plan</button>
+    </form>
+  </section>
+  {% endif %}
+</div>
+
+{% if selected_plan %}
+<dialog id="newPlanModal" class="plan-dialog">
+  <form method="POST" action="{{ url_for('create_plan') }}">
+    <div class="plan-dialog-heading"><div><span class="plan-section-kicker">NEW PLAN</span><h2>Create another cycle</h2></div><button type="button" class="plan-dialog-close" onclick="this.closest('dialog').close()"><i class="fa-solid fa-xmark"></i></button></div>
+    <label><span>Plan name</span><input class="plan-input" name="title" value="New 12-Month Plan" maxlength="120" required></label>
+    <label><span>Start date</span><input class="plan-input" type="date" name="start_date" id="newPlanStartDate" required></label>
+    <div class="plan-dialog-actions"><button type="button" class="plan-secondary-btn" onclick="this.closest('dialog').close()">Cancel</button><button class="plan-primary-btn" type="submit"><i class="fa-solid fa-plus"></i> Create Plan</button></div>
+  </form>
+</dialog>
+{% endif %}
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const planForm = document.getElementById('planForm');
+  if (!planForm) return;
+
+  const categoryNames = {{ plan_categories|tojson }};
+  const shortNames = {{ category_short|tojson }};
+
+  function monthInputs(month) {
+    return [...document.querySelectorAll(`[data-mix-input="${month}"]`)];
+  }
+
+  function updateMonth(month) {
+    const inputs = monthInputs(month);
+    const ranges = [...document.querySelectorAll(`[data-mix-range="${month}"]`)];
+    let total = 0;
+    let dominant = null;
+    inputs.forEach(input => {
+      const value = Math.max(0, Math.min(100, Number(input.value) || 0));
+      total += value;
+      if (!dominant || value > dominant.value) dominant = { category: input.dataset.category, value };
+    });
+
+    inputs.forEach(input => {
+      const category = input.dataset.category;
+      const value = Math.max(0, Math.min(100, Number(input.value) || 0));
+      const range = ranges.find(r => r.dataset.category === category);
+      const progress = document.querySelector(`[data-mix-progress="${month}"][data-category="${CSS.escape(category)}"]`);
+      if (range) range.value = value;
+      if (progress) progress.value = value;
+    });
+
+    const totalBadge = document.querySelector(`[data-total-for="${month}"]`);
+    const card = document.querySelector(`[data-month-card="${month}"]`);
+    if (totalBadge) {
+      totalBadge.textContent = `${total}%`;
+      totalBadge.classList.toggle('plan-mix-valid', total === 100);
+      totalBadge.classList.toggle('plan-mix-invalid', total !== 100);
+    }
+    if (card) card.classList.toggle('plan-month-invalid', total !== 100);
+    return { total, dominant };
+  }
+
+  function updateAll() {
+    let allValid = true;
+    let sessions = [];
+    let dominantCounts = {};
+    for (let month = 1; month <= 12; month++) {
+      const result = updateMonth(month);
+      if (result.total !== 100) allValid = false;
+      const sessionInput = document.querySelector(`[name="sessions_${month}"]`);
+      if (sessionInput) sessions.push(Number(sessionInput.value) || 0);
+      if (result.dominant) dominantCounts[result.dominant.category] = (dominantCounts[result.dominant.category] || 0) + 1;
+    }
+
+    const average = sessions.length ? sessions.reduce((a,b) => a+b, 0) / sessions.length : 0;
+    const top = Object.entries(dominantCounts).sort((a,b) => b[1] - a[1])[0];
+    const totalSessions = document.getElementById('planTotalSessions');
+    const dominant = document.getElementById('planDominant');
+    const validation = document.getElementById('planValidationText');
+    const saveButton = document.getElementById('savePlanButton');
+    const status = document.getElementById('yearMixStatus');
+
+    if (totalSessions) totalSessions.textContent = average % 1 ? average.toFixed(1) : average.toFixed(0);
+    if (dominant) dominant.textContent = top ? (shortNames[top[0]] || top[0]) : '—';
+    if (validation) validation.textContent = allValid ? 'Ready to save' : 'Fix category totals before saving';
+    if (saveButton) saveButton.disabled = !allValid;
+    if (status) {
+      status.textContent = allValid ? '12 / 12 balanced' : 'Needs balancing';
+      status.classList.toggle('plan-status-invalid', !allValid);
+    }
+  }
+
+  document.querySelectorAll('[data-mix-input]').forEach(input => {
+    input.addEventListener('input', () => updateAll());
+    input.addEventListener('change', () => updateAll());
+  });
+  document.querySelectorAll('[data-mix-range]').forEach(range => {
+    range.addEventListener('input', () => {
+      const input = document.querySelector(`[data-mix-input="${range.dataset.mixRange}"][data-category="${CSS.escape(range.dataset.category)}"]`);
+      if (input) input.value = range.value;
+      updateAll();
+    });
+  });
+  document.querySelectorAll('[name^="sessions_"]').forEach(input => input.addEventListener('input', updateAll));
+  updateAll();
+
+  window.balanceMonth = function(month) {
+    const inputs = monthInputs(month);
+    const total = inputs.reduce((sum, input) => sum + (Number(input.value) || 0), 0);
+    if (total === 100) return;
+    if (!inputs.length) return;
+    const base = Math.floor(100 / inputs.length);
+    let remainder = 100 - (base * inputs.length);
+    inputs.forEach(input => {
+      input.value = base + (remainder-- > 0 ? 1 : 0);
+    });
+    updateAll();
+  };
+
+  window.balanceAllMonths = function() {
+    for (let month = 1; month <= 12; month++) window.balanceMonth(month);
+  };
+
+  window.applyFourPhaseTemplate = function() {
+    const mixes = [
+      [35,25,15,10,15],[30,35,10,10,15],[20,50,10,10,10],[15,55,10,10,10],
+      [15,45,15,15,10],[10,35,20,25,10],[10,30,25,25,10],[10,25,25,25,15],
+      [10,20,30,25,15],[10,20,30,25,15],[15,25,30,20,10],[20,30,25,15,10]
+    ];
+    const phases = ['Foundation','Foundation','Strength','Strength','Strength → Power','Power','Power','Power','Peak','Peak','Peak','Peak / Transition'];
+    mixes.forEach((values, index) => {
+      const month = index + 1;
+      monthInputs(month).forEach((input, i) => input.value = values[i]);
+      const phase = document.querySelector(`[name="phase_${month}"]`);
+      if (phase) phase.value = phases[index];
+    });
+    updateAll();
+  };
+
+  window.toggleMonth = function(month) {
+    const card = document.querySelector(`[data-month-card="${month}"]`);
+    if (card) card.classList.toggle('plan-month-collapsed');
+  };
+
+  window.scrollToMonth = function(month) {
+    const card = document.getElementById(`plan-month-${month}`);
+    if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  planForm.addEventListener('submit', (event) => {
+    updateAll();
+    if (document.querySelector('.plan-month-invalid')) {
+      event.preventDefault();
+      const firstInvalid = document.querySelector('.plan-month-invalid');
+      if (firstInvalid) firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  });
+
+  const start = document.getElementById('newPlanStartDate');
+  if (start && !start.value) start.value = new Date().toISOString().slice(0,10);
+});
+</script>
+{% endblock %}
