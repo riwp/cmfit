@@ -126,10 +126,14 @@
                         {% if is_rep_category %}
                         <th class="py-2.5 px-3">Reps</th>
                         <th class="py-2.5 px-3">Weight (lbs)</th>
+                        <th class="py-2.5 px-3">SHR</th>
+                        <th class="py-2.5 px-3">EHR</th>
                         <th class="py-2.5 px-3">Rest (s)</th>
                         {% else %}
                         <th class="py-2.5 px-3">Duration (sec)</th>
                         <th class="py-2.5 px-3">Weight</th>
+                        <th class="py-2.5 px-3">SHR</th>
+                        <th class="py-2.5 px-3">EHR</th>
                         <th class="py-2.5 px-3">Rest (s)</th>
                         {% endif %}
                         <th class="py-2.5 px-3 text-right">Status</th>
@@ -142,11 +146,15 @@
                         {% if is_rep_category %}
                         <td class="py-2.5 px-3 text-slate-100 font-bold">{{ set_item.reps if set_item.reps is not none else '-' }}</td>
                         <td class="py-2.5 px-3 text-slate-100 font-bold">{{ set_item.weight if set_item.weight is not none else '-' }}</td>
-                        <td class="py-2.5 px-3 text-slate-100 font-bold">{{ set_item.rest if set_item.rest is not none else '-' }}</td>
+                        <td class="py-2.5 px-3 text-slate-100 font-bold">{{ set_item.rest_start_heart_rate if set_item.rest_start_heart_rate is not none else '-' }}</td>
+                        <td class="py-2.5 px-3 text-slate-100 font-bold">{{ set_item.rest_end_heart_rate if set_item.rest_end_heart_rate is not none else '-' }}</td>
+                        <td class="py-2.5 px-3 text-slate-100 font-bold">{{ set_item.rest_seconds if set_item.rest_seconds is not none else '-' }}</td>
                         {% else %}
                         <td class="py-2.5 px-3 text-slate-100 font-bold">{{ set_item.duration if set_item.duration is not none else '-' }}</td>
                         <td class="py-2.5 px-3 text-slate-100 font-bold">{{ set_item.weight if set_item.weight is not none else '-' }}</td>
-                        <td class="py-2.5 px-3 text-slate-100 font-bold">{{ set_item.rest if set_item.rest is not none else '-' }}</td>
+                        <td class="py-2.5 px-3 text-slate-100 font-bold">{{ set_item.rest_start_heart_rate if set_item.rest_start_heart_rate is not none else '-' }}</td>
+                        <td class="py-2.5 px-3 text-slate-100 font-bold">{{ set_item.rest_end_heart_rate if set_item.rest_end_heart_rate is not none else '-' }}</td>
+                        <td class="py-2.5 px-3 text-slate-100 font-bold">{{ set_item.rest_seconds if set_item.rest_seconds is not none else '-' }}</td>
                         {% endif %}
                         <td class="py-2.5 px-3 text-right font-extrabold text-emerald-400">Logged <i class="fa-solid fa-check text-xs ml-0.5"></i></td>
                     </tr>
@@ -191,11 +199,6 @@
 </div>
 
 <div id="restTimerModal" class="rest-timer-overlay hidden"
-     data-notice-seconds="{{ sound_config.notice_seconds | default(5) }}"
-     data-notice-enabled="{{ 'true' if sound_config.notice_enabled else 'false' }}"
-     data-notice-src="{{ sound_config.notice_url or '' }}"
-     data-end-enabled="{{ 'true' if sound_config.rest_end_enabled else 'false' }}"
-     data-end-src="{{ sound_config.rest_end_url or '' }}"
      data-start-enabled="{{ 'true' if sound_config.start_enabled else 'false' }}"
      data-start-src="{{ sound_config.start_url or '' }}"
      data-log-set-enabled="{{ 'true' if sound_config.log_set_enabled else 'false' }}"
@@ -203,9 +206,21 @@
     <div class="rest-timer-card">
         <span class="rest-timer-label">Rest Period</span>
         <div id="restTimerDisplay" class="rest-timer-time">00:00</div>
+
+        <div class="rest-heart-rate-fields">
+            <label class="rest-heart-rate-field">
+                <span>Starting Heart Rate</span>
+                <input id="restStartHeartRate" type="number" min="1" max="300" inputmode="numeric" autocomplete="off" placeholder="BPM">
+            </label>
+            <label class="rest-heart-rate-field">
+                <span>Ending Heart Rate</span>
+                <input id="restEndHeartRate" type="number" min="1" max="300" inputmode="numeric" autocomplete="off" placeholder="BPM">
+            </label>
+        </div>
+
         <div class="rest-timer-actions">
-            <button type="button" onclick="addRestTime(30)" class="btn-rest-add">+30s</button>
-            <button type="button" onclick="stopRestTimer()" class="btn-rest-skip">Skip Rest</button>
+            <button type="button" onclick="skipRestTimer()" class="btn-rest-add">Skip</button>
+            <button type="button" onclick="saveRestTimer()" class="btn-rest-skip">Save</button>
         </div>
     </div>
 </div>
@@ -229,9 +244,9 @@ function closeLightbox() {
 }
 
 let restInterval = null;
-let restTimeRemaining = 0;
-let timerNoticePlayed = false;
-let timerEndPlayed = false;
+let restTimerStartedAt = 0;
+let restElapsedSeconds = 0;
+let restSetId = null;
 let activeAudio = null;
 let audioContext = null;
 
@@ -239,11 +254,6 @@ function getSoundSettings() {
     const modal = document.getElementById('restTimerModal');
     if (!modal) return {};
     return {
-        noticeSeconds: parseInt(modal.dataset.noticeSeconds, 10) || 5,
-        noticeEnabled: modal.dataset.noticeEnabled === 'true',
-        noticeSrc: modal.dataset.noticeSrc || '',
-        endEnabled: modal.dataset.endEnabled === 'true',
-        endSrc: modal.dataset.endSrc || '',
         startEnabled: modal.dataset.startEnabled === 'true',
         startSrc: modal.dataset.startSrc || '',
         logSetEnabled: modal.dataset.logSetEnabled === 'true',
@@ -254,9 +264,7 @@ function getSoundSettings() {
 /*
  * iOS Safari requires audio playback to originate from a user gesture.
  * The Save button is a user gesture, so use it to resume an AudioContext
- * and, when configured, play the Log Set sound immediately.  Timer sounds
- * then reuse the same audio element instead of creating a new autoplay
- * element at the time the timer expires.
+ * and, when configured, play the Log Set sound immediately.
  */
 function unlockAudio() {
     try {
@@ -310,62 +318,83 @@ function formatTime(seconds) {
     seconds = Math.max(0, seconds);
     return `${Math.floor(seconds/60).toString().padStart(2,'0')}:${(seconds%60).toString().padStart(2,'0')}`;
 }
-function triggerNoticeIfNeeded() {
-    const s = getSoundSettings();
-    if (!timerNoticePlayed && s.noticeEnabled && s.noticeSrc && restTimeRemaining === s.noticeSeconds) {
-        timerNoticePlayed = true;
-        playAudioFile(s.noticeSrc);
-    }
-}
-function triggerEndIfNeeded() {
-    const s = getSoundSettings();
-    if (!timerEndPlayed && s.endEnabled && s.endSrc) {
-        timerEndPlayed = true;
-        playAudioFile(s.endSrc);
-    }
-}
-function startRestTimer(seconds) {
+
+function startRestTimer(setId) {
     if (restInterval) { clearInterval(restInterval); restInterval = null; }
-    restTimeRemaining = Math.max(0, parseInt(seconds,10) || 0);
-    timerNoticePlayed = false;
-    timerEndPlayed = false;
-    const modal = document.getElementById('restTimerModal'), display = document.getElementById('restTimerDisplay');
-    if (!modal || !display) return;
-    display.textContent = formatTime(restTimeRemaining);
-    modal.classList.remove('hidden');
-    triggerNoticeIfNeeded();
-    if (restTimeRemaining === 0) {
-        triggerEndIfNeeded();
-        setTimeout(dismissAndReload, 1200);
-        return;
-    }
-    restInterval = setInterval(() => {
-        restTimeRemaining = Math.max(0, restTimeRemaining - 1);
-        display.textContent = formatTime(restTimeRemaining);
-        triggerNoticeIfNeeded();
-        if (restTimeRemaining === 0) {
-            clearInterval(restInterval);
-            restInterval = null;
-            if ('vibrate' in navigator) navigator.vibrate([200,100,200]);
-            triggerEndIfNeeded();
-            setTimeout(dismissAndReload, 1200);
-        }
-    },1000);
-}
-function addRestTime(seconds) {
-    restTimeRemaining = Math.max(0, restTimeRemaining + seconds);
-    timerNoticePlayed = false;
-    timerEndPlayed = false;
+
+    restSetId = setId;
+    restTimerStartedAt = Date.now();
+    restElapsedSeconds = 0;
+
+    const modal = document.getElementById('restTimerModal');
     const display = document.getElementById('restTimerDisplay');
-    if (display) display.textContent = formatTime(restTimeRemaining);
-    triggerNoticeIfNeeded();
+    const startHeartRate = document.getElementById('restStartHeartRate');
+    const endHeartRate = document.getElementById('restEndHeartRate');
+    if (!modal || !display) return;
+
+    if (startHeartRate) startHeartRate.value = '';
+    if (endHeartRate) endHeartRate.value = '';
+
+    display.textContent = formatTime(0);
+    modal.classList.remove('hidden');
+
+    restInterval = setInterval(() => {
+        restElapsedSeconds = Math.floor((Date.now() - restTimerStartedAt) / 1000);
+        display.textContent = formatTime(restElapsedSeconds);
+    }, 250);
 }
-function stopRestTimer() { dismissAndReload(); }
-function dismissAndReload() {
+
+function closeRestTimerAndReload() {
     if (restInterval) { clearInterval(restInterval); restInterval = null; }
     const modal = document.getElementById('restTimerModal');
     if (modal) modal.classList.add('hidden');
+    restSetId = null;
     window.location.reload();
+}
+
+async function saveRestTimer() {
+    if (!restSetId) return;
+
+    const startHeartRate = document.getElementById('restStartHeartRate');
+    const endHeartRate = document.getElementById('restEndHeartRate');
+    const startValue = startHeartRate ? startHeartRate.value.trim() : '';
+    const endValue = endHeartRate ? endHeartRate.value.trim() : '';
+
+    if (!startValue || !endValue) {
+        if (startHeartRate && !startValue) startHeartRate.focus();
+        else if (endHeartRate) endHeartRate.focus();
+        return;
+    }
+
+    restElapsedSeconds = Math.floor((Date.now() - restTimerStartedAt) / 1000);
+
+    try {
+        const response = await fetch(`/log/${document.querySelector('.set-log-form')?.dataset.logId}/rest`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+            body: JSON.stringify({
+                set_id: restSetId,
+                starting_heart_rate: startValue,
+                ending_heart_rate: endValue,
+                rest_seconds: restElapsedSeconds
+            })
+        });
+
+        if (response.ok) {
+            closeRestTimerAndReload();
+        } else {
+            let message = 'Error saving rest information.';
+            try { const body = await response.json(); if (body.message) message = body.message; } catch (_) {}
+            alert(message);
+        }
+    } catch (err) {
+        console.error('Failed to save rest information:', err);
+        alert('Unable to save rest information. Please try again.');
+    }
+}
+
+function skipRestTimer() {
+    closeRestTimerAndReload();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -391,8 +420,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const logId = form.dataset.logId;
             const data = Object.fromEntries(new FormData(form).entries());
-            const restSeconds = data.rest || form.dataset.restSeconds || 60;
-
             try {
                 const response = await fetch(`/log/${logId}`, {
                     method:'POST',
@@ -400,7 +427,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     body:JSON.stringify(data)
                 });
                 if (response.ok) {
-                    startRestTimer(restSeconds);
+                    const result = await response.json();
+                    startRestTimer(result.set_id);
                 } else {
                     let message = 'Error saving set log.';
                     try { const body = await response.json(); if (body.message) message = body.message; } catch (_) {}

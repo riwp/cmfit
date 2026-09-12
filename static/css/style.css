@@ -676,3 +676,276 @@ input[type="checkbox"]:checked + .muscle-toggle-pill {
 .plan-dialog{width:min(92vw,460px);border:1px solid rgba(255,255,255,.1);border-radius:1rem;padding:0;background:#0b111c;color:#e2e8f0;box-shadow:0 25px 70px rgba(0,0,0,.6)}.plan-dialog::backdrop{background:rgba(0,0,0,.65);backdrop-filter:blur(4px)}.plan-dialog>form{padding:1rem;display:flex;flex-direction:column;gap:.75rem}.plan-dialog-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem}.plan-dialog-actions{display:flex;justify-content:flex-end;gap:.5rem;margin-top:.2rem}
 @media(max-width:899px){.plan-template-preview{grid-template-columns:repeat(6,minmax(0,1fr))}.plan-month-grid{grid-template-columns:1fr}.plan-toolbar-main{align-items:stretch;flex-direction:column}.plan-toolbar-stats{justify-content:space-between}.plan-toolbar-stats>div{text-align:left}.plan-settings-grid{grid-template-columns:1fr}.plan-field-wide{grid-column:auto}}
 @media(max-width:639px){.plan-page{padding-bottom:5.8rem}.plan-hero{padding:1rem}.plan-hero-icon{width:2.6rem;height:2.6rem;flex-basis:2.6rem}.plan-hero h1{font-size:1.2rem}.plan-create,.plan-toolbar,.plan-overview,.plan-visual,.plan-danger-zone{padding:.85rem}.plan-create-form{grid-template-columns:1fr}.plan-template-preview{grid-template-columns:repeat(4,minmax(0,1fr))}.plan-timeline{grid-template-columns:repeat(4,minmax(0,1fr))}.plan-timeline-month{min-height:4.5rem}.plan-quick-actions{width:100%;justify-content:stretch}.plan-quick-actions .plan-secondary-btn{flex:1}.plan-month-meta{grid-template-columns:1fr 1fr}.plan-month-meta label:last-child{grid-column:span 2}.plan-mix-row{grid-template-columns:66px minmax(0,1fr) 36px 9px;gap:.35rem}.plan-mix-progress{width:calc(100% - 113px);margin-left:70px}.plan-save-bar{bottom:4.6rem;padding:.6rem}.plan-save-bar>div{min-width:0}.plan-save-btn{min-width:0;padding-left:.7rem;padding-right:.7rem}.plan-save-btn i{display:none}.plan-danger-zone{align-items:flex-start;flex-direction:column}.plan-danger-zone .plan-danger-btn{width:100%}.plan-dialog{width:94vw}}
+
+
+/* ==========================================================================
+   WORKOUT REST TIMER - HEART RATE LOGGING
+   ========================================================================== */
+.rest-heart-rate-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.rest-heart-rate-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.rest-heart-rate-field span {
+  color: var(--text-muted);
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.rest-heart-rate-field input {
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: 0.75rem;
+  background-color: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-main);
+  font-size: 0.875rem;
+  font-weight: 800;
+  text-align: center;
+  outline: none;
+}
+
+.rest-heart-rate-field input:focus {
+  border-color: var(--accent-emerald-border);
+  box-shadow: 0 0 0 2px var(--accent-emerald-glow);
+}
+
+.rest-heart-rate-field input::placeholder {
+  color: #475569;
+}
+
+/* ========================================================================== 
+   FITNESS TEST DASHBOARD
+   ========================================================================== */
+.progress-tabs{display:flex;gap:.35rem;padding:.3rem;border-radius:.9rem;background:rgba(15,23,42,.55);border:1px solid rgba(255,255,255,.06)}
+.progress-tab{flex:1;border:0;border-radius:.7rem;padding:.7rem .8rem;background:transparent;color:#94a3b8;font-size:.72rem;font-weight:900;cursor:pointer;transition:all .15s ease-in-out}
+.progress-tab-active{background:rgba(16,185,129,.13);color:#34d399;box-shadow:0 0 0 1px rgba(16,185,129,.18)}
+.progress-tab-panel{display:none;flex-direction:column;gap:1rem}
+.progress-tab-panel-active{display:flex}
+.fitness-category-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem}
+.fitness-category-card{border-radius:1rem;padding:.85rem;background:rgba(2,6,23,.3);border:1px solid rgba(255,255,255,.05)}
+.fitness-category-heading{display:flex;align-items:center;gap:.65rem;margin-bottom:.7rem}.fitness-category-heading h3{font-size:.78rem;font-weight:900}.fitness-category-heading span{display:block;margin-top:.15rem;color:var(--text-muted);font-size:.56rem}
+.fitness-category-icon{width:2rem;height:2rem;flex:0 0 2rem;border-radius:.65rem;display:flex;align-items:center;justify-content:center;font-size:.75rem;color:#34d399;background:rgba(16,185,129,.1)}
+.fitness-category-2{color:#fbbf24;background:rgba(245,158,11,.1)}.fitness-category-3{color:#93c5fd;background:rgba(59,130,246,.1)}.fitness-category-4{color:#c4b5fd;background:rgba(139,92,246,.1)}
+.fitness-test-options{display:flex;flex-direction:column;gap:.4rem}.fitness-test-option{display:flex;align-items:flex-start;gap:.5rem;padding:.55rem;border-radius:.7rem;border:1px solid rgba(255,255,255,.05);background:rgba(15,23,42,.35);cursor:pointer}.fitness-test-option input{position:absolute;opacity:0;pointer-events:none}.fitness-test-check{width:1rem;height:1rem;flex:0 0 1rem;margin-top:.05rem;border-radius:.3rem;border:1px solid #475569;background:#0f172a}.fitness-test-option input:checked + .fitness-test-check{background:#10b981;border-color:#10b981;box-shadow:inset 0 0 0 3px #0f172a}.fitness-test-option-text{min-width:0}.fitness-test-option-text strong{display:block;color:#e2e8f0;font-size:.64rem;font-weight:850}.fitness-test-option-text small{display:block;margin-top:.15rem;color:#64748b;font-size:.52rem;line-height:1.35}
+.fitness-test-forms{display:flex;flex-direction:column;gap:.8rem}.fitness-empty-selection{padding:1.5rem;text-align:center;border-radius:1rem}.fitness-empty-selection i{color:#334155;font-size:1.7rem}.fitness-empty-selection h3{margin-top:.5rem;font-size:.8rem;font-weight:900}.fitness-empty-selection p{margin-top:.25rem;color:var(--text-muted);font-size:.62rem}
+.fitness-test-form{border-radius:1.15rem;padding:1rem}.fitness-test-form-heading{display:flex;justify-content:space-between;gap:.75rem}.fitness-test-form-heading h3{margin-top:.2rem;font-size:.95rem;font-weight:900}.fitness-test-form-heading p{margin-top:.25rem;color:var(--text-muted);font-size:.62rem;line-height:1.4}.fitness-test-category-label{color:#34d399;font-size:.56rem;font-weight:900;text-transform:uppercase;letter-spacing:.1em}.fitness-remove-btn{width:2rem;height:2rem;flex:0 0 2rem;border:1px solid rgba(255,255,255,.08);border-radius:.6rem;background:rgba(15,23,42,.65);color:#64748b;cursor:pointer}.fitness-history-stats{display:grid;grid-template-columns:1fr 1fr;gap:.55rem;margin:1rem 0}.fitness-history-stats>div{padding:.65rem;border-radius:.7rem;background:rgba(2,6,23,.32);border:1px solid rgba(255,255,255,.05)}.fitness-history-stats span{display:block;color:#64748b;font-size:.53rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em}.fitness-history-stats strong{display:block;margin-top:.2rem;color:#34d399;font-size:.82rem;font-weight:900}
+.fitness-input-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.6rem}.fitness-input-grid label,.fitness-notes-field{display:flex;flex-direction:column;gap:.3rem}.fitness-input-grid label span,.fitness-notes-field span,.fitness-trend-controls label span{color:#94a3b8;font-size:.56rem;font-weight:850;text-transform:uppercase;letter-spacing:.05em}.fitness-input-grid input,.fitness-notes-field textarea,.fitness-trend-controls select{width:100%;box-sizing:border-box;border:1px solid rgba(255,255,255,.08);border-radius:.7rem;background:#0f172a;color:var(--text-main);padding:.65rem .7rem;font-size:.72rem;font-weight:750;outline:none}.fitness-input-grid input:focus,.fitness-notes-field textarea:focus,.fitness-trend-controls select:focus{border-color:var(--accent-emerald-border);box-shadow:0 0 0 2px var(--accent-emerald-glow)}.fitness-notes-field{margin-top:.7rem}.fitness-notes-field textarea{resize:vertical;min-height:3.2rem}.fitness-form-footer{display:flex;align-items:center;gap:.75rem;margin-top:.8rem}.fitness-save-hint{flex:1;color:#64748b;font-size:.55rem}.fitness-save-btn{width:auto!important;max-width:180px;margin:0!important}
+.fitness-trend-controls{max-width:420px}.fitness-trend-controls label{display:flex;flex-direction:column;gap:.3rem}.fitness-trend-chart{margin-top:1rem;min-height:260px;border-radius:.9rem;background:rgba(2,6,23,.3);border:1px solid rgba(255,255,255,.05);padding:.75rem}.fitness-trend-empty{min-height:240px;display:flex;align-items:center;justify-content:center;text-align:center;color:#64748b;font-size:.65rem}.fitness-trend-title{display:flex;justify-content:space-between;align-items:center;padding:.25rem .25rem .5rem}.fitness-trend-title strong{font-size:.7rem;font-weight:900}.fitness-trend-title span{color:#64748b;font-size:.55rem}.fitness-svg-wrap{width:100%;overflow:hidden}.fitness-trend-svg{display:block;width:100%;height:auto;min-height:220px}.fitness-svg-axis{stroke:rgba(148,163,184,.18);stroke-width:1}.fitness-svg-line{fill:none;stroke:#34d399;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}.fitness-svg-point{fill:#10b981;stroke:#e2e8f0;stroke-width:2}.fitness-trend-table{margin-top:.75rem;overflow:hidden;border-radius:.8rem;border:1px solid rgba(255,255,255,.05)}.fitness-history-row{display:grid;grid-template-columns:1fr .8fr 1.5fr;gap:.6rem;padding:.55rem .65rem;border-top:1px solid rgba(255,255,255,.04);font-size:.57rem;align-items:center}.fitness-history-row:first-child{border-top:0}.fitness-history-head{color:#64748b;background:rgba(2,6,23,.25);font-size:.5rem;font-weight:900;text-transform:uppercase}.fitness-history-row strong{color:#34d399;font-weight:900}.fitness-history-row span:last-child{color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:639px){.fitness-category-grid{grid-template-columns:1fr}.fitness-input-grid{grid-template-columns:1fr 1fr}.fitness-input-grid label:last-child:nth-child(odd){grid-column:span 2}.fitness-form-footer{align-items:stretch;flex-direction:column}.fitness-save-btn{max-width:none;width:100%!important}.fitness-save-hint{text-align:center}.fitness-history-row{grid-template-columns:1fr .8fr 1.2fr}}
+
+/* Dynamic progress values use CSS classes so progress.html contains no inline styling. */
+.progress-width-0{width:0%;}
+.progress-width-1{width:1%;}
+.progress-width-2{width:2%;}
+.progress-width-3{width:3%;}
+.progress-width-4{width:4%;}
+.progress-width-5{width:5%;}
+.progress-width-6{width:6%;}
+.progress-width-7{width:7%;}
+.progress-width-8{width:8%;}
+.progress-width-9{width:9%;}
+.progress-width-10{width:10%;}
+.progress-width-11{width:11%;}
+.progress-width-12{width:12%;}
+.progress-width-13{width:13%;}
+.progress-width-14{width:14%;}
+.progress-width-15{width:15%;}
+.progress-width-16{width:16%;}
+.progress-width-17{width:17%;}
+.progress-width-18{width:18%;}
+.progress-width-19{width:19%;}
+.progress-width-20{width:20%;}
+.progress-width-21{width:21%;}
+.progress-width-22{width:22%;}
+.progress-width-23{width:23%;}
+.progress-width-24{width:24%;}
+.progress-width-25{width:25%;}
+.progress-width-26{width:26%;}
+.progress-width-27{width:27%;}
+.progress-width-28{width:28%;}
+.progress-width-29{width:29%;}
+.progress-width-30{width:30%;}
+.progress-width-31{width:31%;}
+.progress-width-32{width:32%;}
+.progress-width-33{width:33%;}
+.progress-width-34{width:34%;}
+.progress-width-35{width:35%;}
+.progress-width-36{width:36%;}
+.progress-width-37{width:37%;}
+.progress-width-38{width:38%;}
+.progress-width-39{width:39%;}
+.progress-width-40{width:40%;}
+.progress-width-41{width:41%;}
+.progress-width-42{width:42%;}
+.progress-width-43{width:43%;}
+.progress-width-44{width:44%;}
+.progress-width-45{width:45%;}
+.progress-width-46{width:46%;}
+.progress-width-47{width:47%;}
+.progress-width-48{width:48%;}
+.progress-width-49{width:49%;}
+.progress-width-50{width:50%;}
+.progress-width-51{width:51%;}
+.progress-width-52{width:52%;}
+.progress-width-53{width:53%;}
+.progress-width-54{width:54%;}
+.progress-width-55{width:55%;}
+.progress-width-56{width:56%;}
+.progress-width-57{width:57%;}
+.progress-width-58{width:58%;}
+.progress-width-59{width:59%;}
+.progress-width-60{width:60%;}
+.progress-width-61{width:61%;}
+.progress-width-62{width:62%;}
+.progress-width-63{width:63%;}
+.progress-width-64{width:64%;}
+.progress-width-65{width:65%;}
+.progress-width-66{width:66%;}
+.progress-width-67{width:67%;}
+.progress-width-68{width:68%;}
+.progress-width-69{width:69%;}
+.progress-width-70{width:70%;}
+.progress-width-71{width:71%;}
+.progress-width-72{width:72%;}
+.progress-width-73{width:73%;}
+.progress-width-74{width:74%;}
+.progress-width-75{width:75%;}
+.progress-width-76{width:76%;}
+.progress-width-77{width:77%;}
+.progress-width-78{width:78%;}
+.progress-width-79{width:79%;}
+.progress-width-80{width:80%;}
+.progress-width-81{width:81%;}
+.progress-width-82{width:82%;}
+.progress-width-83{width:83%;}
+.progress-width-84{width:84%;}
+.progress-width-85{width:85%;}
+.progress-width-86{width:86%;}
+.progress-width-87{width:87%;}
+.progress-width-88{width:88%;}
+.progress-width-89{width:89%;}
+.progress-width-90{width:90%;}
+.progress-width-91{width:91%;}
+.progress-width-92{width:92%;}
+.progress-width-93{width:93%;}
+.progress-width-94{width:94%;}
+.progress-width-95{width:95%;}
+.progress-width-96{width:96%;}
+.progress-width-97{width:97%;}
+.progress-width-98{width:98%;}
+.progress-width-99{width:99%;}
+.progress-width-100{width:100%;}
+.progress-height-0{height:0%;}
+.progress-height-1{height:1%;}
+.progress-height-2{height:2%;}
+.progress-height-3{height:3%;}
+.progress-height-4{height:4%;}
+.progress-height-5{height:5%;}
+.progress-height-6{height:6%;}
+.progress-height-7{height:7%;}
+.progress-height-8{height:8%;}
+.progress-height-9{height:9%;}
+.progress-height-10{height:10%;}
+.progress-height-11{height:11%;}
+.progress-height-12{height:12%;}
+.progress-height-13{height:13%;}
+.progress-height-14{height:14%;}
+.progress-height-15{height:15%;}
+.progress-height-16{height:16%;}
+.progress-height-17{height:17%;}
+.progress-height-18{height:18%;}
+.progress-height-19{height:19%;}
+.progress-height-20{height:20%;}
+.progress-height-21{height:21%;}
+.progress-height-22{height:22%;}
+.progress-height-23{height:23%;}
+.progress-height-24{height:24%;}
+.progress-height-25{height:25%;}
+.progress-height-26{height:26%;}
+.progress-height-27{height:27%;}
+.progress-height-28{height:28%;}
+.progress-height-29{height:29%;}
+.progress-height-30{height:30%;}
+.progress-height-31{height:31%;}
+.progress-height-32{height:32%;}
+.progress-height-33{height:33%;}
+.progress-height-34{height:34%;}
+.progress-height-35{height:35%;}
+.progress-height-36{height:36%;}
+.progress-height-37{height:37%;}
+.progress-height-38{height:38%;}
+.progress-height-39{height:39%;}
+.progress-height-40{height:40%;}
+.progress-height-41{height:41%;}
+.progress-height-42{height:42%;}
+.progress-height-43{height:43%;}
+.progress-height-44{height:44%;}
+.progress-height-45{height:45%;}
+.progress-height-46{height:46%;}
+.progress-height-47{height:47%;}
+.progress-height-48{height:48%;}
+.progress-height-49{height:49%;}
+.progress-height-50{height:50%;}
+.progress-height-51{height:51%;}
+.progress-height-52{height:52%;}
+.progress-height-53{height:53%;}
+.progress-height-54{height:54%;}
+.progress-height-55{height:55%;}
+.progress-height-56{height:56%;}
+.progress-height-57{height:57%;}
+.progress-height-58{height:58%;}
+.progress-height-59{height:59%;}
+.progress-height-60{height:60%;}
+.progress-height-61{height:61%;}
+.progress-height-62{height:62%;}
+.progress-height-63{height:63%;}
+.progress-height-64{height:64%;}
+.progress-height-65{height:65%;}
+.progress-height-66{height:66%;}
+.progress-height-67{height:67%;}
+.progress-height-68{height:68%;}
+.progress-height-69{height:69%;}
+.progress-height-70{height:70%;}
+.progress-height-71{height:71%;}
+.progress-height-72{height:72%;}
+.progress-height-73{height:73%;}
+.progress-height-74{height:74%;}
+.progress-height-75{height:75%;}
+.progress-height-76{height:76%;}
+.progress-height-77{height:77%;}
+.progress-height-78{height:78%;}
+.progress-height-79{height:79%;}
+.progress-height-80{height:80%;}
+.progress-height-81{height:81%;}
+.progress-height-82{height:82%;}
+.progress-height-83{height:83%;}
+.progress-height-84{height:84%;}
+.progress-height-85{height:85%;}
+.progress-height-86{height:86%;}
+.progress-height-87{height:87%;}
+.progress-height-88{height:88%;}
+.progress-height-89{height:89%;}
+.progress-height-90{height:90%;}
+.progress-height-91{height:91%;}
+.progress-height-92{height:92%;}
+.progress-height-93{height:93%;}
+.progress-height-94{height:94%;}
+.progress-height-95{height:95%;}
+.progress-height-96{height:96%;}
+.progress-height-97{height:97%;}
+.progress-height-98{height:98%;}
+.progress-height-99{height:99%;}
+.progress-height-100{height:100%;}

@@ -176,6 +176,9 @@ class SetLog(db.Model):
     time_seconds = db.Column(db.Integer, nullable=True)
     distance_meters = db.Column(db.Float, nullable=True)
     rest = db.Column(db.Integer, nullable=True)
+    rest_start_heart_rate = db.Column(db.Integer, nullable=True)
+    rest_end_heart_rate = db.Column(db.Integer, nullable=True)
+    rest_seconds = db.Column(db.Integer, nullable=True)
 
     exercise = db.relationship('Exercise')
 
@@ -193,10 +196,24 @@ class ExerciseHistory(db.Model):
     time_seconds = db.Column(db.Integer, nullable=True)
     distance_meters = db.Column(db.Float, nullable=True)
     rest = db.Column(db.Integer, nullable=True)
+    rest_start_heart_rate = db.Column(db.Integer, nullable=True)
+    rest_end_heart_rate = db.Column(db.Integer, nullable=True)
+    rest_seconds = db.Column(db.Integer, nullable=True)
     logged_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     workout_log = db.relationship('WorkoutLog')
     exercise = db.relationship('Exercise')
+
+
+class FitnessTestResult(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    test_key = db.Column(db.String(80), nullable=False, index=True)
+    category = db.Column(db.String(50), nullable=False)
+    value = db.Column(db.Float, nullable=False)
+    unit = db.Column(db.String(30), nullable=False)
+    notes = db.Column(db.Text, nullable=True)
+    tested_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
+    details = db.Column(db.JSON, nullable=True)
 
 
 class SoundFile(db.Model):
@@ -837,6 +854,42 @@ def log_exercise(log_id):
     return render_template('log_workout.html', log=log, exercise_cards=exercise_cards)
 
 
+@app.route('/log/<int:log_id>/rest', methods=['POST'])
+def save_rest_info(log_id):
+    log = WorkoutLog.query.get_or_404(log_id)
+    data = request.get_json(silent=True) if request.is_json else request.form
+
+    try:
+        set_id = int(data.get('set_id'))
+        starting_heart_rate = int(data.get('starting_heart_rate'))
+        ending_heart_rate = int(data.get('ending_heart_rate'))
+        rest_seconds = max(0, int(data.get('rest_seconds')))
+    except (TypeError, ValueError):
+        return jsonify({'status': 'error', 'message': 'Starting heart rate, ending heart rate, and rest time are required.'}), 400
+
+    if not 1 <= starting_heart_rate <= 300 or not 1 <= ending_heart_rate <= 300:
+        return jsonify({'status': 'error', 'message': 'Heart rate must be between 1 and 300 BPM.'}), 400
+
+    set_log = SetLog.query.filter_by(id=set_id, workout_log_id=log.id).first()
+    if not set_log:
+        return jsonify({'status': 'error', 'message': 'The logged set was not found.'}), 404
+
+    try:
+        set_log.rest_start_heart_rate = starting_heart_rate
+        set_log.rest_end_heart_rate = ending_heart_rate
+        set_log.rest_seconds = rest_seconds
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        app.logger.exception("Failed to save rest information for workout log %s", log.id)
+        return jsonify({
+            'status': 'error',
+            'message': 'Database error while saving rest information. Check the Flask console for details.'
+        }), 500
+
+    return jsonify({'status': 'success', 'set_id': set_log.id}), 200
+
+
 @app.route('/log/<int:log_id>/finish', methods=['POST'])
 def finish_workout(log_id):
     log = WorkoutLog.query.get_or_404(log_id)
@@ -861,6 +914,9 @@ def finish_workout(log_id):
             time_seconds=set_log.time_seconds,
             distance_meters=set_log.distance_meters,
             rest=set_log.rest,
+            rest_start_heart_rate=set_log.rest_start_heart_rate,
+            rest_end_heart_rate=set_log.rest_end_heart_rate,
+            rest_seconds=set_log.rest_seconds,
             logged_at=datetime.utcnow(),
         ))
 
@@ -876,7 +932,12 @@ def progress():
     if not 1 <= month <= 12:
         month, year = today.month, today.year
 
+    # Only include completed logs whose parent workout still exists. Older
+    # records can become orphaned if a workout was deleted after being logged.
+    # Without this join, session.workout can be None and the dashboard fails
+    # while building the training categories.
     sessions = (WorkoutLog.query
+                .join(Workout, Workout.id == WorkoutLog.workout_id)
                 .filter(WorkoutLog.end_time.isnot(None))
                 .order_by(WorkoutLog.end_time.desc()).all())
 
@@ -1068,18 +1129,81 @@ def progress():
         'max_chart_total': max_chart_total
     }
 
+    fitness_tests = [
+        {'key': 'horizontal_long_jump', 'name': 'Horizontal Long Jump', 'category': 'Power', 'unit': 'in', 'input_label': 'Distance', 'best_direction': 'higher', 'attempts': 3, 'description': 'Best of 3 attempts.'},
+        {'key': 'vertical_jump', 'name': 'Vertical Jump', 'category': 'Power', 'unit': 'in', 'input_label': 'Height', 'best_direction': 'higher', 'attempts': 3, 'description': 'Best of 3 attempts.'},
+        {'key': 'medicine_ball_throw', 'name': 'Medicine Ball Throw', 'category': 'Power', 'unit': 'ft', 'input_label': 'Distance', 'best_direction': 'higher', 'attempts': 3, 'description': 'Best of 3 attempts.'},
+        {'key': 'fatigue_index', 'name': 'Fatigue Index', 'category': 'Anaerobic Capacity', 'unit': '%', 'input_label': 'Round time', 'best_direction': 'lower', 'attempts': 6, 'description': 'Six rounds of 50 heavy-bag punches with 30 seconds rest.'},
+        {'key': 'max_punches_60', 'name': '60 Seconds Max Effort', 'category': 'Anaerobic Capacity', 'unit': 'punches', 'input_label': 'Punches', 'best_direction': 'higher', 'attempts': 1, 'description': 'Maximum punches in 60 seconds.'},
+        {'key': 'cooper_run', 'name': 'Cooper 12 min Run', 'category': 'Anaerobic Base', 'unit': 'VO₂ max', 'input_label': 'Distance', 'best_direction': 'higher', 'attempts': 1, 'description': 'Enter total distance in miles; VO₂ max is calculated automatically.'},
+        {'key': 'max_kicks_60', 'name': '60 Seconds Full Power Kicks', 'category': 'Muscle Endurance', 'unit': 'kicks', 'input_label': 'Kicks', 'best_direction': 'higher', 'attempts': 1, 'description': 'Maximum full-power kicks in 60 seconds.'},
+        {'key': 'pullup_static_hold', 'name': 'Pull Up Static Hold', 'category': 'Muscle Endurance', 'unit': 'sec', 'input_label': 'Duration', 'best_direction': 'higher', 'attempts': 1, 'description': '90-degree elbow hold with chin above the bar.'},
+    ]
+    fitness_history_rows = FitnessTestResult.query.order_by(FitnessTestResult.tested_at.desc()).all()
+    fitness_stats = {}
+    for test in fitness_tests:
+        values = [r.value for r in fitness_history_rows if r.test_key == test['key']]
+        fitness_stats[test['key']] = {
+            'best': (min(values) if test['best_direction'] == 'lower' else max(values)) if values else None,
+            'average': (sum(values) / len(values)) if values else None,
+            'count': len(values), 'unit': test['unit']
+        }
+    fitness_history = {test['key']: [
+        {'id': r.id, 'value': r.value, 'unit': r.unit,
+         'tested_at': r.tested_at.strftime('%Y-%m-%d %H:%M'), 'notes': r.notes or ''}
+        for r in reversed(fitness_history_rows) if r.test_key == test['key']
+    ] for test in fitness_tests}
+
     return render_template(
-        'progress.html',
-        sessions=sessions,
-        calendar=calendar_obj,
-        stats=stats,
-        type_stats=type_counts,
-        type_percent=type_percent,
-        week_stats=week_stats,
-        chart_months=chart_months,
-        long_term=long_term
+        'progress.html', sessions=sessions, calendar=calendar_obj, stats=stats,
+        type_stats=type_counts, type_percent=type_percent, week_stats=week_stats,
+        chart_months=chart_months, long_term=long_term, fitness_tests=fitness_tests,
+        fitness_stats=fitness_stats, fitness_history=fitness_history
     )
 
+
+@app.route('/progress/fitness-test', methods=['POST'])
+def save_fitness_test():
+    definitions = {
+        'horizontal_long_jump': ('Horizontal Long Jump', 'Power', 'in', 'higher'),
+        'vertical_jump': ('Vertical Jump', 'Power', 'in', 'higher'),
+        'medicine_ball_throw': ('Medicine Ball Throw', 'Power', 'ft', 'higher'),
+        'fatigue_index': ('Fatigue Index', 'Anaerobic Capacity', '%', 'lower'),
+        'max_punches_60': ('60 Seconds Max Effort', 'Anaerobic Capacity', 'punches', 'higher'),
+        'cooper_run': ('Cooper 12 min Run', 'Anaerobic Base', 'VO₂ max', 'higher'),
+        'max_kicks_60': ('60 Seconds Full Power Kicks', 'Muscle Endurance', 'kicks', 'higher'),
+        'pullup_static_hold': ('Pull Up Static Hold', 'Muscle Endurance', 'sec', 'higher'),
+    }
+    key = (request.form.get('test_key') or '').strip()
+    if key not in definitions:
+        flash('Please select a valid fitness test.', 'error'); return redirect(url_for('progress', tab='fitness'))
+    name, category, unit, direction = definitions[key]
+    details = {}
+    try:
+        if key == 'fatigue_index':
+            rounds = [float(request.form.get(f'round_{i}')) for i in range(1, 7)]
+            if any(v <= 0 for v in rounds): raise ValueError
+            value = ((rounds[5] - rounds[0]) / rounds[0]) * 100
+            details['round_times'] = rounds
+        elif key in ('horizontal_long_jump', 'vertical_jump', 'medicine_ball_throw'):
+            attempts = [float(request.form.get(f'attempt_{i}')) for i in range(1, 4)]
+            if any(v < 0 for v in attempts): raise ValueError
+            value = max(attempts); details['attempts'] = attempts
+        else:
+            raw = request.form.get('value'); value = float(raw)
+            if value < 0: raise ValueError
+            if key == 'cooper_run':
+                if value <= 0: raise ValueError
+                details['distance_miles'] = value
+                value = (value * 1609.344 - 504.9) / 44.73
+    except (TypeError, ValueError):
+        flash('Please enter valid values for the selected fitness test.', 'error'); return redirect(url_for('progress', tab='fitness', test=key))
+    db.session.add(FitnessTestResult(test_key=key, category=category, value=value, unit=unit,
+                                     notes=(request.form.get('notes') or '').strip(),
+                                     tested_at=datetime.utcnow(), details=details or None))
+    db.session.commit()
+    flash(f'{name} saved successfully.', 'success')
+    return redirect(url_for('progress', tab='fitness', test=key))
 
 
 def _plan_month_payload(month_number, form):
@@ -1291,55 +1415,80 @@ def delete_sound(sound_id):
     return redirect(url_for('admin'))
 
 
-# Migration Helper
+# Database initialization and migration
 def run_migrations():
+    """Bring an existing SQLite database up to the schema expected by this app."""
     inspector = inspect(db.engine)
-    
-    if 'exercise' in inspector.get_table_names():
-        columns = [c['name'] for c in inspector.get_columns('exercise')]
-        if 'exercise_type' not in columns:
-            db.session.execute(text("ALTER TABLE exercise ADD COLUMN exercise_type VARCHAR(50) DEFAULT 'Strength' NOT NULL"))
-        if 'duration' not in columns:
-            db.session.execute(text("ALTER TABLE exercise ADD COLUMN duration FLOAT"))
-        if 'image_urls' not in columns:
-            db.session.execute(text("ALTER TABLE exercise ADD COLUMN image_urls JSON"))
-        if 'categories' not in columns:
-            db.session.execute(text("ALTER TABLE exercise ADD COLUMN categories JSON"))
-        if 'category_targets' not in columns:
-            db.session.execute(text("ALTER TABLE exercise ADD COLUMN category_targets JSON"))
-        db.session.commit()
+    table_names = inspector.get_table_names()
 
-    if 'workout_exercise' in inspector.get_table_names():
-        columns = [c['name'] for c in inspector.get_columns('workout_exercise')]
-        if 'custom_duration' not in columns:
-            db.session.execute(text("ALTER TABLE workout_exercise ADD COLUMN custom_duration FLOAT"))
-        if 'categories' not in columns:
-            db.session.execute(text("ALTER TABLE workout_exercise ADD COLUMN categories JSON"))
-        if 'category_targets' not in columns:
-            db.session.execute(text("ALTER TABLE workout_exercise ADD COLUMN category_targets JSON"))
-        if 'category' not in columns:
-            db.session.execute(text("ALTER TABLE workout_exercise ADD COLUMN category VARCHAR(50)"))
-        db.session.commit()
+    migrations = {
+        'exercise': {
+            'exercise_type': "ALTER TABLE exercise ADD COLUMN exercise_type VARCHAR(50) DEFAULT 'Strength' NOT NULL",
+            'duration': "ALTER TABLE exercise ADD COLUMN duration FLOAT",
+            'image_urls': "ALTER TABLE exercise ADD COLUMN image_urls JSON",
+            'categories': "ALTER TABLE exercise ADD COLUMN categories JSON",
+            'category_targets': "ALTER TABLE exercise ADD COLUMN category_targets JSON",
+        },
+        'workout_exercise': {
+            'custom_duration': "ALTER TABLE workout_exercise ADD COLUMN custom_duration FLOAT",
+            'categories': "ALTER TABLE workout_exercise ADD COLUMN categories JSON",
+            'category_targets': "ALTER TABLE workout_exercise ADD COLUMN category_targets JSON",
+            'category': "ALTER TABLE workout_exercise ADD COLUMN category VARCHAR(50)",
+        },
+        'set_log': {
+            'duration': "ALTER TABLE set_log ADD COLUMN duration FLOAT",
+            'time_seconds': "ALTER TABLE set_log ADD COLUMN time_seconds INTEGER",
+            'distance_meters': "ALTER TABLE set_log ADD COLUMN distance_meters FLOAT",
+            'workout_exercise_id': "ALTER TABLE set_log ADD COLUMN workout_exercise_id INTEGER",
+            'category': "ALTER TABLE set_log ADD COLUMN category VARCHAR(50)",
+            'rest': "ALTER TABLE set_log ADD COLUMN rest INTEGER",
+            'rest_start_heart_rate': "ALTER TABLE set_log ADD COLUMN rest_start_heart_rate INTEGER",
+            'rest_end_heart_rate': "ALTER TABLE set_log ADD COLUMN rest_end_heart_rate INTEGER",
+            'rest_seconds': "ALTER TABLE set_log ADD COLUMN rest_seconds INTEGER",
+        },
+        'exercise_history': {
+            'rest_start_heart_rate': "ALTER TABLE exercise_history ADD COLUMN rest_start_heart_rate INTEGER",
+            'rest_end_heart_rate': "ALTER TABLE exercise_history ADD COLUMN rest_end_heart_rate INTEGER",
+            'rest_seconds': "ALTER TABLE exercise_history ADD COLUMN rest_seconds INTEGER",
+        },
+    }
 
-    if 'set_log' in inspector.get_table_names():
-        columns = [c['name'] for c in inspector.get_columns('set_log')]
-        if 'duration' not in columns:
-            db.session.execute(text("ALTER TABLE set_log ADD COLUMN duration FLOAT"))
-        if 'time_seconds' not in columns:
-            db.session.execute(text("ALTER TABLE set_log ADD COLUMN time_seconds INTEGER"))
-        if 'distance_meters' not in columns:
-            db.session.execute(text("ALTER TABLE set_log ADD COLUMN distance_meters FLOAT"))
-        if 'workout_exercise_id' not in columns:
-            db.session.execute(text("ALTER TABLE set_log ADD COLUMN workout_exercise_id INTEGER"))
-        if 'category' not in columns:
-            db.session.execute(text("ALTER TABLE set_log ADD COLUMN category VARCHAR(50)"))
-        if 'rest' not in columns:
-            db.session.execute(text("ALTER TABLE set_log ADD COLUMN rest INTEGER"))
-        db.session.commit()
+    try:
+        for table_name, column_migrations in migrations.items():
+            if table_name not in table_names:
+                continue
+
+            columns = {column['name'] for column in inspect(db.engine).get_columns(table_name)}
+
+            for column_name, statement in column_migrations.items():
+                if column_name not in columns:
+                    app.logger.info(
+                        "Adding missing database column %s.%s",
+                        table_name,
+                        column_name,
+                    )
+                    db.session.execute(text(statement))
+                    db.session.commit()
+                    columns.add(column_name)
+
+    except Exception:
+        db.session.rollback()
+        app.logger.exception("Database migration failed")
+        raise
 
 
-if __name__ == '__main__':
+def initialize_database():
+    """Create missing tables and apply safe migrations at application startup."""
     with app.app_context():
         db.create_all()
         run_migrations()
+        app.logger.info("Database initialization and migrations completed")
+
+
+# Run at module import time so migrations also execute when the app is started
+# with `flask run`, Gunicorn, uWSGI, or another WSGI server.
+initialize_database()
+
+
+if __name__ == '__main__':
     app.run(host='0.0.0.0', port=52889, debug=True)
