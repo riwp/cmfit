@@ -3,9 +3,13 @@ import uuid
 from datetime import datetime
 from dotenv import load_dotenv
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, abort
-from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import inspect, text
 from werkzeug.utils import secure_filename
+from models import (
+    db, run_migrations, Exercise, Workout, WorkoutExercise, WorkoutLog, SetLog,
+    ExerciseHistory, FitnessTestResult, SoundFile, AppSetting, TrainingPlan, TrainingPlanMonth
+)
+from api.v1.routes import api_v1
+from services import exercise_service
 
 import calendar as pycalendar
 from datetime import date, timedelta
@@ -29,7 +33,8 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = os.path.join(basedir, 'static', 'uploads')
 app.config['SOUND_FOLDER'] = os.path.join(basedir, 'static', 'sounds')
 
-db = SQLAlchemy(app)
+db.init_app(app)
+app.register_blueprint(api_v1)
 
 # Ensure upload directories exist
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -90,169 +95,6 @@ DEFAULT_PLAN_PHASES = [
     ('Peak', 'Maintain strength while emphasizing speed'),
     ('Peak / Transition', 'Consolidate gains and prepare for the next cycle'),
 ]
-
-
-# Models
-class Exercise(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    order = db.Column('order', db.Integer, default=0, nullable=False)
-    muscles = db.Column(db.JSON, nullable=True)
-    sets = db.Column(db.Integer, default=3)
-    reps = db.Column(db.Integer, default=10)
-    duration = db.Column(db.Float, nullable=True)  # Duration column (minutes)
-    rest = db.Column(db.Integer, default=60)
-    image = db.Column(db.String(255), nullable=True)  # Single image fallback
-    image_urls = db.Column(db.JSON, nullable=True)     # Multi-image array list
-    link = db.Column(db.String(255), nullable=True)
-    instructions = db.Column(db.Text, nullable=True)
-    exercise_type = db.Column(db.String(50), nullable=False, default='Strength')
-    # Category-specific default targets. Example: {'Strength': {'sets': 3, 'reps': 10, 'weight': 50, 'rest': 60}}
-    categories = db.Column(db.JSON, nullable=True)
-    category_targets = db.Column(db.JSON, nullable=True)
-
-
-class Workout(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String(100), nullable=False)
-    description = db.Column(db.Text, nullable=True)
-    exercises = db.relationship(
-        'WorkoutExercise', backref='workout', cascade='all, delete-orphan'
-    )
-
-
-class WorkoutExercise(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    workout_id = db.Column(
-        db.Integer, db.ForeignKey('workout.id'), nullable=False
-    )
-    exercise_id = db.Column(
-        db.Integer, db.ForeignKey('exercise.id'), nullable=False
-    )
-    custom_sets = db.Column(db.Integer, nullable=True)
-    custom_reps = db.Column(db.Integer, nullable=True)
-    custom_duration = db.Column(db.Float, nullable=True)
-    custom_rest = db.Column(db.Integer, nullable=True)
-    categories = db.Column(db.JSON, nullable=True)
-    category_targets = db.Column(db.JSON, nullable=True)
-    # One WorkoutExercise row represents one exercise/category pairing.
-    category = db.Column(db.String(50), nullable=True)
-    order = db.Column(db.Integer, default=0, nullable=False)
-
-    exercise = db.relationship('Exercise')
-
-
-class WorkoutLog(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    workout_id = db.Column(
-        db.Integer, db.ForeignKey('workout.id'), nullable=False
-    )
-    start_time = db.Column(db.DateTime, default=datetime.utcnow)
-    end_time = db.Column(db.DateTime, nullable=True)
-    notes = db.Column(db.Text, nullable=True)
-
-    workout = db.relationship('Workout')
-    sets = db.relationship(
-        'SetLog', backref='workout_log', cascade='all, delete-orphan'
-    )
-
-
-class SetLog(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    workout_log_id = db.Column(
-        db.Integer, db.ForeignKey('workout_log.id'), nullable=False
-    )
-    exercise_id = db.Column(
-        db.Integer, db.ForeignKey('exercise.id'), nullable=False
-    )
-    workout_exercise_id = db.Column(
-        db.Integer, db.ForeignKey('workout_exercise.id'), nullable=True
-    )
-    category = db.Column(db.String(50), nullable=True)
-    set_number = db.Column(db.Integer, nullable=False)
-    reps = db.Column(db.Integer, nullable=True)
-    weight = db.Column(db.Float, nullable=True)
-    duration = db.Column(db.Float, nullable=True)
-    time_seconds = db.Column(db.Integer, nullable=True)
-    distance_meters = db.Column(db.Float, nullable=True)
-    rest = db.Column(db.Integer, nullable=True)
-    rest_start_heart_rate = db.Column(db.Integer, nullable=True)
-    rest_end_heart_rate = db.Column(db.Integer, nullable=True)
-    rest_seconds = db.Column(db.Integer, nullable=True)
-
-    exercise = db.relationship('Exercise')
-
-
-class ExerciseHistory(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    workout_log_id = db.Column(db.Integer, db.ForeignKey('workout_log.id'), nullable=False)
-    workout_exercise_id = db.Column(db.Integer, nullable=True)
-    exercise_id = db.Column(db.Integer, db.ForeignKey('exercise.id'), nullable=False)
-    category = db.Column(db.String(50), nullable=True)
-    set_number = db.Column(db.Integer, nullable=False)
-    reps = db.Column(db.Integer, nullable=True)
-    weight = db.Column(db.Float, nullable=True)
-    duration = db.Column(db.Float, nullable=True)
-    time_seconds = db.Column(db.Integer, nullable=True)
-    distance_meters = db.Column(db.Float, nullable=True)
-    rest = db.Column(db.Integer, nullable=True)
-    rest_start_heart_rate = db.Column(db.Integer, nullable=True)
-    rest_end_heart_rate = db.Column(db.Integer, nullable=True)
-    rest_seconds = db.Column(db.Integer, nullable=True)
-    logged_at = db.Column(db.DateTime, default=datetime.utcnow)
-
-    workout_log = db.relationship('WorkoutLog')
-    exercise = db.relationship('Exercise')
-
-
-class FitnessTestResult(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    test_key = db.Column(db.String(80), nullable=False, index=True)
-    category = db.Column(db.String(50), nullable=False)
-    value = db.Column(db.Float, nullable=False)
-    unit = db.Column(db.String(30), nullable=False)
-    notes = db.Column(db.Text, nullable=True)
-    tested_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
-    details = db.Column(db.JSON, nullable=True)
-
-
-class SoundFile(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    filename = db.Column(db.String(255), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
-
-class AppSetting(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    key = db.Column(db.String(50), unique=True, nullable=False)
-    value = db.Column(db.String(255), nullable=True)
-
-
-class TrainingPlan(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String(120), nullable=False, default='12-Month Training Plan')
-    start_date = db.Column(db.Date, nullable=False, default=date.today)
-    notes = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    months = db.relationship(
-        'TrainingPlanMonth', backref='plan', cascade='all, delete-orphan',
-        order_by='TrainingPlanMonth.month_number'
-    )
-
-
-class TrainingPlanMonth(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    plan_id = db.Column(db.Integer, db.ForeignKey('training_plan.id'), nullable=False)
-    month_number = db.Column(db.Integer, nullable=False)
-    name = db.Column(db.String(80), nullable=False)
-    phase = db.Column(db.String(80), nullable=True)
-    focus = db.Column(db.String(160), nullable=True)
-    sessions_per_week = db.Column(db.Float, default=3)
-    category_mix = db.Column(db.JSON, nullable=False, default=dict)
-    notes = db.Column(db.Text, nullable=True)
 
 
 # Helpers
@@ -343,8 +185,9 @@ def index():
 
 @app.route('/exercises')
 def exercise_list():
-    all_exercises = Exercise.query.order_by(Exercise.order.asc()).all()
+    all_exercises = exercise_service.list_exercises()
     return render_template('exercise_list.html', all_exercises=all_exercises)
+
 
 @app.route('/exercise/new', methods=['GET', 'POST'])
 def add_new_exercise():
@@ -378,23 +221,21 @@ def add_new_exercise():
         uploaded_files = request.files.getlist('images') or request.files.getlist('image')
         image_list = save_multiple_images(uploaded_files)
 
-        new_exercise = Exercise(
-            name=name,
-            exercise_type=selected_categories[0],
-            categories=selected_categories,
-            category_targets=category_targets,
-            muscles=muscles,
-            sets=category_targets[selected_categories[0]]['sets'],
-            reps=category_targets[selected_categories[0]]['reps'],
-            duration=category_targets[selected_categories[0]]['duration'],
-            rest=category_targets[selected_categories[0]]['rest'],
-            image=image_list[0] if image_list else None,
-            image_urls=image_list if image_list else None,
-            link=link,
-            instructions=instructions,
-        )
-        db.session.add(new_exercise)
-        db.session.commit()
+        exercise_service.create_exercise({
+            'name': name,
+            'exercise_type': selected_categories[0],
+            'categories': selected_categories,
+            'category_targets': category_targets,
+            'muscles': muscles,
+            'sets': category_targets[selected_categories[0]]['sets'],
+            'reps': category_targets[selected_categories[0]]['reps'],
+            'duration': category_targets[selected_categories[0]]['duration'],
+            'rest': category_targets[selected_categories[0]]['rest'],
+            'image': image_list[0] if image_list else None,
+            'image_urls': image_list if image_list else None,
+            'link': link,
+            'instructions': instructions,
+        })
 
         if return_workout_id:
             return redirect(url_for('add_exercise', workout_id=return_workout_id))
@@ -406,32 +247,21 @@ def add_new_exercise():
                            return_workout_id=return_workout_id)
 
 
-
 @app.route('/exercises/reorder', methods=['POST'])
 def reorder_exercises():
     data = request.get_json() or {}
-    order_data = data.get('order', [])
-    
-    # Example logic depending on your ORM (SQLAlchemy, Peewee, etc.)
-    for item in order_data:
-        exercise_id = item.get('id')
-        new_order = item.get('order')
-        
-        exercise = Exercise.query.get(exercise_id)
-        if exercise:
-            exercise.order = new_order
-            
-    db.session.commit()
+    exercise_service.reorder_exercises(data.get('order', []))
     return jsonify({'status': 'success', 'message': 'Exercises reordered successfully'})
+
 
 @app.route('/exercise/<int:id>', methods=['GET', 'POST'])
 def display_exercise(id):
-    exercise = db.session.get(Exercise, id) or abort(404)
+    exercise = exercise_service.get_exercise(id) or abort(404)
     return_workout_id = request.args.get('return_workout_id', '')
 
     if request.method == 'POST':
         return_workout_id = request.form.get('return_workout_id', '')
-        exercise.name = (request.form.get('name') or exercise.name).strip()
+        name = (request.form.get('name') or exercise.name).strip()
         selected_categories = [c for c in request.form.getlist('categories') if c in VALID_EXERCISE_TYPES]
         if not selected_categories:
             flash('Please select at least one category/type.', 'error')
@@ -446,17 +276,6 @@ def display_exercise(id):
                 'weight': max(0.0, safe_float(request.form.get(f'weight_{category}'), 0.0)),
                 'rest': max(0, safe_int(request.form.get(f'rest_{category}'), 60)),
             }
-
-        exercise.categories = selected_categories
-        exercise.category_targets = category_targets
-        exercise.exercise_type = selected_categories[0]
-        exercise.sets = category_targets[selected_categories[0]]['sets']
-        exercise.reps = category_targets[selected_categories[0]]['reps']
-        exercise.duration = category_targets[selected_categories[0]]['duration']
-        exercise.rest = category_targets[selected_categories[0]]['rest']
-        exercise.instructions = request.form.get('instructions', '')
-        exercise.link = request.form.get('link', '')
-        exercise.muscles = request.form.getlist('muscles')
 
         if isinstance(exercise.image_urls, list):
             existing_images = list(exercise.image_urls)
@@ -476,10 +295,23 @@ def display_exercise(id):
         uploaded_files = request.files.getlist('images') or request.files.getlist('image')
         new_image_list = save_multiple_images(uploaded_files)
         combined_images = existing_images + new_image_list
-        exercise.image_urls = combined_images if combined_images else None
-        exercise.image = combined_images[0] if combined_images else None
 
-        db.session.commit()
+        exercise_service.update_exercise(id, {
+            'name': name,
+            'categories': selected_categories,
+            'category_targets': category_targets,
+            'exercise_type': selected_categories[0],
+            'sets': category_targets[selected_categories[0]]['sets'],
+            'reps': category_targets[selected_categories[0]]['reps'],
+            'duration': category_targets[selected_categories[0]]['duration'],
+            'rest': category_targets[selected_categories[0]]['rest'],
+            'instructions': request.form.get('instructions', ''),
+            'link': request.form.get('link', ''),
+            'muscles': request.form.getlist('muscles'),
+            'image_urls': combined_images if combined_images else None,
+            'image': combined_images[0] if combined_images else None,
+        })
+
         flash('Exercise updated successfully.', 'success')
         if return_workout_id:
             return redirect(url_for('add_exercise', workout_id=return_workout_id))
@@ -494,9 +326,9 @@ def display_exercise(id):
 
 @app.route('/exercise/<int:exercise_id>/delete', methods=['POST'])
 def delete_exercise(exercise_id):
-    exercise = db.session.get(Exercise, exercise_id) or abort(404)
+    exercise = exercise_service.get_exercise(exercise_id) or abort(404)
     return_workout_id = request.form.get('return_workout_id', '')
-    
+
     images_to_delete = []
     if exercise.image_urls and isinstance(exercise.image_urls, list):
         images_to_delete.extend(exercise.image_urls)
@@ -509,13 +341,8 @@ def delete_exercise(exercise_id):
         except OSError:
             pass
 
-    WorkoutExercise.query.filter_by(exercise_id=exercise.id).delete()
-    SetLog.query.filter_by(exercise_id=exercise.id).delete()
-    ExerciseHistory.query.filter_by(exercise_id=exercise.id).delete()
+    exercise_service.delete_exercise(exercise_id)
 
-    db.session.delete(exercise)
-    db.session.commit()
-    
     flash('Exercise deleted successfully.', 'success')
 
     if return_workout_id:
@@ -1416,72 +1243,11 @@ def delete_sound(sound_id):
 
 
 # Database initialization and migration
-def run_migrations():
-    """Bring an existing SQLite database up to the schema expected by this app."""
-    inspector = inspect(db.engine)
-    table_names = inspector.get_table_names()
-
-    migrations = {
-        'exercise': {
-            'exercise_type': "ALTER TABLE exercise ADD COLUMN exercise_type VARCHAR(50) DEFAULT 'Strength' NOT NULL",
-            'duration': "ALTER TABLE exercise ADD COLUMN duration FLOAT",
-            'image_urls': "ALTER TABLE exercise ADD COLUMN image_urls JSON",
-            'categories': "ALTER TABLE exercise ADD COLUMN categories JSON",
-            'category_targets': "ALTER TABLE exercise ADD COLUMN category_targets JSON",
-        },
-        'workout_exercise': {
-            'custom_duration': "ALTER TABLE workout_exercise ADD COLUMN custom_duration FLOAT",
-            'categories': "ALTER TABLE workout_exercise ADD COLUMN categories JSON",
-            'category_targets': "ALTER TABLE workout_exercise ADD COLUMN category_targets JSON",
-            'category': "ALTER TABLE workout_exercise ADD COLUMN category VARCHAR(50)",
-        },
-        'set_log': {
-            'duration': "ALTER TABLE set_log ADD COLUMN duration FLOAT",
-            'time_seconds': "ALTER TABLE set_log ADD COLUMN time_seconds INTEGER",
-            'distance_meters': "ALTER TABLE set_log ADD COLUMN distance_meters FLOAT",
-            'workout_exercise_id': "ALTER TABLE set_log ADD COLUMN workout_exercise_id INTEGER",
-            'category': "ALTER TABLE set_log ADD COLUMN category VARCHAR(50)",
-            'rest': "ALTER TABLE set_log ADD COLUMN rest INTEGER",
-            'rest_start_heart_rate': "ALTER TABLE set_log ADD COLUMN rest_start_heart_rate INTEGER",
-            'rest_end_heart_rate': "ALTER TABLE set_log ADD COLUMN rest_end_heart_rate INTEGER",
-            'rest_seconds': "ALTER TABLE set_log ADD COLUMN rest_seconds INTEGER",
-        },
-        'exercise_history': {
-            'rest_start_heart_rate': "ALTER TABLE exercise_history ADD COLUMN rest_start_heart_rate INTEGER",
-            'rest_end_heart_rate': "ALTER TABLE exercise_history ADD COLUMN rest_end_heart_rate INTEGER",
-            'rest_seconds': "ALTER TABLE exercise_history ADD COLUMN rest_seconds INTEGER",
-        },
-    }
-
-    try:
-        for table_name, column_migrations in migrations.items():
-            if table_name not in table_names:
-                continue
-
-            columns = {column['name'] for column in inspect(db.engine).get_columns(table_name)}
-
-            for column_name, statement in column_migrations.items():
-                if column_name not in columns:
-                    app.logger.info(
-                        "Adding missing database column %s.%s",
-                        table_name,
-                        column_name,
-                    )
-                    db.session.execute(text(statement))
-                    db.session.commit()
-                    columns.add(column_name)
-
-    except Exception:
-        db.session.rollback()
-        app.logger.exception("Database migration failed")
-        raise
-
-
 def initialize_database():
     """Create missing tables and apply safe migrations at application startup."""
     with app.app_context():
         db.create_all()
-        run_migrations()
+        run_migrations(app)
         app.logger.info("Database initialization and migrations completed")
 
 
