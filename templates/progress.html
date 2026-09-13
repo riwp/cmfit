@@ -34,17 +34,18 @@
 
     <section class="progress-insights"><div class="progress-insight-card glass-card"><span class="progress-insight-icon"><i class="fa-solid fa-calendar-days"></i></span><div><strong>{{ long_term.total }}</strong><span>Sessions in 12 months</span><small>Average {{ long_term.avg_monthly }} per month</small></div></div><div class="progress-insight-card glass-card"><span class="progress-insight-icon"><i class="fa-solid fa-ranking-star"></i></span><div><strong>{{ long_term.busiest_category }}</strong><span>Top training category</span><small>{{ long_term.busiest_category_count }} sessions in 12 months</small></div></div><div class="progress-insight-card glass-card"><span class="progress-insight-icon"><i class="fa-solid fa-calendar-week"></i></span><div><strong>{{ week_stats.total_workouts }}</strong><span>Workouts this week</span><small>Mon–Sun training week</small></div></div></section>
 
+    <section class="fitness-trends glass-card"><div class="progress-section-header"><div><span class="progress-section-kicker">HISTORICAL TRENDS</span><h2>Fitness Test Trends</h2></div></div><div class="fitness-trend-controls"><label><span>Test</span><select id="fitnessTrendSelect"><option value="">Select a test</option>{% for test in fitness_tests %}<option value="{{ test.key }}">{{ test.category }} · {{ test.name }}</option>{% endfor %}</select></label></div><div id="fitnessTrendChart" class="fitness-trend-chart"><div class="fitness-trend-empty">Select a test to view its history over time.</div></div><div id="fitnessTrendTable" class="fitness-trend-table"></div></section>
+
     <section id="workout-history" class="progress-history"><div class="progress-section-header"><div><span class="progress-section-kicker">HISTORY</span><h2>Recent Workouts</h2></div><span class="progress-count-badge">{{ sessions|length }} completed</span></div>{% if sessions %}<div class="progress-session-list">{% for session in sessions %}<article class="progress-session-card glass-card"><div class="progress-session-top"><div class="progress-session-date"><strong>{{ session.end_time.strftime('%d') }}</strong><span>{{ session.end_time.strftime('%b') }}<small>{{ session.end_time.strftime('%Y') }}</small></span></div><div class="progress-session-title"><h3>{{ session.workout.title }}</h3><p>{{ session.end_time.strftime('%A, %B %d at %I:%M %p') }}</p></div><span class="progress-session-badge"><i class="fa-solid fa-check"></i> Completed</span></div>{% if session.notes %}<div class="progress-session-notes"><i class="fa-regular fa-note-sticky"></i>{{ session.notes }}</div>{% endif %}{% if session.summary %}<div class="progress-exercise-table"><div class="progress-table-head"><span>Exercise / Category</span><span>Sets</span><span>Performance</span></div>{% for item in session.summary %}<div class="progress-exercise-row"><div class="progress-exercise-name"><strong>{{ item.name }}</strong>{% if item.category %}<span>{{ item.category }}</span>{% endif %}</div><span class="progress-set-count">{{ item.sets }}</span><span class="progress-performance">{% if item.weight is not none %}<b>{{ item.weight|round(1) }} lbs</b>{% endif %}{% if item.reps is not none %}<b>{{ item.reps }} reps</b>{% endif %}{% if item.duration is not none %}<b>{{ item.duration|round(1) }} min</b>{% endif %}{% if item.time_seconds is not none %}<b>{{ item.time_seconds }} sec</b>{% endif %}{% if item.distance_meters is not none %}<b>{{ item.distance_meters|round(0) }} m</b>{% endif %}</span></div>{% endfor %}</div>{% else %}<div class="progress-empty-inline">No sets were logged for this workout.</div>{% endif %}</article>{% endfor %}</div>{% else %}<div class="progress-empty glass-card"><i class="fa-solid fa-calendar-xmark"></i><h3>No completed workouts yet</h3><p>Complete a workout and your history will appear here.</p><a class="btn-emerald-full" href="{{ url_for('workout_list') }}">Start a workout <i class="fa-solid fa-arrow-right"></i></a></div>{% endif %}</section>
   </div>
 
   <div id="fitness-test-tab" class="progress-tab-panel" data-panel="fitness">
     <section class="progress-hero glass-card"><div><div class="progress-kicker"><i class="fa-solid fa-ranking-star"></i> FITNESS TESTING</div><h1>Fitness Test</h1><p>Choose the tests you want to run. Your historical average and best are shown before each test so you can track improvement over time.</p></div><div class="progress-hero-stat"><strong>{{ (fitness_stats or {}).values()|selectattr('count','gt',0)|list|length }}</strong><span>Tests with history</span></div></section>
 
-    <section class="fitness-test-picker glass-card"><div class="progress-section-header"><div><span class="progress-section-kicker">TEST SELECTION</span><h2>Choose Your Tests</h2></div><span class="progress-count-badge">Select any</span></div><div class="fitness-category-grid">{% for category in ['Power','Anaerobic Capacity','Anaerobic Base','Muscle Endurance'] %}<div class="fitness-category-card"><div class="fitness-category-heading"><span class="fitness-category-icon fitness-category-{{ loop.index }}"><i class="fa-solid {% if category == 'Power' %}fa-bolt{% elif category == 'Anaerobic Capacity' %}fa-fire-flame-curved{% elif category == 'Anaerobic Base' %}fa-person-running{% else %}fa-dumbbell{% endif %}"></i></span><div><h3>{{ category }}</h3><span>{% if category == 'Power' %}Explosive output{% elif category == 'Anaerobic Capacity' %}High-intensity repeatability{% elif category == 'Anaerobic Base' %}12-minute aerobic field test{% else %}Local muscular endurance{% endif %}</span></div></div><div class="fitness-test-options">{% for test in fitness_tests if test.category == category %}<label class="fitness-test-option"><input type="checkbox" class="fitness-test-select" value="{{ test.key }}"><span class="fitness-test-check"></span><span class="fitness-test-option-text"><strong>{{ test.name }}</strong><small>{{ test.description }}</small></span></label>{% endfor %}</div></div>{% endfor %}</div></section>
+    <section id="fitness-test-picker" class="fitness-test-picker glass-card"><div class="progress-section-header"><div><span class="progress-section-kicker">TEST SELECTION</span><h2>Choose Your Tests</h2></div><span class="progress-count-badge fitness-picker-count">0 selected</span></div><div class="fitness-picker-body"><div class="fitness-category-grid">{% for category in ['Power','Anaerobic Capacity','Anaerobic Base','Muscle Endurance'] %}<div class="fitness-category-card"><div class="fitness-category-heading"><span class="fitness-category-icon fitness-category-{{ loop.index }}"><i class="fa-solid {% if category == 'Power' %}fa-bolt{% elif category == 'Anaerobic Capacity' %}fa-fire-flame-curved{% elif category == 'Anaerobic Base' %}fa-person-running{% else %}fa-dumbbell{% endif %}"></i></span><div><h3>{{ category }}</h3><span>{% if category == 'Power' %}Explosive output{% elif category == 'Anaerobic Capacity' %}High-intensity repeatability{% elif category == 'Anaerobic Base' %}12-minute aerobic field test{% else %}Local muscular endurance{% endif %}</span></div></div><div class="fitness-test-options">{% for test in fitness_tests if test.category == category %}<label class="fitness-test-option"><input type="checkbox" class="fitness-test-select" value="{{ test.key }}"><span class="fitness-test-check"></span><span class="fitness-test-option-text"><strong>{{ test.name }}</strong><small>{{ test.description }}</small></span></label>{% endfor %}</div></div>{% endfor %}</div><div class="fitness-picker-actions"><span class="fitness-picker-help">Select the tests you want to complete in this session.</span><button type="button" id="fitnessStartTests" class="btn-emerald-full fitness-start-btn" disabled><i class="fa-solid fa-play"></i> Start Tests</button></div></div><div class="fitness-picker-collapsed-summary"><span id="fitnessPickerSummary">0 tests selected</span><button type="button" id="fitnessChangeTests" class="fitness-change-btn"><i class="fa-solid fa-pen"></i> Change Tests</button></div></section>
 
-    <section class="fitness-run-section"><div class="progress-section-header"><div><span class="progress-section-kicker">TEST RESULTS</span><h2>Enter Test Results</h2></div><span class="fitness-selected-count">0 selected</span></div><div id="fitness-test-forms" class="fitness-test-forms"><div class="fitness-empty-selection glass-card"><i class="fa-solid fa-clipboard-check"></i><h3>Select a test above</h3><p>Your selected tests will appear here with their historical average and best.</p></div></div></section>
+    <section id="fitness-run-section" class="fitness-run-section fitness-run-hidden"><div class="progress-section-header"><div><span class="progress-section-kicker">TEST RESULTS</span><h2>Enter Test Results</h2></div><span class="fitness-selected-count">0 of 0 completed</span></div><div id="fitness-test-forms" class="fitness-test-forms"></div></section>
 
-    <section class="fitness-trends glass-card"><div class="progress-section-header"><div><span class="progress-section-kicker">HISTORICAL TRENDS</span><h2>Fitness Test Trends</h2></div></div><div class="fitness-trend-controls"><label><span>Test</span><select id="fitnessTrendSelect"><option value="">Select a test</option>{% for test in fitness_tests %}<option value="{{ test.key }}">{{ test.category }} · {{ test.name }}</option>{% endfor %}</select></label></div><div id="fitnessTrendChart" class="fitness-trend-chart"><div class="fitness-trend-empty">Select a test to view its history over time.</div></div><div id="fitnessTrendTable" class="fitness-trend-table"></div></section>
   </div>
 </div>
 
@@ -55,23 +56,69 @@
   const history = {{ fitness_history|tojson }};
   const saveUrl = {{ url_for('save_fitness_test')|tojson }};
   const progressUrl = {{ url_for('progress')|tojson }};
-  
+  const storageKey = 'cmfit-fitness-test-session';
+
   const testMap = Object.fromEntries(tests.map(t => [t.key, t]));
   const formContainer = document.getElementById('fitness-test-forms');
   const selectedCount = document.querySelector('.fitness-selected-count');
+  const pickerCount = document.querySelector('.fitness-picker-count');
+  const picker = document.getElementById('fitness-test-picker');
+  const pickerSummary = document.getElementById('fitnessPickerSummary');
+  const runSection = document.getElementById('fitness-run-section');
+  const startButton = document.getElementById('fitnessStartTests');
+  const changeButton = document.getElementById('fitnessChangeTests');
   const tabButtons = document.querySelectorAll('.progress-tab');
   const panels = document.querySelectorAll('.progress-tab-panel');
+  let activeTests = [];
+  let completedTests = new Set();
+  let savedResults = {};
 
   function fmt(value, digits) {
     if (value === null || value === undefined || Number.isNaN(Number(value))) return '—';
     return Number(value).toFixed(digits).replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1');
   }
-  function statText(test) {
-    const s = stats[test.key] || {};
-    return '<div class="fitness-history-stats"><div><span>Historical average</span><strong>' + (s.average == null ? '—' : fmt(s.average, 1) + ' ' + test.unit) + '</strong></div><div><span>Historical best</span><strong>' + (s.best == null ? '—' : fmt(s.best, 1) + ' ' + test.unit) + '</strong></div></div>';
+  function priorHistoryStats(test, saved) {
+    const rows = (history[test.key] || []).filter(row => !saved || String(row.id) !== String(saved.id));
+    const values = rows.map(row => Number(row.value)).filter(value => Number.isFinite(value));
+    if (!values.length) return { average: null, best: null, count: 0 };
+    const average = values.reduce((sum, value) => sum + value, 0) / values.length;
+    const best = test.best_direction === 'lower' ? Math.min(...values) : Math.max(...values);
+    return { average, best, count: values.length };
+  }
+  function statText(test, saved) {
+    const s = saved ? priorHistoryStats(test, saved) : (stats[test.key] || {});
+    return '<div class="fitness-history-stats"><div><span>Historical average</span><strong>' + (s.average == null ? '—' : fmt(s.average, 1) + ' ' + test.unit) + '</strong><small>' + (s.count ? s.count + ' prior result' + (s.count === 1 ? '' : 's') : 'No prior results') + '</small></div><div><span>Historical best</span><strong>' + (s.best == null ? '—' : fmt(s.best, 1) + ' ' + test.unit) + '</strong><small>Best before this test</small></div></div>';
+  }
+  function selectedKeys() {
+    return Array.from(document.querySelectorAll('.fitness-test-select:checked')).map(x => x.value);
+  }
+  function updatePickerState() {
+    const keys = selectedKeys();
+    pickerCount.textContent = keys.length + ' selected';
+    startButton.disabled = keys.length === 0;
+  }
+  function saveSessionState() {
+    try {
+      sessionStorage.setItem(storageKey, JSON.stringify({ activeTests, completedTests: Array.from(completedTests), savedResults }));
+    } catch (e) {}
+  }
+  function clearSessionState() {
+    try { sessionStorage.removeItem(storageKey); } catch (e) {}
   }
   function renderForm(key) {
     const t = testMap[key];
+    const completed = completedTests.has(key);
+    const saved = savedResults[key];
+    const status = completed ? '<span class="fitness-completed-badge"><i class="fa-solid fa-check"></i> Completed</span>' : '';
+
+    if (completed && saved) {
+      return '<div class="fitness-test-form glass-card fitness-test-completed fitness-test-summary" data-test-key="' + t.key + '">' +
+        '<div class="fitness-test-form-heading"><div><span class="fitness-test-category-label">' + t.category + '</span><h3>' + t.name + '</h3><p>' + t.description + '</p></div>' + status + '</div>' +
+        '<div class="fitness-current-result"><div class="fitness-current-result-label"><i class="fa-solid fa-circle-check"></i><span>Current result</span></div><strong>' + fmt(saved.value, 1) + ' ' + saved.unit + '</strong><small>Saved to your fitness history</small></div>' +
+        statText(t, saved) +
+        '</div>';
+    }
+
     let inputs = '';
     if (t.attempts === 3) {
       for (let i = 1; i <= 3; i++) inputs += '<label><span>Attempt ' + i + '</span><input type="number" name="attempt_' + i + '" min="0" step="0.01" inputmode="decimal" required placeholder="' + t.input_label + '"></label>';
@@ -83,18 +130,72 @@
     }
     return '<form class="fitness-test-form glass-card" method="post" action="' + saveUrl + '" data-test-key="' + t.key + '">' +
       '<input type="hidden" name="test_key" value="' + t.key + '">' +
-      '<div class="fitness-test-form-heading"><div><span class="fitness-test-category-label">' + t.category + '</span><h3>' + t.name + '</h3><p>' + t.description + '</p></div><button type="button" class="fitness-remove-btn" aria-label="Remove test"><i class="fa-solid fa-xmark"></i></button></div>' +
-      statText(t) + '<div class="fitness-input-grid">' + inputs + '</div>' +
+      '<div class="fitness-test-form-heading"><div><span class="fitness-test-category-label">' + t.category + '</span><h3>' + t.name + '</h3><p>' + t.description + '</p></div></div>' +
+      statText(t, null) + '<div class="fitness-input-grid">' + inputs + '</div>' +
       '<label class="fitness-notes-field"><span>Notes</span><textarea name="notes" rows="2" placeholder="Optional notes about this test"></textarea></label>' +
-      '<div class="fitness-form-footer"><span class="fitness-save-hint">Test time is logged automatically.</span><button type="submit" class="btn-emerald-full fitness-save-btn"><i class="fa-solid fa-floppy-disk"></i> Save Test</button></div></form>';
+      '<div class="fitness-form-footer"><span class="fitness-save-hint">Test time is logged automatically.</span>' +
+      '<button type="submit" class="btn-emerald-full fitness-save-btn"><i class="fa-solid fa-floppy-disk"></i> Save Result</button></div><div class="fitness-form-message" aria-live="polite"></div></form>';
   }
   function renderForms() {
-    const keys = Array.from(document.querySelectorAll('.fitness-test-select:checked')).map(x => x.value);
-    selectedCount.textContent = keys.length + ' selected';
-    formContainer.innerHTML = keys.length ? keys.map(renderForm).join('') : '<div class="fitness-empty-selection glass-card"><i class="fa-solid fa-clipboard-check"></i><h3>Select a test above</h3><p>Your selected tests will appear here with their historical average and best.</p></div>';
-    formContainer.querySelectorAll('.fitness-remove-btn').forEach(btn => btn.addEventListener('click', function () { const form = btn.closest('.fitness-test-form'); const box = document.querySelector('.fitness-test-select[value="' + form.dataset.testKey + '"]'); if (box) box.checked = false; renderForms(); }));
+    formContainer.innerHTML = activeTests.map(renderForm).join('');
+    const completed = activeTests.filter(key => completedTests.has(key)).length;
+    selectedCount.textContent = completed + ' of ' + activeTests.length + ' completed';
+    pickerSummary.textContent = activeTests.length + ' test' + (activeTests.length === 1 ? '' : 's') + ' selected · ' + completed + ' completed';
+    formContainer.querySelectorAll('.fitness-test-form').forEach(form => {
+      if (!completedTests.has(form.dataset.testKey)) form.addEventListener('submit', saveTest);
+    });
   }
-  document.querySelectorAll('.fitness-test-select').forEach(x => x.addEventListener('change', renderForms));
+  function startTests() {
+    activeTests = selectedKeys();
+    if (!activeTests.length) return;
+    completedTests = new Set(Array.from(completedTests).filter(key => activeTests.includes(key)));
+    Object.keys(savedResults).forEach(key => { if (!activeTests.includes(key)) delete savedResults[key]; });
+    picker.classList.add('fitness-picker-collapsed');
+    runSection.classList.remove('fitness-run-hidden');
+    renderForms();
+    saveSessionState();
+    runSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  function changeTests() {
+    picker.classList.remove('fitness-picker-collapsed');
+    picker.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  async function saveTest(event) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const key = form.dataset.testKey;
+    const button = form.querySelector('.fitness-save-btn');
+    const message = form.querySelector('.fitness-form-message');
+    button.disabled = true;
+    message.className = 'fitness-form-message';
+    message.textContent = 'Saving…';
+    try {
+      const response = await fetch(saveUrl, {
+        method: 'POST',
+        body: new FormData(form),
+        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+      });
+      const data = await response.json();
+      if (!response.ok || data.status !== 'success') throw new Error(data.message || 'Unable to save test result.');
+      completedTests.add(key);
+      savedResults[key] = data.result;
+      if (!history[key]) history[key] = [];
+      history[key].push({
+        id: data.result.id, value: data.result.value, unit: data.result.unit,
+        tested_at: new Date().toLocaleString(), notes: data.result.notes || ''
+      });
+      saveSessionState();
+      renderForms();
+    } catch (error) {
+      button.disabled = false;
+      message.className = 'fitness-form-message fitness-form-error';
+      message.textContent = error.message;
+    }
+  }
+
+  document.querySelectorAll('.fitness-test-select').forEach(x => x.addEventListener('change', updatePickerState));
+  startButton.addEventListener('click', startTests);
+  changeButton.addEventListener('click', changeTests);
 
   tabButtons.forEach(btn => btn.addEventListener('click', function () {
     const tab = btn.dataset.tab;
@@ -102,30 +203,96 @@
     panels.forEach(p => p.classList.toggle('progress-tab-panel-active', p.dataset.panel === tab));
     if (window.history && window.history.replaceState) window.history.replaceState(null, '', progressUrl + '?tab=' + tab);
   }));
+
   const params = new URLSearchParams(window.location.search);
-  if (params.get('tab') === 'fitness') {
-    document.querySelector('.progress-tab[data-tab="fitness"]').click();
-    const savedTest = params.get('test');
-    if (savedTest) {
-      const savedBox = document.querySelector('.fitness-test-select[value="' + savedTest + '"]');
-      if (savedBox) savedBox.checked = true;
+  if (params.get('tab') === 'fitness') document.querySelector('.progress-tab[data-tab="fitness"]').click();
+
+  try {
+    const savedState = JSON.parse(sessionStorage.getItem(storageKey) || 'null');
+    if (savedState && Array.isArray(savedState.activeTests) && savedState.activeTests.length) {
+      activeTests = savedState.activeTests.filter(key => testMap[key]);
+      completedTests = new Set((savedState.completedTests || []).filter(key => activeTests.includes(key)));
+      savedResults = savedState.savedResults || {};
+      activeTests.forEach(key => { const box = document.querySelector('.fitness-test-select[value="' + key + '"]'); if (box) box.checked = true; });
+      updatePickerState();
+      picker.classList.add('fitness-picker-collapsed');
+      runSection.classList.remove('fitness-run-hidden');
       renderForms();
+    } else {
+      clearSessionState();
+      updatePickerState();
     }
+  } catch (e) {
+    clearSessionState();
+    updatePickerState();
   }
 
   const trendSelect = document.getElementById('fitnessTrendSelect');
   const chart = document.getElementById('fitnessTrendChart');
   const table = document.getElementById('fitnessTrendTable');
-  trendSelect.addEventListener('change', function () {
+  if (trendSelect) trendSelect.addEventListener('change', function () {
     const key = trendSelect.value, t = testMap[key], rows = history[key] || [];
-    if (!key || !rows.length) { chart.innerHTML = '<div class="fitness-trend-empty">' + (key ? 'No saved results for this test yet.' : 'Select a test to view its history over time.') + '</div>'; table.innerHTML = ''; return; }
-    const width = 720, height = 250, padX = 42, padY = 28;
-    const vals = rows.map(r => Number(r.value)), min = Math.min(...vals), max = Math.max(...vals), range = max - min || 1;
-    const points = rows.map((r, i) => { const x = rows.length === 1 ? width / 2 : padX + i * ((width - padX * 2) / (rows.length - 1)); const y = height - padY - ((Number(r.value) - min) / range) * (height - padY * 2); return {x, y, row:r}; });
+    if (!key || !rows.length) {
+      chart.innerHTML = '<div class="fitness-trend-empty">' + (key ? 'No saved results for this test yet.' : 'Select a test to view its history over time.') + '</div>';
+      table.innerHTML = '';
+      return;
+    }
+
+    const width = 760, height = 330;
+    const left = 74, right = 24, top = 28, bottom = 62;
+    const plotWidth = width - left - right, plotHeight = height - top - bottom;
+    const vals = rows.map(r => Number(r.value)).filter(v => Number.isFinite(v));
+    const rawMin = Math.min(...vals), rawMax = Math.max(...vals);
+    const rawRange = rawMax - rawMin;
+    const padding = rawRange ? rawRange * 0.12 : Math.max(Math.abs(rawMax) * 0.08, 1);
+    let axisMin = rawMin - padding, axisMax = rawMax + padding;
+    if (t.best_direction === 'higher' && axisMin > 0 && axisMin < padding * 2) axisMin = 0;
+    if (axisMin === axisMax) axisMax = axisMin + 1;
+    const axisRange = axisMax - axisMin;
+    const yTicks = Array.from({length: 5}, (_, i) => axisMin + (axisRange * i / 4));
+
+    const points = rows.map((r, i) => {
+      const x = rows.length === 1 ? left + plotWidth / 2 : left + i * (plotWidth / (rows.length - 1));
+      const y = top + plotHeight - ((Number(r.value) - axisMin) / axisRange) * plotHeight;
+      return { x, y, row: r };
+    });
     const poly = points.map(p => p.x + ',' + p.y).join(' ');
-    chart.innerHTML = '<div class="fitness-trend-title"><strong>' + t.name + '</strong><span>' + rows.length + ' recorded test' + (rows.length === 1 ? '' : 's') + '</span></div><div class="fitness-svg-wrap"><svg class="fitness-trend-svg" viewBox="0 0 ' + width + ' ' + height + '" role="img" aria-label="Historical trend for ' + t.name + '"><line class="fitness-svg-axis" x1="' + padX + '" y1="' + (height-padY) + '" x2="' + (width-padX) + '" y2="' + (height-padY) + '"></line><polyline class="fitness-svg-line" points="' + poly + '"></polyline>' + points.map(p => '<circle class="fitness-svg-point" cx="' + p.x + '" cy="' + p.y + '" r="5"><title>' + p.row.tested_at + ': ' + fmt(p.row.value, 1) + ' ' + t.unit + '</title></circle>').join('') + '</svg></div>';
+    const xTickIndexes = [];
+    const xTickCount = Math.min(rows.length, 5);
+    for (let i = 0; i < xTickCount; i++) {
+      const index = rows.length === 1 ? 0 : Math.round(i * (rows.length - 1) / (xTickCount - 1));
+      if (!xTickIndexes.includes(index)) xTickIndexes.push(index);
+    }
+    const shortDate = value => {
+      const raw = String(value || '').slice(0, 10);
+      const parts = raw.split('-');
+      return parts.length === 3 ? parts[1] + '/' + parts[2] + '/' + parts[0].slice(2) : raw;
+    };
+    const grid = yTicks.map(value => {
+      const y = top + plotHeight - ((value - axisMin) / axisRange) * plotHeight;
+      return '<line class="fitness-svg-grid" x1="' + left + '" y1="' + y + '" x2="' + (width-right) + '" y2="' + y + '"></line>' +
+        '<text class="fitness-svg-y-label" x="' + (left-12) + '" y="' + (y+4) + '" text-anchor="end">' + fmt(value, 1) + '</text>';
+    }).join('');
+    const xTicks = xTickIndexes.map(index => {
+      const p = points[index];
+      return '<line class="fitness-svg-x-tick" x1="' + p.x + '" y1="' + (height-bottom) + '" x2="' + p.x + '" y2="' + (height-bottom+6) + '"></line>' +
+        '<text class="fitness-svg-x-label" x="' + p.x + '" y="' + (height-bottom+22) + '" text-anchor="middle">' + shortDate(p.row.tested_at) + '</text>';
+    }).join('');
+
+    chart.innerHTML = '<div class="fitness-trend-title"><div><strong>' + t.name + '</strong><small>Result history over time</small></div><span>' + rows.length + ' recorded test' + (rows.length === 1 ? '' : 's') + '</span></div>' +
+      '<div class="fitness-svg-wrap"><svg class="fitness-trend-svg" viewBox="0 0 ' + width + ' ' + height + '" role="img" aria-label="Historical trend for ' + t.name + '">' +
+      grid +
+      '<line class="fitness-svg-axis" x1="' + left + '" y1="' + (height-bottom) + '" x2="' + (width-right) + '" y2="' + (height-bottom) + '"></line>' +
+      '<line class="fitness-svg-axis" x1="' + left + '" y1="' + top + '" x2="' + left + '" y2="' + (height-bottom) + '"></line>' +
+      xTicks +
+      '<text class="fitness-svg-axis-title" x="' + (left + plotWidth/2) + '" y="' + (height-10) + '" text-anchor="middle">Test date</text>' +
+      '<text class="fitness-svg-axis-title" x="18" y="' + (top + plotHeight/2) + '" text-anchor="middle" transform="rotate(-90 18 ' + (top + plotHeight/2) + ')">Result (' + t.unit + ')</text>' +
+      '<polyline class="fitness-svg-line" points="' + poly + '"></polyline>' +
+      points.map(p => '<circle class="fitness-svg-point" cx="' + p.x + '" cy="' + p.y + '" r="5"><title>' + p.row.tested_at + ': ' + fmt(p.row.value, 1) + ' ' + t.unit + '</title></circle>').join('') +
+      '</svg></div>';
     table.innerHTML = '<div class="fitness-history-row fitness-history-head"><span>Date</span><span>Result</span><span>Notes</span></div>' + rows.slice().reverse().map(r => '<div class="fitness-history-row"><span>' + r.tested_at + '</span><strong>' + fmt(r.value, 1) + ' ' + r.unit + '</strong><span>' + (r.notes || '—') + '</span></div>').join('');
   });
+
 })();
 </script>
 {% endblock %}

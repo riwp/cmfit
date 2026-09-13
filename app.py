@@ -562,14 +562,29 @@ def progress():
 @app.route('/progress/fitness-test', methods=['POST'])
 def save_fitness_test():
     key = (request.form.get('test_key') or '').strip()
+    is_ajax = (
+        request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        or 'application/json' in request.headers.get('Accept', '')
+    )
     try:
-        _, definition = fitness_service.save_ui_fitness_test(request.form)
+        result, definition = fitness_service.save_ui_fitness_test(request.form)
     except LookupError as exc:
+        if is_ajax:
+            return jsonify({'status': 'error', 'message': str(exc)}), 400
         flash(str(exc), 'error')
         return redirect(url_for('progress', tab='fitness'))
     except ValueError as exc:
+        if is_ajax:
+            return jsonify({'status': 'error', 'message': str(exc)}), 400
         flash(str(exc), 'error')
         return redirect(url_for('progress', tab='fitness', test=key))
+
+    if is_ajax:
+        return jsonify({
+            'status': 'success',
+            'message': f"{definition['name']} saved successfully.",
+            'result': fitness_service.as_dict(result),
+        }), 200
 
     flash(f"{definition['name']} saved successfully.", 'success')
     return redirect(url_for('progress', tab='fitness', test=key))
