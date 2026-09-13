@@ -66,3 +66,13 @@ The active workout flow now uses `services/workout_service.py` for shared busine
 
 `app.py` remains responsible for Flask request/response behavior, redirects, AJAX status codes, flashes, and template rendering. REST API and MCP consumers call the same service-layer rules. No templates or CSS are changed by this refactor.
 
+
+## Progress and fitness-test service refactor
+
+The progress dashboard and fitness-test UI now delegate calculations, validation, and persistence to `services/fitness_service.py`.
+
+- Existing UI routes remain `/progress` and `/progress/fitness-test`.
+- Existing `progress.html` inputs are unchanged.
+- `GET /api/v1/progress` exposes a JSON-safe dashboard snapshot.
+- Existing fitness-test API routes continue to use the same shared service.
+- MCP exposes `get_progress_summary` and existing fitness-test history through the same service layer.

@@ -9,7 +9,7 @@ from models import (
     ExerciseHistory, FitnessTestResult, SoundFile, AppSetting, TrainingPlan, TrainingPlanMonth
 )
 from api.v1.routes import api_v1
-from services import exercise_service, workout_service
+from services import exercise_service, workout_service, fitness_service
 
 import calendar as pycalendar
 from datetime import date, timedelta
@@ -552,283 +552,26 @@ def finish_workout(log_id):
 
 @app.route('/progress')
 def progress():
-    today = date.today()
-    year = safe_int(request.args.get('year'), today.year)
-    month = safe_int(request.args.get('month'), today.month)
-    if not 1 <= month <= 12:
-        month, year = today.month, today.year
-
-    # Only include completed logs whose parent workout still exists. Older
-    # records can become orphaned if a workout was deleted after being logged.
-    # Without this join, session.workout can be None and the dashboard fails
-    # while building the training categories.
-    sessions = (WorkoutLog.query
-                .join(Workout, Workout.id == WorkoutLog.workout_id)
-                .filter(WorkoutLog.end_time.isnot(None))
-                .order_by(WorkoutLog.end_time.desc()).all())
-
-    # Training dashboard uses three practical buckets:
-    # Strength = Strength
-    # Power = Speed / ALactic ATP / Anaerobic (HIT)
-    # Aerobic = Aerobic Capacity
-    category_names = ('Strength', 'Power', 'Aerobic')
-
-    def training_types(session):
-        result = set()
-        for we in session.workout.exercises:
-            category = (we.category or '').strip().lower()
-            if category == 'strength':
-                result.add('Strength')
-            elif category in ('speed', 'alactic atp', 'anaerobic (hit)'):
-                result.add('Power')
-            elif category == 'aerobic capacity':
-                result.add('Aerobic')
-        return result
-
-    session_types = {session.id: training_types(session) for session in sessions}
-
-    calendar_data = defaultdict(lambda: {'count': 0, 'types': set()})
-    type_counts = {name: 0 for name in category_names}
-    workout_dates = set()
-    exercise_ids = set()
-    logged_sets = 0
-
-    for session in sessions:
-        d = session.end_time.date()
-        workout_dates.add(d)
-        types = session_types[session.id]
-        calendar_data[d]['count'] += 1
-        calendar_data[d]['types'].update(types)
-
-        if d.year == year and d.month == month:
-            for training_type in types:
-                type_counts[training_type] += 1
-
-        logged_sets += len(session.sets)
-        exercise_ids.update(s.exercise_id for s in session.sets)
-
-    # Calendar for the selected month.
-    first_weekday, days_in_month = pycalendar.monthrange(year, month)
-    days = [{'empty': True} for _ in range(first_weekday)]
-    for n in range(1, days_in_month + 1):
-        d = date(year, month, n)
-        entry = calendar_data.get(d, {'count': 0, 'types': set()})
-        days.append({
-            'empty': False,
-            'day': n,
-            'has_workout': entry['count'] > 0,
-            'workout_count': entry['count'],
-            'types': {k: k in entry['types'] for k in category_names},
-            'is_today': d == today
-        })
-    while len(days) % 7:
-        days.append({'empty': True})
-
-    prev_month, prev_year = month - 1, year
-    if prev_month == 0:
-        prev_month, prev_year = 12, year - 1
-    next_month, next_year = month + 1, year
-    if next_month == 13:
-        next_month, next_year = 1, year + 1
-
-    # Current Monday-Sunday week.
-    week_start = today - timedelta(days=today.weekday())
-    week_end = week_start + timedelta(days=6)
-    week_type_counts = {name: 0 for name in category_names}
-    week_workout_dates = set()
-    for session in sessions:
-        d = session.end_time.date()
-        if week_start <= d <= week_end:
-            week_workout_dates.add(d)
-            for training_type in session_types[session.id]:
-                week_type_counts[training_type] += 1
-
-    # Last 12 calendar months, oldest -> newest.
-    chart_months = []
-    chart_lookup = {}
-    cursor = date(today.year, today.month, 1)
-    for offset in range(11, -1, -1):
-        total_months = cursor.year * 12 + cursor.month - 1 - offset
-        y = total_months // 12
-        m = total_months % 12 + 1
-        key = (y, m)
-        chart_lookup[key] = {name: 0 for name in category_names}
-        chart_months.append({
-            'key': key,
-            'label': pycalendar.month_abbr[m],
-            'year': y,
-            'is_current': key == (today.year, today.month)
-        })
-
-    for session in sessions:
-        d = session.end_time.date()
-        key = (d.year, d.month)
-        if key in chart_lookup:
-            for training_type in session_types[session.id]:
-                chart_lookup[key][training_type] += 1
-
-    max_chart_total = 0
-    for item in chart_months:
-        item['counts'] = chart_lookup[item['key']]
-        item['total'] = sum(item['counts'].values())
-        max_chart_total = max(max_chart_total, item['total'])
-
-    # Additional useful dashboard metrics.
-    last_12_total = sum(item['total'] for item in chart_months)
-    avg_monthly = round(last_12_total / 12, 1)
-
-    if last_12_total:
-        busiest_category = max(category_names, key=lambda name: sum(
-            item['counts'][name] for item in chart_months
-        ))
-        busiest_category_count = sum(
-            item['counts'][busiest_category] for item in chart_months
-        )
-    else:
-        busiest_category = '—'
-        busiest_category_count = 0
-
-    completed_weeks = {
-        (d.isocalendar().year, d.isocalendar().week)
-        for d in workout_dates
-    }
-    streak = 0
-    cursor = week_start
-    while (cursor.isocalendar().year, cursor.isocalendar().week) in completed_weeks:
-        streak += 1
-        cursor -= timedelta(days=7)
-
-    for session in sessions:
-        grouped = {}
-        for s in session.sets:
-            key = (s.exercise_id, s.category or '')
-            item = grouped.setdefault(key, {
-                'name': s.exercise.name, 'category': s.category, 'sets': 0,
-                'weight': None, 'reps': None, 'duration': None,
-                'time_seconds': None, 'distance_meters': None
-            })
-            item['sets'] += 1
-            if s.weight is not None:
-                item['weight'] = s.weight if item['weight'] is None else max(item['weight'], s.weight)
-            if s.reps is not None:
-                item['reps'] = s.reps
-            if s.duration is not None:
-                item['duration'] = s.duration
-            if s.time_seconds is not None:
-                item['time_seconds'] = s.time_seconds
-            if s.distance_meters is not None:
-                item['distance_meters'] = s.distance_meters
-        session.summary = list(grouped.values())
-
-    max_type = max(type_counts.values(), default=0)
-    type_percent = {
-        k: round(v / max_type * 100) if max_type else 0
-        for k, v in type_counts.items()
-    }
-
-    calendar_obj = {
-        'year': year, 'month': month, 'month_name': pycalendar.month_name[month],
-        'days': days, 'prev_month': prev_month, 'prev_year': prev_year,
-        'next_month': next_month, 'next_year': next_year
-    }
-
-    stats = {
-        'total_workouts': len(sessions),
-        'this_month': sum(1 for d in workout_dates if d.year == year and d.month == month),
-        'current_streak': streak,
-        'logged_sets': logged_sets,
-        'active_exercises': len(exercise_ids)
-    }
-
-    week_stats = {
-        'start': week_start,
-        'end': week_end,
-        'total_workouts': len(week_workout_dates),
-        'type_counts': week_type_counts
-    }
-
-    long_term = {
-        'total': last_12_total,
-        'avg_monthly': avg_monthly,
-        'busiest_category': busiest_category,
-        'busiest_category_count': busiest_category_count,
-        'max_chart_total': max_chart_total
-    }
-
-    fitness_tests = [
-        {'key': 'horizontal_long_jump', 'name': 'Horizontal Long Jump', 'category': 'Power', 'unit': 'in', 'input_label': 'Distance', 'best_direction': 'higher', 'attempts': 3, 'description': 'Best of 3 attempts.'},
-        {'key': 'vertical_jump', 'name': 'Vertical Jump', 'category': 'Power', 'unit': 'in', 'input_label': 'Height', 'best_direction': 'higher', 'attempts': 3, 'description': 'Best of 3 attempts.'},
-        {'key': 'medicine_ball_throw', 'name': 'Medicine Ball Throw', 'category': 'Power', 'unit': 'ft', 'input_label': 'Distance', 'best_direction': 'higher', 'attempts': 3, 'description': 'Best of 3 attempts.'},
-        {'key': 'fatigue_index', 'name': 'Fatigue Index', 'category': 'Anaerobic Capacity', 'unit': '%', 'input_label': 'Round time', 'best_direction': 'lower', 'attempts': 6, 'description': 'Six rounds of 50 heavy-bag punches with 30 seconds rest.'},
-        {'key': 'max_punches_60', 'name': '60 Seconds Max Effort', 'category': 'Anaerobic Capacity', 'unit': 'punches', 'input_label': 'Punches', 'best_direction': 'higher', 'attempts': 1, 'description': 'Maximum punches in 60 seconds.'},
-        {'key': 'cooper_run', 'name': 'Cooper 12 min Run', 'category': 'Anaerobic Base', 'unit': 'VO₂ max', 'input_label': 'Distance', 'best_direction': 'higher', 'attempts': 1, 'description': 'Enter total distance in miles; VO₂ max is calculated automatically.'},
-        {'key': 'max_kicks_60', 'name': '60 Seconds Full Power Kicks', 'category': 'Muscle Endurance', 'unit': 'kicks', 'input_label': 'Kicks', 'best_direction': 'higher', 'attempts': 1, 'description': 'Maximum full-power kicks in 60 seconds.'},
-        {'key': 'pullup_static_hold', 'name': 'Pull Up Static Hold', 'category': 'Muscle Endurance', 'unit': 'sec', 'input_label': 'Duration', 'best_direction': 'higher', 'attempts': 1, 'description': '90-degree elbow hold with chin above the bar.'},
-    ]
-    fitness_history_rows = FitnessTestResult.query.order_by(FitnessTestResult.tested_at.desc()).all()
-    fitness_stats = {}
-    for test in fitness_tests:
-        values = [r.value for r in fitness_history_rows if r.test_key == test['key']]
-        fitness_stats[test['key']] = {
-            'best': (min(values) if test['best_direction'] == 'lower' else max(values)) if values else None,
-            'average': (sum(values) / len(values)) if values else None,
-            'count': len(values), 'unit': test['unit']
-        }
-    fitness_history = {test['key']: [
-        {'id': r.id, 'value': r.value, 'unit': r.unit,
-         'tested_at': r.tested_at.strftime('%Y-%m-%d %H:%M'), 'notes': r.notes or ''}
-        for r in reversed(fitness_history_rows) if r.test_key == test['key']
-    ] for test in fitness_tests}
-
-    return render_template(
-        'progress.html', sessions=sessions, calendar=calendar_obj, stats=stats,
-        type_stats=type_counts, type_percent=type_percent, week_stats=week_stats,
-        chart_months=chart_months, long_term=long_term, fitness_tests=fitness_tests,
-        fitness_stats=fitness_stats, fitness_history=fitness_history
+    state = fitness_service.get_progress_view_state(
+        request.args.get('year'),
+        request.args.get('month'),
     )
+    return render_template('progress.html', **state)
 
 
 @app.route('/progress/fitness-test', methods=['POST'])
 def save_fitness_test():
-    definitions = {
-        'horizontal_long_jump': ('Horizontal Long Jump', 'Power', 'in', 'higher'),
-        'vertical_jump': ('Vertical Jump', 'Power', 'in', 'higher'),
-        'medicine_ball_throw': ('Medicine Ball Throw', 'Power', 'ft', 'higher'),
-        'fatigue_index': ('Fatigue Index', 'Anaerobic Capacity', '%', 'lower'),
-        'max_punches_60': ('60 Seconds Max Effort', 'Anaerobic Capacity', 'punches', 'higher'),
-        'cooper_run': ('Cooper 12 min Run', 'Anaerobic Base', 'VO₂ max', 'higher'),
-        'max_kicks_60': ('60 Seconds Full Power Kicks', 'Muscle Endurance', 'kicks', 'higher'),
-        'pullup_static_hold': ('Pull Up Static Hold', 'Muscle Endurance', 'sec', 'higher'),
-    }
     key = (request.form.get('test_key') or '').strip()
-    if key not in definitions:
-        flash('Please select a valid fitness test.', 'error'); return redirect(url_for('progress', tab='fitness'))
-    name, category, unit, direction = definitions[key]
-    details = {}
     try:
-        if key == 'fatigue_index':
-            rounds = [float(request.form.get(f'round_{i}')) for i in range(1, 7)]
-            if any(v <= 0 for v in rounds): raise ValueError
-            value = ((rounds[5] - rounds[0]) / rounds[0]) * 100
-            details['round_times'] = rounds
-        elif key in ('horizontal_long_jump', 'vertical_jump', 'medicine_ball_throw'):
-            attempts = [float(request.form.get(f'attempt_{i}')) for i in range(1, 4)]
-            if any(v < 0 for v in attempts): raise ValueError
-            value = max(attempts); details['attempts'] = attempts
-        else:
-            raw = request.form.get('value'); value = float(raw)
-            if value < 0: raise ValueError
-            if key == 'cooper_run':
-                if value <= 0: raise ValueError
-                details['distance_miles'] = value
-                value = (value * 1609.344 - 504.9) / 44.73
-    except (TypeError, ValueError):
-        flash('Please enter valid values for the selected fitness test.', 'error'); return redirect(url_for('progress', tab='fitness', test=key))
-    db.session.add(FitnessTestResult(test_key=key, category=category, value=value, unit=unit,
-                                     notes=(request.form.get('notes') or '').strip(),
-                                     tested_at=datetime.utcnow(), details=details or None))
-    db.session.commit()
-    flash(f'{name} saved successfully.', 'success')
+        _, definition = fitness_service.save_ui_fitness_test(request.form)
+    except LookupError as exc:
+        flash(str(exc), 'error')
+        return redirect(url_for('progress', tab='fitness'))
+    except ValueError as exc:
+        flash(str(exc), 'error')
+        return redirect(url_for('progress', tab='fitness', test=key))
+
+    flash(f"{definition['name']} saved successfully.", 'success')
     return redirect(url_for('progress', tab='fitness', test=key))
 
 

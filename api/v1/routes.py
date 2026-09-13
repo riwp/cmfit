@@ -155,6 +155,11 @@ def logs_finish(log_id):
     return (jsonify(workout_service.log_as_dict(log)), 200) if log else (jsonify({'error': 'Workout log not found'}), 404)
 
 
+@api_v1.get('/progress')
+def progress_get():
+    return jsonify(fitness_service.progress_snapshot(request.args.get('year'), request.args.get('month')))
+
+
 @api_v1.get('/fitness-tests')
 def fitness_tests_list():
     limit = min(request.args.get('limit', 100, type=int), 500)

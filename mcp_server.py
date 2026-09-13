@@ -172,6 +172,13 @@ def finish_workout(workout_log_id: int, notes: str = '') -> dict:
 
 @mcp.tool()
 @in_app_context
+def get_progress_summary(year: int = 0, month: int = 0) -> dict:
+    """Return workout progress, training-category trends, and fitness-test statistics."""
+    return fitness_service.progress_snapshot(year or None, month or None)
+
+
+@mcp.tool()
+@in_app_context
 def get_fitness_test_history(test_key: str = '', limit: int = 50) -> list[dict]:
     """Return fitness-test history, optionally filtered by test key."""
     return [fitness_service.as_dict(x) for x in fitness_service.list_results(test_key or None, min(limit, 500))]
