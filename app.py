@@ -9,7 +9,7 @@ from models import (
     ExerciseHistory, FitnessTestResult, SoundFile, AppSetting, TrainingPlan, TrainingPlanMonth
 )
 from api.v1.routes import api_v1
-from services import exercise_service
+from services import exercise_service, workout_service
 
 import calendar as pycalendar
 from datetime import date, timedelta
@@ -352,7 +352,7 @@ def delete_exercise(exercise_id):
 
 @app.route('/workouts')
 def workout_list():
-    workouts = Workout.query.all()
+    workouts = workout_service.list_workouts()
     return render_template('workout_list.html', workouts=workouts)
 
 
@@ -362,15 +362,16 @@ def add_workout():
         title = request.form.get('title', '').strip()
         description = request.form.get('description', '').strip()
 
-        if not title:
+        try:
+            workout = workout_service.create_workout({
+                'title': title,
+                'description': description,
+            })
+        except ValueError:
             flash('Workout title is required.', 'error')
             return render_template(
                 'add_workout.html', title=title, description=description
             )
-
-        workout = Workout(title=title, description=description or None)
-        db.session.add(workout)
-        db.session.commit()
 
         return redirect(url_for('add_exercise', workout_id=workout.id))
 
@@ -379,336 +380,160 @@ def add_workout():
 
 @app.route('/workout/<int:workout_id>')
 def view_workout(workout_id):
-    workout = Workout.query.get_or_404(workout_id)
+    workout = workout_service.get_workout(workout_id)
+    if not workout:
+        abort(404)
     sorted_exercises = sorted(workout.exercises, key=lambda x: x.order)
     return render_template(
         'view_workout.html', workout=workout, sorted_exercises=sorted_exercises
     )
 
 
+def _workout_composition_from_form(selected_ids):
+    """Translate the existing workout-composition form into application data."""
+    selections = []
+    for ex_id in selected_ids:
+        try:
+            ex_id_int = int(ex_id)
+        except (TypeError, ValueError):
+            continue
+
+        selected_categories = request.form.getlist(f'categories_{ex_id_int}')
+        if not selected_categories:
+            continue
+
+        targets = {}
+        for category in selected_categories:
+            targets[category] = {
+                'sets': request.form.get(f'sets_{ex_id_int}_{category}'),
+                'reps': request.form.get(f'reps_{ex_id_int}_{category}'),
+                'duration': request.form.get(f'duration_{ex_id_int}_{category}'),
+                'weight': request.form.get(f'weight_{ex_id_int}_{category}'),
+                'rest': request.form.get(f'rest_{ex_id_int}_{category}'),
+            }
+
+        selections.append({
+            'exercise_id': ex_id_int,
+            'categories': selected_categories,
+            'targets': targets,
+        })
+    return selections
+
+
 @app.route('/workout/<int:workout_id>/add_exercise', methods=['GET', 'POST'])
 def add_exercise(workout_id):
-    workout = Workout.query.get_or_404(workout_id)
+    workout = workout_service.get_workout(workout_id)
+    if not workout:
+        abort(404)
 
     if request.method == 'POST':
-        # Rebuild the workout's exercise/category rows from the submitted selection.
-        # Each selected category gets its own WorkoutExercise row so that the
-        # category, targets, rest, history and logging are independent.
-        WorkoutExercise.query.filter_by(workout_id=workout.id).delete(synchronize_session=False)
-
-        selected_ids = request.form.getlist('exercise_ids')
-        order_index = 0
-
-        for ex_id in selected_ids:
-            try:
-                ex_id_int = int(ex_id)
-            except (TypeError, ValueError):
-                continue
-
-            exercise = db.session.get(Exercise, ex_id_int)
-            if not exercise:
-                continue
-
-            selected_categories = request.form.getlist(f'categories_{ex_id_int}')
-            if not selected_categories:
-                continue
-
-            for category in selected_categories:
-                # Strength/Speed use reps; the other categories use duration.
-                # We still retain both fields so the saved workout has complete data.
-                target = {
-                    'sets': max(1, safe_int(request.form.get(f'sets_{ex_id_int}_{category}'), exercise.sets or 3)),
-                    'reps': max(1, safe_int(request.form.get(f'reps_{ex_id_int}_{category}'), exercise.reps or 10)),
-                    'duration': max(0.0, safe_float(request.form.get(f'duration_{ex_id_int}_{category}'), exercise.duration or 30)),
-                    'weight': max(0.0, safe_float(request.form.get(f'weight_{ex_id_int}_{category}'), 0.0)),
-                    'rest': max(0, safe_int(request.form.get(f'rest_{ex_id_int}_{category}'), exercise.rest or 60)),
-                }
-
-                we = WorkoutExercise(
-                    workout_id=workout.id,
-                    exercise_id=ex_id_int,
-                    custom_sets=target['sets'],
-                    custom_reps=target['reps'],
-                    custom_duration=target['duration'],
-                    custom_rest=target['rest'],
-                    categories=[category],
-                    category_targets={category: target},
-                    category=category,
-                    order=order_index,
-                )
-                db.session.add(we)
-                order_index += 1
-
-        db.session.commit()
+        selections = _workout_composition_from_form(request.form.getlist('exercise_ids'))
+        workout_service.replace_workout_exercises(workout.id, selections)
         return redirect(url_for('view_workout', workout_id=workout.id))
 
-    all_exercises = Exercise.query.order_by(Exercise.name.asc()).all()
-    existing_we = WorkoutExercise.query.filter_by(workout_id=workout.id).order_by(WorkoutExercise.order).all()
-
-    existing_map = {}
-    for we in existing_we:
-        ex = we.exercise
-        if not ex:
-            continue
-        entry = existing_map.setdefault(ex.id, {'categories': [], 'targets': {}})
-        category = we.category
-        if not category:
-            cats = we.categories if isinstance(we.categories, list) else []
-            category = cats[0] if cats else ex.exercise_type
-        if category not in entry['categories']:
-            entry['categories'].append(category)
-        targets = we.category_targets if isinstance(we.category_targets, dict) else {}
-        target = targets.get(category, {
-            'sets': we.custom_sets if we.custom_sets is not None else (ex.sets or 3),
-            'reps': we.custom_reps if we.custom_reps is not None else (ex.reps or 10),
-            'duration': we.custom_duration if we.custom_duration is not None else (ex.duration or 30),
-            'weight': 0,
-            'rest': we.custom_rest if we.custom_rest is not None else (ex.rest or 60),
-        })
-        entry['targets'][category] = target
-
-    category_defaults = {}
-    for ex in all_exercises:
-        category_defaults[ex.id] = {
-            category: {
-                'sets': ex.sets or 3,
-                'reps': ex.reps or 10,
-                'duration': ex.duration or 30,
-                'weight': 0,
-                'rest': ex.rest or 60,
-            }
-            for category in VALID_EXERCISE_TYPES
-        }
-        configured = ex.categories if isinstance(ex.categories, list) else []
-        if not configured:
-            configured = [ex.exercise_type] if ex.exercise_type in VALID_EXERCISE_TYPES else ['Strength']
-        ex.types_list = configured
-        stored_targets = ex.category_targets if isinstance(ex.category_targets, dict) else {}
-        ex.category_targets = {
-            category: stored_targets.get(category, category_defaults[ex.id].get(category, {
-                'sets': ex.sets or 3, 'reps': ex.reps or 10, 'duration': ex.duration or 30,
-                'weight': 0, 'rest': ex.rest or 60
-            })) for category in configured
-        }
-
+    state = workout_service.get_composition_state(workout.id, VALID_EXERCISE_TYPES)
     return render_template(
         'add_exercise_to_workout.html',
-        workout=workout,
-        all_exercises=all_exercises,
-        existing_map=existing_map,
+        workout=state['workout'],
+        all_exercises=state['all_exercises'],
+        existing_map=state['existing_map'],
     )
 
 
 @app.route('/workout/<int:workout_id>/reorder', methods=['POST'])
 def reorder_workout_exercises(workout_id):
-    workout = Workout.query.get_or_404(workout_id)
     data = request.get_json(silent=True)
-    if not isinstance(data, dict) or not isinstance(data.get('order'), list):
+    if not isinstance(data, dict):
         return jsonify({'status': 'error', 'message': 'Invalid payload'}), 400
 
-    exercises = WorkoutExercise.query.filter_by(workout_id=workout.id).all()
-    exercise_map = {ex.id: ex for ex in exercises}
-    submitted_ids = []
-    seen_ids = set()
+    try:
+        workout = workout_service.reorder_workout_exercises(workout_id, data.get('order'))
+    except ValueError as exc:
+        return jsonify({'status': 'error', 'message': str(exc)}), 400
 
-    for item in data['order']:
-        if not isinstance(item, dict):
-            return jsonify({'status': 'error', 'message': 'Invalid order item'}), 400
-        try:
-            exercise_id = int(item.get('id'))
-        except (TypeError, ValueError):
-            return jsonify({'status': 'error', 'message': 'Invalid exercise ID'}), 400
-        if exercise_id not in exercise_map or exercise_id in seen_ids:
-            return jsonify({'status': 'error', 'message': 'Invalid or duplicate exercise ID'}), 400
-        seen_ids.add(exercise_id)
-        submitted_ids.append(exercise_id)
-
-    if len(submitted_ids) != len(exercises):
-        return jsonify({'status': 'error', 'message': 'Incomplete exercise order'}), 400
-
-    for position, exercise_id in enumerate(submitted_ids):
-        exercise_map[exercise_id].order = position
-
-    db.session.commit()
+    if not workout:
+        abort(404)
     return jsonify({'status': 'success'})
 
 
 @app.route('/workout/<int:workout_id>/remove_exercise/<int:we_id>', methods=['POST'])
 def remove_exercise_from_workout(workout_id, we_id):
-    we = WorkoutExercise.query.filter_by(
-        id=we_id, workout_id=workout_id
-    ).first_or_404()
-    db.session.delete(we)
-    db.session.commit()
+    if not workout_service.get_workout(workout_id):
+        abort(404)
+    if not workout_service.remove_workout_exercise(workout_id, we_id):
+        abort(404)
+
     flash('Exercise removed from workout.', 'success')
     return redirect(url_for('view_workout', workout_id=workout_id))
 
 
 @app.route('/workout/<int:workout_id>/delete', methods=['POST'])
 def delete_workout(workout_id):
-    workout = Workout.query.get_or_404(workout_id)
-    db.session.delete(workout)
-    db.session.commit()
+    if not workout_service.delete_workout(workout_id):
+        abort(404)
     flash('Workout deleted successfully.', 'success')
     return redirect(url_for('workout_list'))
 
 
 @app.route('/workout/<int:workout_id>/start')
 def start_workout(workout_id):
-    workout = Workout.query.get_or_404(workout_id)
-    log = WorkoutLog(workout_id=workout.id, start_time=datetime.utcnow())
-    db.session.add(log)
-    db.session.commit()
+    log = workout_service.start_workout(workout_id)
+    if not log:
+        abort(404)
     return redirect(url_for('log_exercise', log_id=log.id))
 
 
 @app.route('/log/<int:log_id>', methods=['GET', 'POST'])
 def log_exercise(log_id):
-    log = WorkoutLog.query.get_or_404(log_id)
+    state = workout_service.get_log_view_state(log_id)
+    if not state:
+        abort(404)
+
+    log = state['log']
 
     if request.method == 'POST':
         data = request.get_json(silent=True) if request.is_json else request.form
-
         try:
-            workout_exercise_id = int(data.get('workout_exercise_id'))
-            set_number = int(data.get('set_number'))
-        except (TypeError, ValueError):
-            return jsonify({'status': 'error', 'message': 'Invalid workout exercise or set number.'}), 400
+            set_log = workout_service.log_ui_set(log_id, data)
+        except ValueError as exc:
+            return jsonify({'status': 'error', 'message': str(exc)}), 400
+        except LookupError as exc:
+            return jsonify({'status': 'error', 'message': str(exc)}), 404
 
-        we = WorkoutExercise.query.filter_by(
-            id=workout_exercise_id, workout_id=log.workout_id
-        ).first()
-        if not we:
-            return jsonify({'status': 'error', 'message': 'Workout exercise/category was not found.'}), 404
-
-        exercise_id = we.exercise_id
-        category = we.category or (we.categories[0] if isinstance(we.categories, list) and we.categories else we.exercise.exercise_type)
-
-        reps_val = data.get('reps')
-        weight_val = data.get('weight')
-        duration_val = data.get('duration')
-        time_seconds_val = data.get('time_seconds')
-        distance_meters_val = data.get('distance_meters')
-        rest_val = data.get('rest')
-
-        set_log = SetLog(
-            workout_log_id=log.id,
-            exercise_id=exercise_id,
-            workout_exercise_id=we.id,
-            category=category,
-            set_number=set_number,
-            reps=safe_int(reps_val) if reps_val is not None and str(reps_val).strip() != '' else None,
-            weight=safe_float(weight_val) if weight_val is not None and str(weight_val).strip() != '' else None,
-            duration=safe_float(duration_val) if duration_val is not None and str(duration_val).strip() != '' else None,
-            time_seconds=safe_int(time_seconds_val) if time_seconds_val is not None and str(time_seconds_val).strip() != '' else None,
-            distance_meters=safe_float(distance_meters_val) if distance_meters_val is not None and str(distance_meters_val).strip() != '' else None,
-            rest=safe_int(rest_val, we.custom_rest if we.custom_rest is not None else (we.exercise.rest or 60)),
+        is_ajax = (
+            request.is_json
+            or request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+            or 'application/json' in request.headers.get('Accept', '')
         )
-        db.session.add(set_log)
-        db.session.commit()
-
-        is_ajax = request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest' or 'application/json' in request.headers.get('Accept', '')
         if is_ajax:
             return jsonify({'status': 'success', 'set_id': set_log.id}), 200
         return redirect(url_for('log_exercise', log_id=log.id))
 
-    # Build per-workout-exercise display data including history defaults/max values.
-    exercise_cards = []
-    for item in sorted(log.workout.exercises, key=lambda x: x.order):
-        ex = item.exercise
-        category = item.category or (item.categories[0] if isinstance(item.categories, list) and item.categories else ex.exercise_type)
-        target = {}
-        if isinstance(item.category_targets, dict):
-            target = item.category_targets.get(category, {})
-        if not target:
-            target = {
-                'sets': item.custom_sets if item.custom_sets is not None else (ex.sets or 3),
-                'reps': item.custom_reps if item.custom_reps is not None else (ex.reps or 10),
-                'duration': item.custom_duration if item.custom_duration is not None else (ex.duration or 30),
-                'weight': 0,
-                'rest': item.custom_rest if item.custom_rest is not None else (ex.rest or 60),
-            }
-
-        # Only completed prior sessions count as history.
-        history_rows = (ExerciseHistory.query
-            .join(WorkoutLog, ExerciseHistory.workout_log_id == WorkoutLog.id)
-            .filter(
-                ExerciseHistory.exercise_id == ex.id,
-                ExerciseHistory.category == category,
-                WorkoutLog.end_time.isnot(None),
-                WorkoutLog.id != log.id,
-            )
-            .order_by(WorkoutLog.end_time.desc(), ExerciseHistory.set_number.asc())
-            .all())
-
-        max_weight = max((h.weight for h in history_rows if h.weight is not None), default=None)
-        max_duration = max((h.duration for h in history_rows if h.duration is not None), default=None)
-
-        last_session_id = history_rows[0].workout_log_id if history_rows else None
-        last_session_rows = [h for h in history_rows if h.workout_log_id == last_session_id]
-        last_session_rows.sort(key=lambda h: h.set_number)
-
-        # Defaults come from the most recent completed session. For each field,
-        # use the latest non-empty value recorded in that session. Fall back to
-        # the saved workout/category target when the history has no value.
-        def last_value(rows, attr, fallback=None):
-            for row in reversed(rows):
-                value = getattr(row, attr, None)
-                if value is not None:
-                    return value
-            return fallback
-
-        default_reps = last_value(last_session_rows, 'reps', target.get('reps'))
-        default_weight = last_value(last_session_rows, 'weight', target.get('weight', 0))
-        default_duration = last_value(last_session_rows, 'duration', target.get('duration'))
-        default_rest = last_value(last_session_rows, 'rest', target.get('rest', ex.rest or 60))
-
-        current_sets = [s for s in log.sets if s.workout_exercise_id == item.id]
-        exercise_cards.append({
-            'item': item,
-            'exercise': ex,
-            'category': category,
-            'target': target,
-            'history_max_weight': max_weight,
-            'history_max_duration': max_duration,
-            'last_reps': default_reps,
-            'last_weight': default_weight,
-            'last_duration': default_duration,
-            'last_rest': default_rest,
-            'logged_sets': sorted(current_sets, key=lambda s: s.set_number),
-        })
-
-    return render_template('log_workout.html', log=log, exercise_cards=exercise_cards)
+    return render_template(
+        'log_workout.html',
+        log=log,
+        exercise_cards=state['exercise_cards'],
+    )
 
 
 @app.route('/log/<int:log_id>/rest', methods=['POST'])
 def save_rest_info(log_id):
-    log = WorkoutLog.query.get_or_404(log_id)
+    if not workout_service.get_workout_log(log_id):
+        abort(404)
+
     data = request.get_json(silent=True) if request.is_json else request.form
 
     try:
-        set_id = int(data.get('set_id'))
-        starting_heart_rate = int(data.get('starting_heart_rate'))
-        ending_heart_rate = int(data.get('ending_heart_rate'))
-        rest_seconds = max(0, int(data.get('rest_seconds')))
-    except (TypeError, ValueError):
-        return jsonify({'status': 'error', 'message': 'Starting heart rate, ending heart rate, and rest time are required.'}), 400
-
-    if not 1 <= starting_heart_rate <= 300 or not 1 <= ending_heart_rate <= 300:
-        return jsonify({'status': 'error', 'message': 'Heart rate must be between 1 and 300 BPM.'}), 400
-
-    set_log = SetLog.query.filter_by(id=set_id, workout_log_id=log.id).first()
-    if not set_log:
-        return jsonify({'status': 'error', 'message': 'The logged set was not found.'}), 404
-
-    try:
-        set_log.rest_start_heart_rate = starting_heart_rate
-        set_log.rest_end_heart_rate = ending_heart_rate
-        set_log.rest_seconds = rest_seconds
-        db.session.commit()
+        set_log = workout_service.save_ui_rest(log_id, data)
+    except ValueError as exc:
+        return jsonify({'status': 'error', 'message': str(exc)}), 400
+    except LookupError as exc:
+        return jsonify({'status': 'error', 'message': str(exc)}), 404
     except Exception:
         db.session.rollback()
-        app.logger.exception("Failed to save rest information for workout log %s", log.id)
+        app.logger.exception(
+            'Failed to save rest information for workout log %s', log_id
+        )
         return jsonify({
             'status': 'error',
             'message': 'Database error while saving rest information. Check the Flask console for details.'
@@ -719,35 +544,9 @@ def save_rest_info(log_id):
 
 @app.route('/log/<int:log_id>/finish', methods=['POST'])
 def finish_workout(log_id):
-    log = WorkoutLog.query.get_or_404(log_id)
-    log.end_time = datetime.utcnow()
-    log.notes = request.form.get('notes', '')
-
-    # Snapshot completed sets into the exercise history table. This prevents an
-    # abandoned/in-progress workout from becoming the user's "last session".
-    ExerciseHistory.query.filter_by(workout_log_id=log.id).delete(synchronize_session=False)
-    for set_log in log.sets:
-        we = db.session.get(WorkoutExercise, set_log.workout_exercise_id) if set_log.workout_exercise_id else None
-        category = set_log.category or (we.category if we else None)
-        db.session.add(ExerciseHistory(
-            workout_log_id=log.id,
-            workout_exercise_id=set_log.workout_exercise_id,
-            exercise_id=set_log.exercise_id,
-            category=category,
-            set_number=set_log.set_number,
-            reps=set_log.reps,
-            weight=set_log.weight,
-            duration=set_log.duration,
-            time_seconds=set_log.time_seconds,
-            distance_meters=set_log.distance_meters,
-            rest=set_log.rest,
-            rest_start_heart_rate=set_log.rest_start_heart_rate,
-            rest_end_heart_rate=set_log.rest_end_heart_rate,
-            rest_seconds=set_log.rest_seconds,
-            logged_at=datetime.utcnow(),
-        ))
-
-    db.session.commit()
+    log = workout_service.finish_workout(log_id, request.form.get('notes', ''))
+    if not log:
+        abort(404)
     return render_template('finished_workout.html', log=log)
 
 

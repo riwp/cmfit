@@ -46,15 +46,23 @@ Fitness tests:
 ## MCP
 
 Run `python mcp_server.py` after installing requirements. MCP tools currently cover exercise/workout discovery and creation, workout session start/log/rest/finish, and fitness-test history.
-
 ## Refactor status
 
-### Exercises — migrated to shared service
+- Exercise UI routes use `exercise_service` for shared CRUD/reordering behavior.
+- Workout definition/composition UI routes use `workout_service` for create/list/get/delete, composition replacement, remove, reorder, and start.
+- REST API and MCP adapters reuse the same services.
+- Existing UI route URLs, templates, CSS, JavaScript, and `data/cmfit.db` remain unchanged.
+- Next safe refactor area: active workout logging/rest/finish, followed by progress/fitness tests and admin/settings.
 
-The existing exercise UI routes now use `services/exercise_service.py` for list, get, create, update, reorder, and delete operations. The UI adapter still owns HTTP-specific concerns such as multipart image uploads, filesystem image cleanup, redirects, flash messages, and template rendering. The REST API and MCP exercise tools reuse the same service layer.
+## Active workout logging refactor
 
-The exercise UI route names, URLs, templates, CSS, JavaScript contracts, database schema, and redirect behavior remain unchanged.
+The active workout flow now uses `services/workout_service.py` for shared business logic while preserving the existing UI contract:
 
-## Next safe refactor
+- start workout session
+- build log-screen exercise cards and prior-session defaults
+- save completed sets
+- save rest duration and heart-rate recovery values
+- finish a workout and snapshot completed sets to `ExerciseHistory`
 
-Refactor **Workout definitions/composition** next: workout list/create/edit/delete, adding/removing exercises, ordering, and category-specific targets. Keep the existing UI routes and templates unchanged while moving database/business operations into `workout_service`. Continue one capability at a time with route-contract checks after each move.
+`app.py` remains responsible for Flask request/response behavior, redirects, AJAX status codes, flashes, and template rendering. REST API and MCP consumers call the same service-layer rules. No templates or CSS are changed by this refactor.
+

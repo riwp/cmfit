@@ -5,11 +5,10 @@ The MCP adapter reuses the same application services as the REST API.
 """
 from functools import wraps
 from mcp.server.mcpserver import MCPServer
-
 from app import app
 from services import exercise_service, workout_service, fitness_service
 
-mcp = MCPServer("CMFit")
+mcp = MCPServer('cmfit')
 
 
 def in_app_context(fn):
@@ -73,6 +72,56 @@ def get_workout(workout_id: int) -> dict:
 
 @mcp.tool()
 @in_app_context
+def add_workout_exercise(workout_id: int, exercise_id: int, category: str,
+                         sets: int | None = None, reps: int | None = None,
+                         duration: float | None = None, rest: int | None = None,
+                         weight: float | None = None) -> dict:
+    """Add an exercise/category row to a workout definition."""
+    target = {
+        'sets': sets, 'reps': reps, 'duration': duration,
+        'rest': rest, 'weight': weight,
+    }
+    item = workout_service.add_exercise(workout_id, {
+        'exercise_id': exercise_id,
+        'category': category,
+        'categories': [category],
+        'custom_sets': sets,
+        'custom_reps': reps,
+        'custom_duration': duration,
+        'custom_rest': rest,
+        'category_targets': {category: target},
+    })
+    if not item:
+        return {'error': 'Workout or exercise not found'}
+    return workout_service.as_dict(workout_service.get_workout(workout_id))
+
+
+@mcp.tool()
+@in_app_context
+def remove_workout_exercise(workout_id: int, workout_exercise_id: int) -> dict:
+    """Remove one exercise/category row from a workout definition."""
+    if not workout_service.get_workout(workout_id):
+        return {'error': 'Workout not found'}
+    if not workout_service.remove_workout_exercise(workout_id, workout_exercise_id):
+        return {'error': 'Workout exercise not found'}
+    return workout_service.as_dict(workout_service.get_workout(workout_id))
+
+
+@mcp.tool()
+@in_app_context
+def reorder_workout_exercises(workout_id: int, workout_exercise_ids: list[int]) -> dict:
+    """Set the complete order of exercise/category rows in a workout."""
+    try:
+        workout = workout_service.reorder_workout_exercises(
+            workout_id, [{'id': item_id} for item_id in workout_exercise_ids]
+        )
+    except ValueError as exc:
+        return {'error': str(exc)}
+    return workout_service.as_dict(workout) if workout else {'error': 'Workout not found'}
+
+
+@mcp.tool()
+@in_app_context
 def start_workout(workout_id: int) -> dict:
     """Start a workout and return its workout-log session."""
     log = workout_service.start_workout(workout_id)
@@ -85,10 +134,13 @@ def log_set(workout_log_id: int, workout_exercise_id: int, reps: int | None = No
             weight: float | None = None, duration: float | None = None,
             time_seconds: int | None = None, distance_meters: float | None = None) -> dict:
     """Log a completed set in an active workout session."""
-    item = workout_service.log_set(workout_log_id, {
-        'workout_exercise_id': workout_exercise_id, 'reps': reps, 'weight': weight,
-        'duration': duration, 'time_seconds': time_seconds, 'distance_meters': distance_meters,
-    })
+    try:
+        item = workout_service.log_set(workout_log_id, {
+            'workout_exercise_id': workout_exercise_id, 'reps': reps, 'weight': weight,
+            'duration': duration, 'time_seconds': time_seconds, 'distance_meters': distance_meters,
+        })
+    except (ValueError, LookupError) as exc:
+        return {'error': str(exc)}
     return workout_service.set_as_dict(item) if item else {'error': 'Workout log not found'}
 
 
@@ -99,11 +151,14 @@ def log_set(workout_log_id: int, workout_exercise_id: int, reps: int | None = No
 def save_rest(workout_log_id: int, set_id: int, rest_seconds: int,
               starting_heart_rate: int | None = None, ending_heart_rate: int | None = None) -> dict:
     """Save rest duration and optional starting/ending heart rate for a logged set."""
-    item = workout_service.save_rest(workout_log_id, set_id, {
-        'rest_seconds': rest_seconds,
-        'rest_start_heart_rate': starting_heart_rate,
-        'rest_end_heart_rate': ending_heart_rate,
-    })
+    try:
+        item = workout_service.save_rest(workout_log_id, set_id, {
+            'rest_seconds': rest_seconds,
+            'rest_start_heart_rate': starting_heart_rate,
+            'rest_end_heart_rate': ending_heart_rate,
+        })
+    except ValueError as exc:
+        return {'error': str(exc)}
     return workout_service.set_as_dict(item) if item else {'error': 'Workout log/set not found'}
 
 
