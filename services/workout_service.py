@@ -167,21 +167,32 @@ def get_composition_state(workout_id, valid_categories):
 
 
 def replace_workout_exercises(workout_id, selections):
-    """Replace a workout's composition with normalized exercise/category selections.
+    """Update a workout's exercise/category composition without losing saved order.
 
-    Each selected category becomes its own WorkoutExercise row, preserving the
-    behavior of the existing UI and its independent category targets/history.
+    Existing WorkoutExercise rows retain their relative order and IDs.
+    Newly added exercise/category rows are inserted at the top of the workout.
+    Rows that are no longer selected are removed.
     """
     workout = get_workout(workout_id)
     if not workout:
         return None
 
-    WorkoutExercise.query.filter_by(workout_id=workout.id).delete(synchronize_session=False)
+    # ------------------------------------------------------------------
+    # Normalize the submitted selections.
+    #
+    # Each exercise/category combination corresponds to one
+    # WorkoutExercise row.
+    # ------------------------------------------------------------------
+    submitted = {}
 
-    order_index = 0
     for selection in selections or []:
         exercise_id = _safe_int(selection.get('exercise_id'))
-        exercise = db.session.get(Exercise, exercise_id) if exercise_id is not None else None
+        exercise = (
+            db.session.get(Exercise, exercise_id)
+            if exercise_id is not None
+            else None
+        )
+
         if not exercise:
             continue
 
@@ -189,35 +200,182 @@ def replace_workout_exercises(workout_id, selections):
         if not isinstance(categories, list):
             continue
 
-        supplied_targets = selection.get('targets') if isinstance(selection.get('targets'), dict) else {}
+        supplied_targets = (
+            selection.get('targets')
+            if isinstance(selection.get('targets'), dict)
+            else {}
+        )
 
         for category in categories:
-            raw_target = supplied_targets.get(category, {}) if isinstance(supplied_targets, dict) else {}
+            raw_target = (
+                supplied_targets.get(category, {})
+                if isinstance(supplied_targets, dict)
+                else {}
+            )
+
             target = {
-                'sets': _safe_int(raw_target.get('sets'), exercise.sets or 3, minimum=1),
-                'reps': _safe_int(raw_target.get('reps'), exercise.reps or 10, minimum=1),
-                'duration': _safe_float(raw_target.get('duration'), exercise.duration or 30, minimum=0.0),
-                'weight': _safe_float(raw_target.get('weight'), 0.0, minimum=0.0),
-                'rest': _safe_int(raw_target.get('rest'), exercise.rest or 60, minimum=0),
+                'sets': _safe_int(
+                    raw_target.get('sets'),
+                    exercise.sets or 3,
+                    minimum=1,
+                ),
+                'reps': _safe_int(
+                    raw_target.get('reps'),
+                    exercise.reps or 10,
+                    minimum=1,
+                ),
+                'duration': _safe_float(
+                    raw_target.get('duration'),
+                    exercise.duration or 30,
+                    minimum=0.0,
+                ),
+                'weight': _safe_float(
+                    raw_target.get('weight'),
+                    0.0,
+                    minimum=0.0,
+                ),
+                'rest': _safe_int(
+                    raw_target.get('rest'),
+                    exercise.rest or 60,
+                    minimum=0,
+                ),
             }
 
-            db.session.add(WorkoutExercise(
-                workout_id=workout.id,
-                exercise_id=exercise.id,
-                custom_sets=target['sets'],
-                custom_reps=target['reps'],
-                custom_duration=target['duration'],
-                custom_rest=target['rest'],
-                categories=[category],
-                category_targets={category: target},
-                category=category,
-                order=order_index,
-            ))
-            order_index += 1
+            submitted[(exercise.id, category)] = {
+                'exercise': exercise,
+                'category': category,
+                'target': target,
+            }
+
+    # ------------------------------------------------------------------
+    # Load existing rows in the user's SAVED order.
+    # ------------------------------------------------------------------
+    existing_rows = (
+        WorkoutExercise.query
+        .filter_by(workout_id=workout.id)
+        .order_by(
+            WorkoutExercise.order.asc(),
+            WorkoutExercise.id.asc(),
+        )
+        .all()
+    )
+
+    existing_map = {}
+
+    for item in existing_rows:
+        category = item.category
+
+        if not category:
+            categories = (
+                item.categories
+                if isinstance(item.categories, list)
+                else []
+            )
+            category = (
+                categories[0]
+                if categories
+                else (
+                    item.exercise.exercise_type
+                    if item.exercise
+                    else None
+                )
+            )
+
+        existing_map[(item.exercise_id, category)] = item
+
+    submitted_keys = set(submitted.keys())
+    existing_keys = set(existing_map.keys())
+
+    # ------------------------------------------------------------------
+    # Remove only rows the user actually deselected.
+    # ------------------------------------------------------------------
+    for key in existing_keys - submitted_keys:
+        db.session.delete(existing_map[key])
+
+    # ------------------------------------------------------------------
+    # Update existing rows WITHOUT changing their order.
+    # ------------------------------------------------------------------
+    retained_rows = []
+
+    for item in existing_rows:
+        category = item.category
+
+        if not category:
+            categories = (
+                item.categories
+                if isinstance(item.categories, list)
+                else []
+            )
+            category = (
+                categories[0]
+                if categories
+                else (
+                    item.exercise.exercise_type
+                    if item.exercise
+                    else None
+                )
+            )
+
+        key = (item.exercise_id, category)
+
+        if key not in submitted:
+            continue
+
+        target = submitted[key]['target']
+
+        item.custom_sets = target['sets']
+        item.custom_reps = target['reps']
+        item.custom_duration = target['duration']
+        item.custom_rest = target['rest']
+        item.categories = [category]
+        item.category_targets = {category: target}
+        item.category = category
+
+        retained_rows.append(item)
+
+    # ------------------------------------------------------------------
+    # Create only genuinely NEW rows.
+    #
+    # They will be placed before the existing rows.
+    # ------------------------------------------------------------------
+    new_rows = []
+
+    for key, entry in submitted.items():
+        if key in existing_map:
+            continue
+
+        exercise = entry['exercise']
+        category = entry['category']
+        target = entry['target']
+
+        item = WorkoutExercise(
+            workout_id=workout.id,
+            exercise_id=exercise.id,
+            custom_sets=target['sets'],
+            custom_reps=target['reps'],
+            custom_duration=target['duration'],
+            custom_rest=target['rest'],
+            categories=[category],
+            category_targets={category: target},
+            category=category,
+        )
+
+        db.session.add(item)
+        new_rows.append(item)
+
+    # ------------------------------------------------------------------
+    # Final order:
+    #
+    # NEW exercises first
+    # EXISTING exercises afterward in their previously saved order
+    # ------------------------------------------------------------------
+    final_rows = new_rows + retained_rows
+
+    for position, item in enumerate(final_rows):
+        item.order = position
 
     db.session.commit()
     return workout
-
 
 def add_exercise(workout_id, data):
     """Add one WorkoutExercise row for API/MCP consumers."""
