@@ -1,0 +1,123 @@
+2026-09-19 13:42:42,607 | INFO | app | Database initialization and migrations completed
+2026-09-19 13:43:07,764 | INFO | app | Database initialization and migrations completed
+2026-09-19 13:43:09,793 | INFO | app | Database initialization and migrations completed
+2026-09-19 13:43:33,552 | INFO | app | Database initialization and migrations completed
+2026-09-19 13:43:35,118 | INFO | app | Database initialization and migrations completed
+2026-09-19 13:43:38,999 | INFO | app | Database initialization and migrations completed
+2026-09-19 13:43:42,983 | INFO | app | Database initialization and migrations completed
+2026-09-19 13:43:46,973 | INFO | app | Database initialization and migrations completed
+2026-09-19 13:43:50,981 | INFO | app | Database initialization and migrations completed
+2026-09-19 13:43:54,976 | INFO | app | Database initialization and migrations completed
+2026-09-19 13:43:58,994 | INFO | app | Database initialization and migrations completed
+2026-09-19 13:44:02,983 | INFO | app | Database initialization and migrations completed
+2026-09-19 13:44:06,986 | INFO | app | Database initialization and migrations completed
+2026-09-19 13:44:11,019 | INFO | app | Database initialization and migrations completed
+2026-09-19 13:44:14,975 | INFO | app | Database initialization and migrations completed
+2026-09-19 13:44:16,927 | INFO | app | [chat-403a815e] Chat HTTP request started | mode=global | messages=1
+2026-09-19 13:44:16,927 | INFO | cmfit.chat | [chat-403a815e] Chat orchestration started | mode=global | messages=1
+2026-09-19 13:44:16,940 | INFO | cmfit.chat | [chat-403a815e] LLM provider initialized | provider=openai | model=gpt-5.6-luna
+2026-09-19 13:44:16,940 | INFO | cmfit.mcp | [chat-403a815e] MCP server starting | python=/home/mfsli1/cmfit/venv/bin/python3
+2026-09-19 13:44:16,946 | INFO | cmfit.mcp | [chat-403a815e] MCP stdio opened
+2026-09-19 13:44:17,609 | INFO | app | Database initialization and migrations completed
+2026-09-19 13:44:17,631 | INFO | cmfit.mcp | [chat-403a815e] MCP session initialized
+2026-09-19 13:44:17,631 | INFO | cmfit.mcp | [chat-403a815e] MCP tool discovery started
+2026-09-19 13:44:17,634 | INFO | cmfit.mcp | [chat-403a815e] MCP tool discovery completed | count=21 | elapsed_ms=2
+2026-09-19 13:44:17,634 | INFO | cmfit.mcp | [chat-403a815e] MCP shutdown started
+2026-09-19 13:44:17,634 | ERROR | cmfit.mcp | [chat-403a815e] MCP session cleanup failed | error_type=ExceptionGroup
+  + Exception Group Traceback (most recent call last):
+  |   File "/home/mfsli1/cmfit/services/mcp_chat_client.py", line 61, in __aexit__
+  |     await self._session_cm.__aexit__(exc_type, exc, tb)
+  |   File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/mcp/client/session.py", line 514, in __aexit__
+  |     result = await self._task_group.__aexit__(exc_type, exc_val, exc_tb)
+  |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |   File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 847, in __aexit__
+  |     raise BaseExceptionGroup(
+  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "/home/mfsli1/cmfit/services/chat_service.py", line 74, in run_chat
+    |     tools = await mcp.tools()
+    |             ^^^^^^^^^^^^^^^^^
+    |   File "/home/mfsli1/cmfit/services/mcp_chat_client.py", line 114, in tools
+    |     'input_schema': tool.inputSchema or {'type': 'object', 'properties': {}},
+    |                     ^^^^^^^^^^^^^^^^
+    |   File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/pydantic/main.py", line 1042, in __getattr__
+    |     raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+    | AttributeError: 'Tool' object has no attribute 'inputSchema'. Did you mean: 'input_schema'?
+    +------------------------------------
+2026-09-19 13:44:17,852 | ERROR | cmfit.mcp | [chat-403a815e] MCP stdio cleanup failed | error_type=ExceptionGroup
+  + Exception Group Traceback (most recent call last):
+  |   File "/home/mfsli1/cmfit/services/mcp_chat_client.py", line 71, in __aexit__
+  |     await self._stdio_cm.__aexit__(exc_type, exc, tb)
+  |   File "/usr/lib/python3.12/contextlib.py", line 231, in __aexit__
+  |     await self.gen.athrow(value)
+  |   File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/mcp/client/stdio.py", line 200, in stdio_client
+  |     async with anyio.create_task_group() as tg:
+  |   File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 847, in __aexit__
+  |     raise BaseExceptionGroup(
+  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/mcp/client/stdio.py", line 204, in stdio_client
+    |     yield read_stream, write_stream
+    |   File "/home/mfsli1/cmfit/services/chat_service.py", line 74, in run_chat
+    |     tools = await mcp.tools()
+    |             ^^^^^^^^^^^^^^^^^
+    |   File "/home/mfsli1/cmfit/services/mcp_chat_client.py", line 114, in tools
+    |     'input_schema': tool.inputSchema or {'type': 'object', 'properties': {}},
+    |                     ^^^^^^^^^^^^^^^^
+    |   File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/pydantic/main.py", line 1042, in __getattr__
+    |     raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+    | AttributeError: 'Tool' object has no attribute 'inputSchema'. Did you mean: 'input_schema'?
+    +------------------------------------
+2026-09-19 13:44:17,853 | WARNING | cmfit.mcp | [chat-403a815e] MCP shutdown completed with 2 cleanup error(s)
+2026-09-19 13:44:17,853 | ERROR | cmfit.chat | [chat-403a815e] Chat orchestration failed | error_type=AttributeError | elapsed_ms=926
+Traceback (most recent call last):
+  File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/mcp/client/stdio.py", line 204, in stdio_client
+    yield read_stream, write_stream
+  File "/home/mfsli1/cmfit/services/chat_service.py", line 74, in run_chat
+    tools = await mcp.tools()
+            ^^^^^^^^^^^^^^^^^
+  File "/home/mfsli1/cmfit/services/mcp_chat_client.py", line 114, in tools
+    'input_schema': tool.inputSchema or {'type': 'object', 'properties': {}},
+                    ^^^^^^^^^^^^^^^^
+  File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/pydantic/main.py", line 1042, in __getattr__
+    raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+AttributeError: 'Tool' object has no attribute 'inputSchema'. Did you mean: 'input_schema'?
+2026-09-19 13:44:17,854 | ERROR | app | [chat-403a815e] CMFit chat failed | error_type=AttributeError
+Traceback (most recent call last):
+  File "/home/mfsli1/cmfit/app.py", line 99, in chat
+    result = asyncio.run(
+             ^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 194, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 687, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/mcp/client/stdio.py", line 204, in stdio_client
+    yield read_stream, write_stream
+  File "/home/mfsli1/cmfit/services/chat_service.py", line 74, in run_chat
+    tools = await mcp.tools()
+            ^^^^^^^^^^^^^^^^^
+  File "/home/mfsli1/cmfit/services/mcp_chat_client.py", line 114, in tools
+    'input_schema': tool.inputSchema or {'type': 'object', 'properties': {}},
+                    ^^^^^^^^^^^^^^^^
+  File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/pydantic/main.py", line 1042, in __getattr__
+    raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+AttributeError: 'Tool' object has no attribute 'inputSchema'. Did you mean: 'input_schema'?
+2026-09-19 13:44:18,977 | INFO | app | Database initialization and migrations completed
+2026-09-19 13:44:22,977 | INFO | app | Database initialization and migrations completed
+2026-09-19 13:44:27,001 | INFO | app | Database initialization and migrations completed
+2026-09-19 13:44:30,997 | INFO | app | Database initialization and migrations completed
+2026-09-19 13:44:34,975 | INFO | app | Database initialization and migrations completed
+2026-09-19 13:44:38,994 | INFO | app | Database initialization and migrations completed
+2026-09-19 13:44:43,003 | INFO | app | Database initialization and migrations completed
+2026-09-19 13:44:47,491 | INFO | app | Database initialization and migrations completed
+2026-09-19 13:44:51,739 | INFO | app | Database initialization and migrations completed
+2026-09-19 13:44:55,738 | INFO | app | Database initialization and migrations completed
+2026-09-19 13:44:59,735 | INFO | app | Database initialization and migrations completed
+2026-09-19 13:45:00,394 | INFO | app | Database initialization and migrations completed

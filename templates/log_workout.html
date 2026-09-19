@@ -187,6 +187,17 @@
             <input type="number" name="rest" min="0" step="5" value="{{ card.last_rest if card.last_rest is not none else target.get('rest', ex.rest or 60) }}"
                    class="w-20 bg-slate-950 border border-white/10 rounded-xl px-2 py-2 text-xs text-slate-100 font-bold text-center placeholder-slate-600 focus:outline-none focus:border-emerald-500/50 transition" title="Rest (seconds)">
 
+            <button type="button" class="cmfit-set-voice-btn"
+                    aria-label="Log this set by voice"
+                    onclick='window.CMFitChat.openWorkoutVoice({
+                        workout_log_id: {{ log.id|tojson }},
+                        workout_exercise_id: {{ item.id|tojson }},
+                        exercise_name: {{ ex.name|tojson }},
+                        set_number: {{ next_set_num|tojson }},
+                        category: {{ category|tojson }}
+                    })'>
+                <i class="fa-solid fa-microphone"></i>
+            </button>
             <button type="submit" class="px-4 py-2 bg-slate-800 hover:bg-emerald-500 hover:text-slate-950 text-emerald-400 border border-emerald-500/30 rounded-xl font-extrabold text-xs whitespace-nowrap transition active:scale-95 flex-shrink-0">Save</button>
         </form>
     </div>

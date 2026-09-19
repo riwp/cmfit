@@ -20,6 +20,7 @@
 
     <!-- Top Navigation Header -->
     <header class="ios-header sticky top-0 z-40 bg-slate-950/80 backdrop-blur-md border-b border-white/5 px-4 py-3">
+        <div class="cmfit-header-row">
         <a href="{{ url_for('workout_list') }}" class="flex items-center gap-3.5 active:scale-95 transition-transform duration-150">
             <div class="brand-logo-icon flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-500 text-slate-950 font-bold text-sm">
                 CM
@@ -29,6 +30,10 @@
                 <span class="brand-subtitle text-[10px] text-slate-400 tracking-wider uppercase leading-tight">Performance</span>
             </div>
         </a>
+        <button type="button" id="cmfitChatOpen" class="cmfit-chat-header-btn" aria-label="Open CMFit chat">
+            <i class="fa-solid fa-comment-dots"></i>
+        </button>
+        </div>
     </header>
 
     <!-- Main Scrollable Content Body -->
@@ -79,6 +84,27 @@
 
         </nav>
     </div>
+
+
+    <!-- Global CMFit Chat Drawer -->
+    <div id="cmfitChatBackdrop" class="cmfit-chat-backdrop hidden" aria-hidden="true"></div>
+    <section id="cmfitChatDrawer" class="cmfit-chat-drawer" aria-hidden="true" aria-label="CMFit assistant">
+        <div class="cmfit-chat-head">
+            <div>
+                <span class="cmfit-chat-kicker"><i class="fa-solid fa-sparkles"></i> CMFIT ASSISTANT</span>
+                <strong id="cmfitChatTitle">Chat</strong>
+                <small id="cmfitChatContext">Ask about workouts, progress, exercises, or make changes.</small>
+            </div>
+            <button type="button" id="cmfitChatClose" class="cmfit-chat-close" aria-label="Close chat"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div id="cmfitChatMessages" class="cmfit-chat-messages" aria-live="polite"></div>
+        <div id="cmfitVoiceStatus" class="cmfit-voice-status hidden"><i class="fa-solid fa-wave-square"></i> Listening…</div>
+        <form id="cmfitChatForm" class="cmfit-chat-compose">
+            <button type="button" id="cmfitChatMic" class="cmfit-chat-mic" aria-label="Voice command"><i class="fa-solid fa-microphone"></i></button>
+            <textarea id="cmfitChatInput" rows="1" placeholder="Message CMFit…" autocomplete="off"></textarea>
+            <button type="submit" id="cmfitChatSend" class="cmfit-chat-send" aria-label="Send"><i class="fa-solid fa-arrow-up"></i></button>
+        </form>
+    </section>
 
     <!-- Audio Engine Scripts -->
     <script>
@@ -171,5 +197,135 @@
             audio.play().catch(e => console.error('Audio play error:', e));
         };
     </script>
+
+    <script>
+    (function () {
+        const drawer = document.getElementById('cmfitChatDrawer');
+        const backdrop = document.getElementById('cmfitChatBackdrop');
+        const openBtn = document.getElementById('cmfitChatOpen');
+        const closeBtn = document.getElementById('cmfitChatClose');
+        const form = document.getElementById('cmfitChatForm');
+        const input = document.getElementById('cmfitChatInput');
+        const mic = document.getElementById('cmfitChatMic');
+        const send = document.getElementById('cmfitChatSend');
+        const messagesEl = document.getElementById('cmfitChatMessages');
+        const titleEl = document.getElementById('cmfitChatTitle');
+        const contextEl = document.getElementById('cmfitChatContext');
+        const voiceStatus = document.getElementById('cmfitVoiceStatus');
+        const storageKey = 'cmfit-chat-history-v1';
+        let context = { mode: 'global' };
+        let recognition = null;
+        let listening = false;
+        let messages = [];
+
+        try { messages = JSON.parse(sessionStorage.getItem(storageKey) || '[]'); } catch (_) { messages = []; }
+        messages = Array.isArray(messages) ? messages.slice(-20) : [];
+
+        function escapeHtml(value) {
+            const div = document.createElement('div');
+            div.textContent = value == null ? '' : String(value);
+            return div.innerHTML;
+        }
+        function persist() { sessionStorage.setItem(storageKey, JSON.stringify(messages.slice(-20))); }
+        function render() {
+            messagesEl.innerHTML = messages.length ? messages.map(m =>
+                '<div class="cmfit-chat-bubble cmfit-chat-' + m.role + '">' + escapeHtml(m.content) + '</div>'
+            ).join('') : '<div class="cmfit-chat-empty"><i class="fa-solid fa-comment-dots"></i><strong>How can I help?</strong><span>You can type or use the microphone.</span></div>';
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+        }
+        function setContext(next) {
+            context = next || { mode: 'global' };
+            if (context.mode === 'workout_set') {
+                titleEl.textContent = 'Log Set by Voice';
+                contextEl.textContent = (context.exercise_name || 'Current exercise') + (context.set_number ? ' · Set ' + context.set_number : '');
+            } else {
+                titleEl.textContent = 'Chat';
+                contextEl.textContent = 'Ask about workouts, progress, exercises, or make changes.';
+            }
+        }
+        function openChat(nextContext, startVoice) {
+            setContext(nextContext || { mode: 'global' });
+            drawer.classList.add('cmfit-chat-open');
+            drawer.setAttribute('aria-hidden', 'false');
+            backdrop.classList.remove('hidden');
+            backdrop.setAttribute('aria-hidden', 'false');
+            render();
+            if (startVoice) setTimeout(startListening, 220); else setTimeout(() => input.focus(), 220);
+        }
+        function closeChat() {
+            stopListening();
+            drawer.classList.remove('cmfit-chat-open');
+            drawer.setAttribute('aria-hidden', 'true');
+            backdrop.classList.add('hidden');
+            backdrop.setAttribute('aria-hidden', 'true');
+        }
+        async function sendMessage(text) {
+            text = (text || '').trim();
+            if (!text) return;
+            messages.push({ role: 'user', content: text });
+            messages = messages.slice(-20); persist(); render(); input.value = '';
+            send.disabled = true; mic.disabled = true;
+            const pending = document.createElement('div');
+            pending.className = 'cmfit-chat-bubble cmfit-chat-assistant cmfit-chat-thinking';
+            pending.textContent = 'Working…';
+            messagesEl.appendChild(pending); messagesEl.scrollTop = messagesEl.scrollHeight;
+            try {
+                const response = await fetch({{ url_for('chat')|tojson }}, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ messages: messages, context: context })
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Chat request failed');
+                messages.push({ role: 'assistant', content: data.message || 'Done.' });
+                messages = messages.slice(-20); persist(); render();
+                if (context.mode === 'workout_set' && Array.isArray(data.tool_calls) && data.tool_calls.some(x => x.name === 'log_set')) {
+                    setTimeout(() => window.location.reload(), 650);
+                }
+            } catch (error) {
+                pending.remove();
+                messages.push({ role: 'assistant', content: 'Error: ' + error.message });
+                persist(); render();
+            } finally { send.disabled = false; mic.disabled = false; }
+        }
+        function setupRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) return null;
+            const r = new SpeechRecognition();
+            r.lang = 'en-US'; r.interimResults = true; r.continuous = false;
+            r.onstart = () => { listening = true; mic.classList.add('cmfit-mic-listening'); voiceStatus.classList.remove('hidden'); };
+            r.onresult = event => {
+                let transcript = '';
+                for (let i = event.resultIndex; i < event.results.length; i++) transcript += event.results[i][0].transcript;
+                input.value = transcript.trim();
+                if (event.results[event.results.length - 1].isFinal) sendMessage(input.value);
+            };
+            r.onerror = event => { if (event.error !== 'aborted') contextEl.textContent = 'Voice error: ' + event.error + '. You can still type.'; };
+            r.onend = () => { listening = false; mic.classList.remove('cmfit-mic-listening'); voiceStatus.classList.add('hidden'); };
+            return r;
+        }
+        function startListening() {
+            if (!recognition) recognition = setupRecognition();
+            if (!recognition) { contextEl.textContent = 'Voice recognition is not available in this browser. You can still type.'; input.focus(); return; }
+            if (listening) { stopListening(); return; }
+            try { recognition.start(); } catch (_) {}
+        }
+        function stopListening() { if (recognition && listening) try { recognition.stop(); } catch (_) {} }
+
+        openBtn.addEventListener('click', () => openChat({ mode: 'global' }, false));
+        closeBtn.addEventListener('click', closeChat); backdrop.addEventListener('click', closeChat);
+        mic.addEventListener('click', startListening);
+        form.addEventListener('submit', event => { event.preventDefault(); sendMessage(input.value); });
+        input.addEventListener('keydown', event => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); sendMessage(input.value); } });
+        render();
+
+        window.CMFitChat = {
+            open: () => openChat({ mode: 'global' }, false),
+            openWorkoutVoice: data => openChat({ mode: 'workout_set', ...data }, true),
+            close: closeChat
+        };
+    })();
+    </script>
+
 </body>
 </html>

@@ -1,8 +1,6 @@
 import os
 import uuid
 import asyncio
-import logging
-from logging.handlers import RotatingFileHandler
 from datetime import datetime
 from dotenv import load_dotenv
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, abort
@@ -27,26 +25,6 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 
 app = Flask(__name__)
 
-# Persistent application logging. Avoid logging API keys, full chat messages,
-# or tool argument payloads.
-log_dir = os.path.join(basedir, 'logs')
-os.makedirs(log_dir, exist_ok=True)
-log_file = os.path.join(log_dir, 'cmfit.log')
-
-if not any(isinstance(h, RotatingFileHandler) for h in app.logger.handlers):
-    file_handler = RotatingFileHandler(
-        log_file,
-        maxBytes=2_000_000,
-        backupCount=5,
-    )
-    file_handler.setLevel(logging.INFO)
-    file_handler.setFormatter(logging.Formatter(
-        '%(asctime)s | %(levelname)s | %(name)s | %(message)s'
-    ))
-    app.logger.addHandler(file_handler)
-
-app.logger.setLevel(logging.INFO)
-
 # Secret key & absolute DB path locking
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'default-dev-key-change-in-prod')
 db_dir = os.path.join(basedir, 'data')
@@ -68,7 +46,6 @@ os.makedirs(app.config['SOUND_FOLDER'], exist_ok=True)
 @app.post('/chat')
 def chat():
     """Global/contextual CMFit agent endpoint. API keys remain server-side."""
-    request_id = f"chat-{uuid.uuid4().hex[:8]}"
     payload = request.get_json(silent=True) or {}
     raw_messages = payload.get('messages') or []
     context = payload.get('context') or {}
@@ -83,32 +60,14 @@ def chat():
             messages.append({'role': role, 'content': content[:4000]})
 
     if not messages or messages[-1]['role'] != 'user':
-        app.logger.warning(
-            '[%s] Chat request rejected: user message required', request_id
-        )
         return jsonify({'error': 'A user message is required.'}), 400
 
-    app.logger.info(
-        '[%s] Chat HTTP request started | mode=%s | messages=%s',
-        request_id,
-        context.get('mode', 'global'),
-        len(messages),
-    )
-
     try:
-        result = asyncio.run(
-            run_chat(basedir, messages, context, request_id=request_id)
-        )
-        app.logger.info('[%s] Chat HTTP request completed', request_id)
+        result = asyncio.run(run_chat(basedir, messages, context))
         return jsonify(result)
     except Exception as exc:
-        app.logger.exception(
-            '[%s] CMFit chat failed | error_type=%s',
-            request_id,
-            type(exc).__name__,
-        )
-        return jsonify({'error': str(exc), 'request_id': request_id}), 500
-
+        app.logger.exception('CMFit chat failed')
+        return jsonify({'error': str(exc)}), 500
 
 # Valid Exercise Types
 VALID_EXERCISE_TYPES = [
