@@ -864,6 +864,121 @@ def finish_workout(log_id, notes=None):
     return log
 
 
+
+def get_recent_workout_logs(limit=10):
+    """Return recently completed workout sessions, newest first."""
+    limit = _safe_int(limit, 10, minimum=1)
+    limit = min(limit, 100)
+    return (
+        WorkoutLog.query
+        .filter(WorkoutLog.end_time.isnot(None))
+        .order_by(WorkoutLog.end_time.desc(), WorkoutLog.id.desc())
+        .limit(limit)
+        .all()
+    )
+
+
+def get_workout_history(workout_id=None, limit=20):
+    """Return completed workout sessions, optionally filtered by workout definition."""
+    limit = _safe_int(limit, 20, minimum=1)
+    limit = min(limit, 100)
+
+    query = WorkoutLog.query.filter(WorkoutLog.end_time.isnot(None))
+    if workout_id:
+        workout_id = _safe_int(workout_id)
+        if workout_id is None or not get_workout(workout_id):
+            return None
+        query = query.filter(WorkoutLog.workout_id == workout_id)
+
+    return (
+        query
+        .order_by(WorkoutLog.end_time.desc(), WorkoutLog.id.desc())
+        .limit(limit)
+        .all()
+    )
+
+
+def get_exercise_history(exercise_id, limit=50):
+    """Return completed historical set snapshots for one exercise, newest first."""
+    exercise_id = _safe_int(exercise_id)
+    exercise = db.session.get(Exercise, exercise_id) if exercise_id is not None else None
+    if not exercise:
+        return None
+
+    limit = _safe_int(limit, 50, minimum=1)
+    limit = min(limit, 500)
+
+    rows = (
+        ExerciseHistory.query
+        .join(WorkoutLog, ExerciseHistory.workout_log_id == WorkoutLog.id)
+        .filter(
+            ExerciseHistory.exercise_id == exercise.id,
+            WorkoutLog.end_time.isnot(None),
+        )
+        .order_by(
+            WorkoutLog.end_time.desc(),
+            ExerciseHistory.set_number.asc(),
+            ExerciseHistory.id.asc(),
+        )
+        .limit(limit)
+        .all()
+    )
+
+    return {
+        'exercise': {
+            'id': exercise.id,
+            'name': exercise.name,
+            'exercise_type': exercise.exercise_type,
+        },
+        'history': [
+            {
+                'id': row.id,
+                'workout_log_id': row.workout_log_id,
+                'workout_exercise_id': row.workout_exercise_id,
+                'category': row.category,
+                'set_number': row.set_number,
+                'reps': row.reps,
+                'weight': row.weight,
+                'duration': row.duration,
+                'time_seconds': row.time_seconds,
+                'distance_meters': row.distance_meters,
+                'rest': row.rest,
+                'rest_start_heart_rate': row.rest_start_heart_rate,
+                'rest_end_heart_rate': row.rest_end_heart_rate,
+                'rest_seconds': row.rest_seconds,
+                'logged_at': row.logged_at.isoformat() if row.logged_at else None,
+            }
+            for row in rows
+        ],
+    }
+
+
+def get_training_history(start_date, end_date):
+    """Return completed workout sessions whose completion time falls in an inclusive date range."""
+    try:
+        start = datetime.strptime(start_date, '%Y-%m-%d')
+        end = datetime.strptime(end_date, '%Y-%m-%d')
+    except (TypeError, ValueError):
+        raise ValueError('Dates must use YYYY-MM-DD format.')
+
+    if end < start:
+        raise ValueError('end_date must be on or after start_date.')
+
+    # Make the end date inclusive without relying on database-specific date functions.
+    from datetime import timedelta
+    end_exclusive = end + timedelta(days=1)
+
+    return (
+        WorkoutLog.query
+        .filter(
+            WorkoutLog.end_time.isnot(None),
+            WorkoutLog.end_time >= start,
+            WorkoutLog.end_time < end_exclusive,
+        )
+        .order_by(WorkoutLog.end_time.desc(), WorkoutLog.id.desc())
+        .all()
+    )
+
 def as_dict(workout):
     return workout_to_dict(workout)
 

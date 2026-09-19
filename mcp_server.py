@@ -36,8 +36,6 @@ def get_exercise(exercise_id: int) -> dict:
     return exercise_service.as_dict(item) if item else {'error': 'Exercise not found'}
 
 
-
-
 @mcp.tool()
 @in_app_context
 def create_exercise(name: str, exercise_type: str = 'Strength', instructions: str = '') -> dict:
@@ -54,6 +52,7 @@ def create_workout(title: str, description: str = '') -> dict:
     """Create a new workout definition."""
     item = workout_service.create_workout({'title': title, 'description': description})
     return workout_service.as_dict(item)
+
 
 @mcp.tool()
 @in_app_context
@@ -144,8 +143,6 @@ def log_set(workout_log_id: int, workout_exercise_id: int, reps: int | None = No
     return workout_service.set_as_dict(item) if item else {'error': 'Workout log not found'}
 
 
-
-
 @mcp.tool()
 @in_app_context
 def save_rest(workout_log_id: int, set_id: int, rest_seconds: int,
@@ -182,6 +179,59 @@ def get_progress_summary(year: int = 0, month: int = 0) -> dict:
 def get_fitness_test_history(test_key: str = '', limit: int = 50) -> list[dict]:
     """Return fitness-test history, optionally filtered by test key."""
     return [fitness_service.as_dict(x) for x in fitness_service.list_results(test_key or None, min(limit, 500))]
+
+
+# ------------------------- Read/query tools -------------------------
+
+@mcp.tool()
+@in_app_context
+def get_recent_workouts(limit: int = 10) -> list[dict]:
+    """Return recently completed workout sessions, newest first."""
+    return [workout_service.log_as_dict(x) for x in workout_service.get_recent_workout_logs(limit)]
+
+
+@mcp.tool()
+@in_app_context
+def get_workout_history(workout_id: int = 0, limit: int = 20) -> list[dict] | dict:
+    """Return completed workout sessions, optionally filtered by workout definition."""
+    rows = workout_service.get_workout_history(workout_id or None, limit)
+    if rows is None:
+        return {'error': 'Workout not found'}
+    return [workout_service.log_as_dict(x) for x in rows]
+
+
+@mcp.tool()
+@in_app_context
+def get_exercise_history(exercise_id: int, limit: int = 50) -> dict:
+    """Return completed historical sets and performance for one exercise."""
+    result = workout_service.get_exercise_history(exercise_id, limit)
+    return result if result is not None else {'error': 'Exercise not found'}
+
+
+@mcp.tool()
+@in_app_context
+def get_fitness_tests() -> list[dict]:
+    """Return available fitness-test definitions, keys, units, and test instructions."""
+    return fitness_service.get_fitness_test_definitions()
+
+
+@mcp.tool()
+@in_app_context
+def get_latest_fitness_test_session() -> dict:
+    """Return all results from the most recent fitness-test date."""
+    result = fitness_service.get_latest_fitness_test_session()
+    return result if result is not None else {'date': None, 'results': []}
+
+
+@mcp.tool()
+@in_app_context
+def get_training_history(start_date: str, end_date: str) -> list[dict] | dict:
+    """Return completed workout sessions in an inclusive YYYY-MM-DD date range."""
+    try:
+        rows = workout_service.get_training_history(start_date, end_date)
+    except ValueError as exc:
+        return {'error': str(exc)}
+    return [workout_service.log_as_dict(x) for x in rows]
 
 
 if __name__ == '__main__':

@@ -9,7 +9,8 @@ from .serializers import fitness_test_to_dict
 FITNESS_TESTS = [
     {'key': 'horizontal_long_jump', 'name': 'Horizontal Long Jump', 'category': 'Power', 'unit': 'in', 'input_label': 'Distance', 'best_direction': 'higher', 'attempts': 3, 'description': 'Best of 3 attempts.'},
     {'key': 'vertical_jump', 'name': 'Vertical Jump', 'category': 'Power', 'unit': 'in', 'input_label': 'Height', 'best_direction': 'higher', 'attempts': 3, 'description': 'Best of 3 attempts.'},
-    {'key': 'medicine_ball_throw', 'name': 'Medicine Ball Throw', 'category': 'Power', 'unit': 'ft', 'input_label': 'Distance', 'best_direction': 'higher', 'attempts': 3, 'description': 'Best of 3 attempts.'},
+    {'key': 'medicine_ball_throw_left', 'name': 'Medicine Ball Throw Left', 'category': 'Power', 'unit': 'ft', 'input_label': 'Distance', 'best_direction': 'higher', 'attempts': 3, 'description': 'Best of 3 attempts using the left side.'},
+    {'key': 'medicine_ball_throw_right', 'name': 'Medicine Ball Throw Right', 'category': 'Power', 'unit': 'ft', 'input_label': 'Distance', 'best_direction': 'higher', 'attempts': 3, 'description': 'Best of 3 attempts using the right side.'},
     {'key': 'fatigue_index', 'name': 'Fatigue Index', 'category': 'Anaerobic Capacity', 'unit': '%', 'input_label': 'Round time', 'best_direction': 'lower', 'attempts': 6, 'description': 'Six rounds of 50 heavy-bag punches with 30 seconds rest.'},
     {'key': 'max_punches_60', 'name': '60 Seconds Max Effort', 'category': 'Anaerobic Capacity', 'unit': 'punches', 'input_label': 'Punches', 'best_direction': 'higher', 'attempts': 1, 'description': 'Maximum punches in 60 seconds.'},
     {'key': 'cooper_run', 'name': 'Cooper 12 min Run', 'category': 'Anaerobic Base', 'unit': 'VO₂ max', 'input_label': 'Distance', 'best_direction': 'higher', 'attempts': 1, 'description': 'Enter total distance in miles; VO₂ max is calculated automatically.'},
@@ -276,6 +277,42 @@ def get_progress_view_state(year=None, month=None, today=None):
     }
     fitness_stats, fitness_history = _fitness_history_state()
 
+    last_fitness_test_session = None
+    latest_result = (
+        FitnessTestResult.query
+        .order_by(FitnessTestResult.tested_at.desc(), FitnessTestResult.id.desc())
+        .first()
+    )
+    if latest_result:
+        latest_date = latest_result.tested_at.date()
+        day_results = (
+            FitnessTestResult.query
+            .filter(
+                FitnessTestResult.tested_at >= datetime.combine(latest_date, datetime.min.time()),
+                FitnessTestResult.tested_at < datetime.combine(latest_date + timedelta(days=1), datetime.min.time()),
+            )
+            .all()
+        )
+        result_by_key = {row.test_key: row for row in day_results}
+        ordered_results = []
+        for definition in FITNESS_TESTS:
+            row = result_by_key.get(definition['key'])
+            if row:
+                ordered_results.append({
+                    'id': row.id,
+                    'test_key': row.test_key,
+                    'name': definition['name'],
+                    'category': definition['category'],
+                    'value': row.value,
+                    'unit': row.unit,
+                    'tested_at': row.tested_at,
+                })
+
+        last_fitness_test_session = {
+            'date': latest_date,
+            'results': ordered_results,
+        }
+
     return {
         'sessions': sessions,
         'calendar': calendar_obj,
@@ -288,6 +325,7 @@ def get_progress_view_state(year=None, month=None, today=None):
         'fitness_tests': FITNESS_TESTS,
         'fitness_stats': fitness_stats,
         'fitness_history': fitness_history,
+        'last_fitness_test_session': last_fitness_test_session,
     }
 
 
@@ -311,6 +349,17 @@ def progress_snapshot(year=None, month=None):
         'fitness_tests': state['fitness_tests'],
         'fitness_stats': state['fitness_stats'],
         'fitness_history': state['fitness_history'],
+        'last_fitness_test_session': (
+            {
+                'date': state['last_fitness_test_session']['date'].isoformat(),
+                'results': [
+                    {**row, 'tested_at': row['tested_at'].isoformat()}
+                    for row in state['last_fitness_test_session']['results']
+                ],
+            }
+            if state['last_fitness_test_session']
+            else None
+        ),
     }
 
 
@@ -328,7 +377,12 @@ def save_ui_fitness_test(form):
                 raise ValueError
             value = ((rounds[5] - rounds[0]) / rounds[0]) * 100
             details['round_times'] = rounds
-        elif key in ('horizontal_long_jump', 'vertical_jump', 'medicine_ball_throw'):
+        elif key in (
+            'horizontal_long_jump',
+            'vertical_jump',
+            'medicine_ball_throw_left',
+            'medicine_ball_throw_right',
+        ):
             attempts = [float(form.get(f'attempt_{i}')) for i in range(1, 4)]
             if any(value < 0 for value in attempts):
                 raise ValueError
@@ -359,6 +413,60 @@ def save_ui_fitness_test(form):
     db.session.commit()
     return result, definition
 
+
+
+def get_fitness_test_definitions():
+    """Return the configured fitness-test definitions exposed to UI/API/MCP consumers."""
+    return [dict(test) for test in FITNESS_TESTS]
+
+
+def get_latest_fitness_test_session():
+    """Return all configured test results from the most recent fitness-test date."""
+    latest_result = (
+        FitnessTestResult.query
+        .order_by(FitnessTestResult.tested_at.desc(), FitnessTestResult.id.desc())
+        .first()
+    )
+    if not latest_result:
+        return None
+
+    latest_date = latest_result.tested_at.date()
+    day_start = datetime.combine(latest_date, datetime.min.time())
+    day_end = day_start + timedelta(days=1)
+
+    # Ascending order means repeated tests on the same date resolve to the latest
+    # result when result_by_key is built below.
+    day_results = (
+        FitnessTestResult.query
+        .filter(
+            FitnessTestResult.tested_at >= day_start,
+            FitnessTestResult.tested_at < day_end,
+        )
+        .order_by(FitnessTestResult.tested_at.asc(), FitnessTestResult.id.asc())
+        .all()
+    )
+    result_by_key = {row.test_key: row for row in day_results}
+
+    results = []
+    for definition in FITNESS_TESTS:
+        row = result_by_key.get(definition['key'])
+        if not row:
+            continue
+        results.append({
+            'id': row.id,
+            'test_key': row.test_key,
+            'name': definition['name'],
+            'category': definition['category'],
+            'value': row.value,
+            'unit': row.unit,
+            'notes': row.notes,
+            'tested_at': row.tested_at.isoformat() if row.tested_at else None,
+        })
+
+    return {
+        'date': latest_date.isoformat(),
+        'results': results,
+    }
 
 def as_dict(result):
     return fitness_test_to_dict(result)

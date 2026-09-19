@@ -42,6 +42,46 @@
   <div id="fitness-test-tab" class="progress-tab-panel" data-panel="fitness">
     <section class="progress-hero glass-card"><div><div class="progress-kicker"><i class="fa-solid fa-ranking-star"></i> FITNESS TESTING</div><h1>Fitness Test</h1><p>Choose the tests you want to run. Your historical average and best are shown before each test so you can track improvement over time.</p></div><div class="progress-hero-stat"><strong>{{ (fitness_stats or {}).values()|selectattr('count','gt',0)|list|length }}</strong><span>Tests with history</span></div></section>
 
+    <section class="glass-card">
+      {% if last_fitness_test_session %}
+      <div class="progress-section-header">
+        <div>
+          <span class="progress-section-kicker">MOST RECENT FITNESS TEST</span>
+          <h2>{{ last_fitness_test_session.date.strftime('%B %d, %Y') }}</h2>
+        </div>
+        <span class="progress-count-badge">{{ last_fitness_test_session.results|length }} test{% if last_fitness_test_session.results|length != 1 %}s{% endif %}</span>
+      </div>
+
+      <div class="progress-exercise-table">
+        <div class="progress-table-head">
+          <span>Test</span>
+          <span></span>
+          <span>Result</span>
+        </div>
+        {% for result in last_fitness_test_session.results %}
+        <div class="progress-exercise-row">
+          <div class="progress-exercise-name">
+            <strong>{{ result.name }}</strong>
+          </div>
+          <span></span>
+          <span class="progress-performance"><b>{{ result.value|round(1) }} {{ result.unit }}</b></span>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="progress-section-header">
+        <div>
+          <span class="progress-section-kicker">MOST RECENT FITNESS TEST</span>
+          <h2>Fitness Test History</h2>
+        </div>
+      </div>
+      <div class="progress-chart-empty">
+        <i class="fa-solid fa-ranking-star"></i>
+        <span>No fitness tests completed yet.</span>
+      </div>
+      {% endif %}
+    </section>
+
     <section id="fitness-test-picker" class="fitness-test-picker glass-card"><div class="progress-section-header"><div><span class="progress-section-kicker">TEST SELECTION</span><h2>Choose Your Tests</h2></div><span class="progress-count-badge fitness-picker-count">0 selected</span></div><div class="fitness-picker-body"><div class="fitness-category-grid">{% for category in ['Power','Anaerobic Capacity','Anaerobic Base','Muscle Endurance'] %}<div class="fitness-category-card"><div class="fitness-category-heading"><span class="fitness-category-icon fitness-category-{{ loop.index }}"><i class="fa-solid {% if category == 'Power' %}fa-bolt{% elif category == 'Anaerobic Capacity' %}fa-fire-flame-curved{% elif category == 'Anaerobic Base' %}fa-person-running{% else %}fa-dumbbell{% endif %}"></i></span><div><h3>{{ category }}</h3><span>{% if category == 'Power' %}Explosive output{% elif category == 'Anaerobic Capacity' %}High-intensity repeatability{% elif category == 'Anaerobic Base' %}12-minute aerobic field test{% else %}Local muscular endurance{% endif %}</span></div></div><div class="fitness-test-options">{% for test in fitness_tests if test.category == category %}<label class="fitness-test-option"><input type="checkbox" class="fitness-test-select" value="{{ test.key }}"><span class="fitness-test-check"></span><span class="fitness-test-option-text"><strong>{{ test.name }}</strong><small>{{ test.description }}</small></span></label>{% endfor %}</div></div>{% endfor %}</div><div class="fitness-picker-actions"><span class="fitness-picker-help">Select the tests you want to complete in this session.</span><button type="button" id="fitnessStartTests" class="btn-emerald-full fitness-start-btn" disabled><i class="fa-solid fa-play"></i> Start Tests</button></div></div><div class="fitness-picker-collapsed-summary"><span id="fitnessPickerSummary">0 tests selected</span><button type="button" id="fitnessChangeTests" class="fitness-change-btn"><i class="fa-solid fa-pen"></i> Change Tests</button></div></section>
 
     <section id="fitness-run-section" class="fitness-run-section fitness-run-hidden"><div class="progress-section-header"><div><span class="progress-section-kicker">TEST RESULTS</span><h2>Enter Test Results</h2></div><span class="fitness-selected-count">0 of 0 completed</span></div><div id="fitness-test-forms" class="fitness-test-forms"></div></section>
