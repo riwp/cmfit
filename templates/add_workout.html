@@ -1,13 +1,22 @@
 {% extends 'base.html' %}
 {% block content %}
 <div class="space-y-5">
+
     <!-- Top Navigation Header -->
     <div class="flex items-center justify-between pb-3 border-b border-white/5">
         <a href="{{ url_for('workout_list') }}" class="btn-cancel-link flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-slate-200 transition">
             <i class="fa-solid fa-chevron-left text-[10px]"></i>
             <span>Workouts</span>
         </a>
-        <h1 class="text-base font-black text-slate-100 tracking-tight">Create Workout</h1>
+
+        <h1 class="text-base font-black text-slate-100 tracking-tight">
+            {% if is_edit %}
+                Modify Workout
+            {% else %}
+                Create Workout
+            {% endif %}
+        </h1>
+
         <div class="w-10"></div> <!-- Balance spacer -->
     </div>
 
@@ -23,35 +32,68 @@
       {% endif %}
     {% endwith %}
 
-    <!-- Create Workout Form Card -->
+    <!-- Workout Form Card -->
     <div class="glass-card p-5 rounded-2xl !overflow-visible">
-        <form action="{{ url_for('add_workout') }}" method="POST" class="space-y-4">
+
+        <form
+            action="{% if is_edit %}{{ url_for('add_workout', workout_id=workout.id) }}{% else %}{{ url_for('add_workout') }}{% endif %}"
+            method="POST"
+            class="space-y-4"
+        >
+
             <!-- Title Input -->
             <div>
                 <label for="title" class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">
                     Workout Title <span class="accent-text">*</span>
                 </label>
-                <input type="text" id="title" name="title" value="{{ title or '' }}" required placeholder="e.g., Upper Body Hypertrophy, Leg Day" 
-                       class="form-input w-full bg-slate-950/80 border border-white/10 rounded-xl px-3.5 py-3 text-slate-100 placeholder-slate-500 text-xs font-medium focus:outline-none transition">
+
+                <input
+                    type="text"
+                    id="title"
+                    name="title"
+                    value="{{ title or '' }}"
+                    required
+                    placeholder="e.g., Upper Body Hypertrophy, Leg Day"
+                    class="form-input w-full bg-slate-950/80 border border-white/10 rounded-xl px-3.5 py-3 text-slate-100 placeholder-slate-500 text-xs font-medium focus:outline-none transition"
+                >
             </div>
 
             <!-- Description Input -->
             <div>
                 <label for="description" class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">
-                    Description <span class="text-[10px] font-normal text-slate-500 uppercase tracking-normal">(Optional)</span>
+                    Description
+                    <span class="text-[10px] font-normal text-slate-500 uppercase tracking-normal">
+                        (Optional)
+                    </span>
                 </label>
-                <textarea id="description" name="description" rows="3" placeholder="Focus on heavy compounds, tempo work, and chest isolation..." 
-                          class="form-input w-full bg-slate-950/80 border border-white/10 rounded-xl p-3.5 text-slate-100 placeholder-slate-500 text-xs font-medium focus:outline-none transition resize-none">{{ description or '' }}</textarea>
+
+                <textarea
+                    id="description"
+                    name="description"
+                    rows="3"
+                    placeholder="Focus on heavy compounds, tempo work, and chest isolation..."
+                    class="form-input w-full bg-slate-950/80 border border-white/10 rounded-xl p-3.5 text-slate-100 placeholder-slate-500 text-xs font-medium focus:outline-none transition resize-none"
+                >{{ description or '' }}</textarea>
             </div>
 
             <!-- Action Button Wrapper -->
             <div class="pt-2 p-1 overflow-visible">
                 <button type="submit" class="btn-emerald-full">
-                    <span>{% if exercise %}Save Changes{% else %}Continue to Add Exercises{% endif %}</span>
-                    <i class="fa-solid {% if exercise %}fa-check{% else %}fa-arrow-right{% endif %} text-xs"></i>
+
+                    <span>
+                        {% if is_edit %}
+                            Continue to Modify Workout
+                        {% else %}
+                            Continue to Add Exercise
+                        {% endif %}
+                    </span>
+
+                    <i class="fa-solid fa-arrow-right text-xs"></i>
                 </button>
             </div>
+
         </form>
     </div>
+
 </div>
 {% endblock %}

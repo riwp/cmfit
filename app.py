@@ -358,25 +358,84 @@ def workout_list():
 
 @app.route('/workout/add', methods=['GET', 'POST'])
 def add_workout():
+    workout_id = request.args.get('workout_id', type=int)
+    workout = None
+    is_edit = False
+
+    # ---------------------------------------------------------
+    # EDIT MODE
+    # /workout/add?workout_id=123
+    # ---------------------------------------------------------
+    if workout_id is not None:
+        workout = workout_service.get_workout(workout_id)
+
+        if not workout:
+            abort(404)
+
+        is_edit = True
+
+    # ---------------------------------------------------------
+    # SAVE
+    # ---------------------------------------------------------
     if request.method == 'POST':
         title = request.form.get('title', '').strip()
         description = request.form.get('description', '').strip()
 
-        try:
-            workout = workout_service.create_workout({
-                'title': title,
-                'description': description,
-            })
-        except ValueError:
+        if not title:
             flash('Workout title is required.', 'error')
+
             return render_template(
-                'add_workout.html', title=title, description=description
+                'add_workout.html',
+                workout=workout,
+                is_edit=is_edit,
+                title=title,
+                description=description,
             )
 
-        return redirect(url_for('add_exercise', workout_id=workout.id))
+        try:
+            if is_edit:
+                workout = workout_service.update_workout(
+                    workout.id,
+                    {
+                        'title': title,
+                        'description': description,
+                    }
+                )
+            else:
+                workout = workout_service.create_workout({
+                    'title': title,
+                    'description': description,
+                })
 
-    return render_template('add_workout.html')
+        except ValueError as exc:
+            flash(str(exc), 'error')
 
+            return render_template(
+                'add_workout.html',
+                workout=workout,
+                is_edit=is_edit,
+                title=title,
+                description=description,
+            )
+
+        if is_edit:
+            flash('Workout updated successfully.', 'success')
+            return redirect(url_for('workout_list'))
+
+        return redirect(
+            url_for('add_exercise', workout_id=workout.id)
+        )
+
+    # ---------------------------------------------------------
+    # DISPLAY
+    # ---------------------------------------------------------
+    return render_template(
+        'add_workout.html',
+        workout=workout,
+        is_edit=is_edit,
+        title=workout.title if workout else '',
+        description=workout.description or '' if workout else '',
+    )
 
 @app.route('/workout/<int:workout_id>')
 def view_workout(workout_id):
