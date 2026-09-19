@@ -356,6 +356,21 @@ def workout_list():
     return render_template('workout_list.html', workouts=workouts)
 
 
+@app.route('/workouts/reorder', methods=['POST'])
+def reorder_workouts():
+    data = request.get_json(silent=True)
+
+    if not isinstance(data, dict):
+        return jsonify({'status': 'error', 'message': 'Invalid payload'}), 400
+
+    try:
+        workout_service.reorder_workouts(data.get('order'))
+    except ValueError as exc:
+        return jsonify({'status': 'error', 'message': str(exc)}), 400
+
+    return jsonify({'status': 'success'})
+
+
 @app.route('/workout/add', methods=['GET', 'POST'])
 def add_workout():
     workout_id = request.args.get('workout_id', type=int)

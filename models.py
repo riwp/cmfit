@@ -1,4 +1,5 @@
 from datetime import datetime, date
+
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import inspect, text
 
@@ -27,6 +28,7 @@ class Workout(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text, nullable=True)
+    order = db.Column('order', db.Integer, default=0, nullable=False)
     exercises = db.relationship('WorkoutExercise', backref='workout', cascade='all, delete-orphan')
 
 
@@ -148,6 +150,7 @@ def run_migrations(app):
     """Bring an existing SQLite database up to the schema expected by CMFit."""
     inspector = inspect(db.engine)
     table_names = inspector.get_table_names()
+
     migrations = {
         'exercise': {
             'exercise_type': "ALTER TABLE exercise ADD COLUMN exercise_type VARCHAR(50) DEFAULT 'Strength' NOT NULL",
@@ -155,6 +158,9 @@ def run_migrations(app):
             'image_urls': "ALTER TABLE exercise ADD COLUMN image_urls JSON",
             'categories': "ALTER TABLE exercise ADD COLUMN categories JSON",
             'category_targets': "ALTER TABLE exercise ADD COLUMN category_targets JSON",
+        },
+        'workout': {
+            'order': 'ALTER TABLE workout ADD COLUMN "order" INTEGER DEFAULT 0 NOT NULL',
         },
         'workout_exercise': {
             'custom_duration': "ALTER TABLE workout_exercise ADD COLUMN custom_duration FLOAT",
@@ -179,17 +185,35 @@ def run_migrations(app):
             'rest_seconds': "ALTER TABLE exercise_history ADD COLUMN rest_seconds INTEGER",
         },
     }
+
     try:
+        workout_order_added = False
+
         for table_name, column_migrations in migrations.items():
             if table_name not in table_names:
                 continue
+
             columns = {column['name'] for column in inspect(db.engine).get_columns(table_name)}
+
             for column_name, statement in column_migrations.items():
                 if column_name not in columns:
                     app.logger.info('Adding missing database column %s.%s', table_name, column_name)
                     db.session.execute(text(statement))
                     db.session.commit()
                     columns.add(column_name)
+
+                    if table_name == 'workout' and column_name == 'order':
+                        workout_order_added = True
+
+        # Existing databases had no explicit workout order. On the one migration
+        # that adds the column, preserve the prior legacy order (SQLite row/id
+        # order) by assigning sequential positions 0..N-1.
+        if workout_order_added:
+            existing_workouts = Workout.query.order_by(Workout.id.asc()).all()
+            for position, workout in enumerate(existing_workouts):
+                workout.order = position
+            db.session.commit()
+
     except Exception:
         db.session.rollback()
         app.logger.exception('Database migration failed')
