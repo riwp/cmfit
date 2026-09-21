@@ -5,7 +5,6 @@ import os
 import time
 from typing import Any
 
-from .gemini_provider import GeminiProvider
 from .logging_config import get_logger
 from .mcp_chat_client import CMFitMCPClient
 from .openai_provider import OpenAIProvider
@@ -29,9 +28,7 @@ For duration-based rows, map spoken duration to duration rather than reps.
 
 
 def _provider():
-    provider_name = os.getenv('CMFIT_LLM_PROVIDER', 'gemini').strip().lower()
-    if provider_name == 'gemini':
-        return GeminiProvider()
+    provider_name = os.getenv('CMFIT_LLM_PROVIDER', 'openai').strip().lower()
     if provider_name == 'openai':
         return OpenAIProvider()
     raise ValueError(f'Unsupported CMFIT_LLM_PROVIDER: {provider_name}')

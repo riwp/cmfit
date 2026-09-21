@@ -20,7 +20,7 @@ class ChatResult:
 class LLMProvider(ABC):
     """Base contract for any LLM provider used by CMFit."""
 
-    name = 'base'
+    name = "base"
 
     @abstractmethod
     async def chat(
@@ -30,6 +30,5 @@ class LLMProvider(ABC):
         instructions: str,
         tools: list[dict[str, Any]],
         tool_executor: ToolExecutor,
-        request_id: str | None = None,
     ) -> ChatResult:
         raise NotImplementedError

@@ -121,3 +121,416 @@ AttributeError: 'Tool' object has no attribute 'inputSchema'. Did you mean: 'inp
 2026-09-19 13:44:55,738 | INFO | app | Database initialization and migrations completed
 2026-09-19 13:44:59,735 | INFO | app | Database initialization and migrations completed
 2026-09-19 13:45:00,394 | INFO | app | Database initialization and migrations completed
+2026-09-21 00:19:40,134 | INFO | app | [chat-7f2e7af1] Chat HTTP request started | mode=global | messages=1
+2026-09-21 00:19:40,135 | INFO | cmfit.chat | [chat-7f2e7af1] Chat orchestration started | mode=global | messages=1
+2026-09-21 00:19:40,151 | INFO | cmfit.chat | [chat-7f2e7af1] LLM provider initialized | provider=openai | model=gpt-5.6-luna
+2026-09-21 00:19:40,151 | INFO | cmfit.mcp | [chat-7f2e7af1] MCP server starting | python=/home/mfsli1/cmfit/venv/bin/python
+2026-09-21 00:19:40,157 | INFO | cmfit.mcp | [chat-7f2e7af1] MCP stdio opened
+2026-09-21 00:19:40,816 | INFO | app | Database initialization and migrations completed
+2026-09-21 00:19:40,839 | INFO | cmfit.mcp | [chat-7f2e7af1] MCP session initialized
+2026-09-21 00:19:40,839 | INFO | cmfit.mcp | [chat-7f2e7af1] MCP tool discovery started
+2026-09-21 00:19:40,843 | INFO | cmfit.mcp | [chat-7f2e7af1] MCP tool discovery completed | count=21 | elapsed_ms=3
+2026-09-21 00:19:40,843 | INFO | cmfit.mcp | [chat-7f2e7af1] MCP shutdown started
+2026-09-21 00:19:40,843 | ERROR | cmfit.mcp | [chat-7f2e7af1] MCP session cleanup failed | error_type=ExceptionGroup
+  + Exception Group Traceback (most recent call last):
+  |   File "/home/mfsli1/cmfit/services/mcp_chat_client.py", line 61, in __aexit__
+  |     await self._session_cm.__aexit__(exc_type, exc, tb)
+  |   File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/mcp/client/session.py", line 514, in __aexit__
+  |     result = await self._task_group.__aexit__(exc_type, exc_val, exc_tb)
+  |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |   File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 847, in __aexit__
+  |     raise BaseExceptionGroup(
+  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "/home/mfsli1/cmfit/services/chat_service.py", line 74, in run_chat
+    |     tools = await mcp.tools()
+    |             ^^^^^^^^^^^^^^^^^
+    |   File "/home/mfsli1/cmfit/services/mcp_chat_client.py", line 114, in tools
+    |     'input_schema': tool.inputSchema or {'type': 'object', 'properties': {}},
+    |                     ^^^^^^^^^^^^^^^^
+    |   File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/pydantic/main.py", line 1042, in __getattr__
+    |     raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+    | AttributeError: 'Tool' object has no attribute 'inputSchema'. Did you mean: 'input_schema'?
+    +------------------------------------
+2026-09-21 00:19:41,057 | ERROR | cmfit.mcp | [chat-7f2e7af1] MCP stdio cleanup failed | error_type=ExceptionGroup
+  + Exception Group Traceback (most recent call last):
+  |   File "/home/mfsli1/cmfit/services/mcp_chat_client.py", line 71, in __aexit__
+  |     await self._stdio_cm.__aexit__(exc_type, exc, tb)
+  |   File "/usr/lib/python3.12/contextlib.py", line 231, in __aexit__
+  |     await self.gen.athrow(value)
+  |   File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/mcp/client/stdio.py", line 200, in stdio_client
+  |     async with anyio.create_task_group() as tg:
+  |   File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 847, in __aexit__
+  |     raise BaseExceptionGroup(
+  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/mcp/client/stdio.py", line 204, in stdio_client
+    |     yield read_stream, write_stream
+    |   File "/home/mfsli1/cmfit/services/chat_service.py", line 74, in run_chat
+    |     tools = await mcp.tools()
+    |             ^^^^^^^^^^^^^^^^^
+    |   File "/home/mfsli1/cmfit/services/mcp_chat_client.py", line 114, in tools
+    |     'input_schema': tool.inputSchema or {'type': 'object', 'properties': {}},
+    |                     ^^^^^^^^^^^^^^^^
+    |   File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/pydantic/main.py", line 1042, in __getattr__
+    |     raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+    | AttributeError: 'Tool' object has no attribute 'inputSchema'. Did you mean: 'input_schema'?
+    +------------------------------------
+2026-09-21 00:19:41,059 | WARNING | cmfit.mcp | [chat-7f2e7af1] MCP shutdown completed with 2 cleanup error(s)
+2026-09-21 00:19:41,059 | ERROR | cmfit.chat | [chat-7f2e7af1] Chat orchestration failed | error_type=AttributeError | elapsed_ms=924
+Traceback (most recent call last):
+  File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/mcp/client/stdio.py", line 204, in stdio_client
+    yield read_stream, write_stream
+  File "/home/mfsli1/cmfit/services/chat_service.py", line 74, in run_chat
+    tools = await mcp.tools()
+            ^^^^^^^^^^^^^^^^^
+  File "/home/mfsli1/cmfit/services/mcp_chat_client.py", line 114, in tools
+    'input_schema': tool.inputSchema or {'type': 'object', 'properties': {}},
+                    ^^^^^^^^^^^^^^^^
+  File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/pydantic/main.py", line 1042, in __getattr__
+    raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+AttributeError: 'Tool' object has no attribute 'inputSchema'. Did you mean: 'input_schema'?
+2026-09-21 00:19:41,060 | ERROR | app | [chat-7f2e7af1] CMFit chat failed | error_type=AttributeError
+Traceback (most recent call last):
+  File "/home/mfsli1/cmfit/app.py", line 99, in chat
+    result = asyncio.run(
+             ^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 194, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 687, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/mcp/client/stdio.py", line 204, in stdio_client
+    yield read_stream, write_stream
+  File "/home/mfsli1/cmfit/services/chat_service.py", line 74, in run_chat
+    tools = await mcp.tools()
+            ^^^^^^^^^^^^^^^^^
+  File "/home/mfsli1/cmfit/services/mcp_chat_client.py", line 114, in tools
+    'input_schema': tool.inputSchema or {'type': 'object', 'properties': {}},
+                    ^^^^^^^^^^^^^^^^
+  File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/pydantic/main.py", line 1042, in __getattr__
+    raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+AttributeError: 'Tool' object has no attribute 'inputSchema'. Did you mean: 'input_schema'?
+2026-09-21 00:20:44,645 | INFO | app | Database initialization and migrations completed
+2026-09-21 00:22:29,012 | INFO | app | [chat-2a72705f] Chat HTTP request started | mode=global | messages=3
+2026-09-21 00:22:29,012 | INFO | cmfit.chat | [chat-2a72705f] Chat orchestration started | mode=global | messages=3
+2026-09-21 00:22:29,029 | INFO | cmfit.chat | [chat-2a72705f] LLM provider initialized | provider=openai | model=gpt-5.6-luna
+2026-09-21 00:22:29,029 | INFO | cmfit.mcp | [chat-2a72705f] MCP server starting | python=/home/mfsli1/cmfit/venv/bin/python
+2026-09-21 00:22:29,035 | INFO | cmfit.mcp | [chat-2a72705f] MCP stdio opened
+2026-09-21 00:22:29,698 | INFO | app | Database initialization and migrations completed
+2026-09-21 00:22:29,720 | INFO | cmfit.mcp | [chat-2a72705f] MCP session initialized
+2026-09-21 00:22:29,720 | INFO | cmfit.mcp | [chat-2a72705f] MCP tool discovery started
+2026-09-21 00:22:29,723 | INFO | cmfit.mcp | [chat-2a72705f] MCP tool discovery completed | count=21 | elapsed_ms=2
+2026-09-21 00:22:29,723 | INFO | cmfit.chat | [chat-2a72705f] MCP tools ready | count=21
+2026-09-21 00:22:29,723 | INFO | cmfit.openai | [chat-2a72705f] OpenAI request started | model=gpt-5.6-luna | iteration=1 | tools=21 | input_items=3
+2026-09-21 00:22:35,334 | ERROR | cmfit.openai | [chat-2a72705f] OpenAI request failed | model=gpt-5.6-luna | iteration=1 | error_type=RateLimitError | elapsed_ms=5611
+Traceback (most recent call last):
+  File "/home/mfsli1/cmfit/services/openai_provider.py", line 63, in chat
+    response = await self.client.responses.create(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/openai/resources/responses/responses.py", line 2925, in create
+    return await self._post(
+           ^^^^^^^^^^^^^^^^^
+  File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/openai/_base_client.py", line 1990, in post
+    return await self.request(cast_to, opts, stream=stream, stream_cls=stream_cls)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/openai/_base_client.py", line 1775, in request
+    raise self._make_status_error_from_response(err.response) from None
+openai.RateLimitError: Error code: 429 - {'error': {'message': 'You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/.', 'type': 'insufficient_quota', 'param': None, 'code': 'credit_balance_exhausted'}}
+2026-09-21 00:22:35,335 | INFO | cmfit.mcp | [chat-2a72705f] MCP shutdown started
+2026-09-21 00:22:35,336 | ERROR | cmfit.mcp | [chat-2a72705f] MCP session cleanup failed | error_type=ExceptionGroup
+  + Exception Group Traceback (most recent call last):
+  |   File "/home/mfsli1/cmfit/services/mcp_chat_client.py", line 61, in __aexit__
+  |     await self._session_cm.__aexit__(exc_type, exc, tb)
+  |   File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/mcp/client/session.py", line 514, in __aexit__
+  |     result = await self._task_group.__aexit__(exc_type, exc_val, exc_tb)
+  |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |   File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 847, in __aexit__
+  |     raise BaseExceptionGroup(
+  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "/home/mfsli1/cmfit/services/chat_service.py", line 77, in run_chat
+    |     result = await provider.chat(
+    |              ^^^^^^^^^^^^^^^^^^^^
+    |   File "/home/mfsli1/cmfit/services/openai_provider.py", line 63, in chat
+    |     response = await self.client.responses.create(
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/openai/resources/responses/responses.py", line 2925, in create
+    |     return await self._post(
+    |            ^^^^^^^^^^^^^^^^^
+    |   File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/openai/_base_client.py", line 1990, in post
+    |     return await self.request(cast_to, opts, stream=stream, stream_cls=stream_cls)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/openai/_base_client.py", line 1775, in request
+    |     raise self._make_status_error_from_response(err.response) from None
+    | openai.RateLimitError: Error code: 429 - {'error': {'message': 'You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/.', 'type': 'insufficient_quota', 'param': None, 'code': 'credit_balance_exhausted'}}
+    +------------------------------------
+2026-09-21 00:22:35,562 | ERROR | cmfit.mcp | [chat-2a72705f] MCP stdio cleanup failed | error_type=ExceptionGroup
+  + Exception Group Traceback (most recent call last):
+  |   File "/home/mfsli1/cmfit/services/mcp_chat_client.py", line 71, in __aexit__
+  |     await self._stdio_cm.__aexit__(exc_type, exc, tb)
+  |   File "/usr/lib/python3.12/contextlib.py", line 231, in __aexit__
+  |     await self.gen.athrow(value)
+  |   File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/mcp/client/stdio.py", line 200, in stdio_client
+  |     async with anyio.create_task_group() as tg:
+  |   File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 847, in __aexit__
+  |     raise BaseExceptionGroup(
+  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/mcp/client/stdio.py", line 204, in stdio_client
+    |     yield read_stream, write_stream
+    |   File "/home/mfsli1/cmfit/services/chat_service.py", line 77, in run_chat
+    |     result = await provider.chat(
+    |              ^^^^^^^^^^^^^^^^^^^^
+    |   File "/home/mfsli1/cmfit/services/openai_provider.py", line 63, in chat
+    |     response = await self.client.responses.create(
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/openai/resources/responses/responses.py", line 2925, in create
+    |     return await self._post(
+    |            ^^^^^^^^^^^^^^^^^
+    |   File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/openai/_base_client.py", line 1990, in post
+    |     return await self.request(cast_to, opts, stream=stream, stream_cls=stream_cls)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/openai/_base_client.py", line 1775, in request
+    |     raise self._make_status_error_from_response(err.response) from None
+    | openai.RateLimitError: Error code: 429 - {'error': {'message': 'You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/.', 'type': 'insufficient_quota', 'param': None, 'code': 'credit_balance_exhausted'}}
+    +------------------------------------
+2026-09-21 00:22:35,563 | WARNING | cmfit.mcp | [chat-2a72705f] MCP shutdown completed with 2 cleanup error(s)
+2026-09-21 00:22:35,563 | ERROR | cmfit.chat | [chat-2a72705f] Chat orchestration failed | error_type=RateLimitError | elapsed_ms=6550
+Traceback (most recent call last):
+  File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/mcp/client/stdio.py", line 204, in stdio_client
+    yield read_stream, write_stream
+  File "/home/mfsli1/cmfit/services/chat_service.py", line 77, in run_chat
+    result = await provider.chat(
+             ^^^^^^^^^^^^^^^^^^^^
+  File "/home/mfsli1/cmfit/services/openai_provider.py", line 63, in chat
+    response = await self.client.responses.create(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/openai/resources/responses/responses.py", line 2925, in create
+    return await self._post(
+           ^^^^^^^^^^^^^^^^^
+  File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/openai/_base_client.py", line 1990, in post
+    return await self.request(cast_to, opts, stream=stream, stream_cls=stream_cls)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/openai/_base_client.py", line 1775, in request
+    raise self._make_status_error_from_response(err.response) from None
+openai.RateLimitError: Error code: 429 - {'error': {'message': 'You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/.', 'type': 'insufficient_quota', 'param': None, 'code': 'credit_balance_exhausted'}}
+2026-09-21 00:22:35,564 | ERROR | app | [chat-2a72705f] CMFit chat failed | error_type=RateLimitError
+Traceback (most recent call last):
+  File "/home/mfsli1/cmfit/app.py", line 99, in chat
+    result = asyncio.run(
+             ^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 194, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 687, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/mcp/client/stdio.py", line 204, in stdio_client
+    yield read_stream, write_stream
+  File "/home/mfsli1/cmfit/services/chat_service.py", line 77, in run_chat
+    result = await provider.chat(
+             ^^^^^^^^^^^^^^^^^^^^
+  File "/home/mfsli1/cmfit/services/openai_provider.py", line 63, in chat
+    response = await self.client.responses.create(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/openai/resources/responses/responses.py", line 2925, in create
+    return await self._post(
+           ^^^^^^^^^^^^^^^^^
+  File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/openai/_base_client.py", line 1990, in post
+    return await self.request(cast_to, opts, stream=stream, stream_cls=stream_cls)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/openai/_base_client.py", line 1775, in request
+    raise self._make_status_error_from_response(err.response) from None
+openai.RateLimitError: Error code: 429 - {'error': {'message': 'You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/.', 'type': 'insufficient_quota', 'param': None, 'code': 'credit_balance_exhausted'}}
+2026-09-21 00:37:18,313 | INFO | app | Database initialization and migrations completed
+2026-09-21 00:37:19,529 | INFO | app | Database initialization and migrations completed
+2026-09-21 00:38:58,621 | INFO | app | Database initialization and migrations completed
+2026-09-21 00:38:59,844 | INFO | app | Database initialization and migrations completed
+2026-09-21 00:39:59,453 | INFO | app | [chat-08eb0579] Chat HTTP request started | mode=global | messages=5
+2026-09-21 00:39:59,453 | INFO | cmfit.chat | [chat-08eb0579] Chat orchestration started | mode=global | messages=5
+2026-09-21 00:39:59,493 | INFO | cmfit.chat | [chat-08eb0579] LLM provider initialized | provider=gemini | model=gemini-3-flash-preview
+2026-09-21 00:39:59,494 | INFO | cmfit.mcp | [chat-08eb0579] MCP server starting | python=/home/mfsli1/cmfit/venv/bin/python3
+2026-09-21 00:39:59,500 | INFO | cmfit.mcp | [chat-08eb0579] MCP stdio opened
+2026-09-21 00:40:00,688 | INFO | app | Database initialization and migrations completed
+2026-09-21 00:40:00,711 | INFO | cmfit.mcp | [chat-08eb0579] MCP session initialized
+2026-09-21 00:40:00,711 | INFO | cmfit.mcp | [chat-08eb0579] MCP tool discovery started
+2026-09-21 00:40:00,714 | INFO | cmfit.mcp | [chat-08eb0579] MCP tool discovery completed | count=21 | elapsed_ms=2
+2026-09-21 00:40:00,714 | INFO | cmfit.chat | [chat-08eb0579] MCP tools ready | count=21
+2026-09-21 00:40:00,715 | INFO | cmfit.gemini | [chat-08eb0579] Gemini request started | model=gemini-3-flash-preview | iteration=1 | tools=21 | contents=5
+2026-09-21 00:40:01,896 | INFO | cmfit.gemini | [chat-08eb0579] Gemini request completed | model=gemini-3-flash-preview | iteration=1 | function_calls=1 | elapsed_ms=1180
+2026-09-21 00:40:01,896 | INFO | cmfit.gemini | [chat-08eb0579] LLM requested MCP tool | tool=list_exercises
+2026-09-21 00:40:01,896 | INFO | cmfit.mcp | [chat-08eb0579] MCP tool call started | tool=list_exercises
+2026-09-21 00:40:01,946 | INFO | cmfit.mcp | [chat-08eb0579] MCP tool call completed | tool=list_exercises | elapsed_ms=50
+2026-09-21 00:40:01,946 | INFO | cmfit.mcp | [chat-08eb0579] MCP shutdown started
+2026-09-21 00:40:01,947 | ERROR | cmfit.mcp | [chat-08eb0579] MCP session cleanup failed | error_type=ExceptionGroup
+  + Exception Group Traceback (most recent call last):
+  |   File "/home/mfsli1/cmfit/services/mcp_chat_client.py", line 61, in __aexit__
+  |     await self._session_cm.__aexit__(exc_type, exc, tb)
+  |   File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/mcp/client/session.py", line 514, in __aexit__
+  |     result = await self._task_group.__aexit__(exc_type, exc_val, exc_tb)
+  |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |   File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 847, in __aexit__
+  |     raise BaseExceptionGroup(
+  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "/home/mfsli1/cmfit/services/chat_service.py", line 80, in run_chat
+    |     result = await provider.chat(
+    |              ^^^^^^^^^^^^^^^^^^^^
+    |   File "/home/mfsli1/cmfit/services/gemini_provider.py", line 145, in chat
+    |     types.Part.from_function_response(
+    | TypeError: Part.from_function_response() got an unexpected keyword argument 'id'
+    +------------------------------------
+2026-09-21 00:40:02,351 | ERROR | cmfit.mcp | [chat-08eb0579] MCP stdio cleanup failed | error_type=ExceptionGroup
+  + Exception Group Traceback (most recent call last):
+  |   File "/home/mfsli1/cmfit/services/mcp_chat_client.py", line 71, in __aexit__
+  |     await self._stdio_cm.__aexit__(exc_type, exc, tb)
+  |   File "/usr/lib/python3.12/contextlib.py", line 231, in __aexit__
+  |     await self.gen.athrow(value)
+  |   File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/mcp/client/stdio.py", line 200, in stdio_client
+  |     async with anyio.create_task_group() as tg:
+  |   File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 847, in __aexit__
+  |     raise BaseExceptionGroup(
+  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/mcp/client/stdio.py", line 204, in stdio_client
+    |     yield read_stream, write_stream
+    |   File "/home/mfsli1/cmfit/services/chat_service.py", line 80, in run_chat
+    |     result = await provider.chat(
+    |              ^^^^^^^^^^^^^^^^^^^^
+    |   File "/home/mfsli1/cmfit/services/gemini_provider.py", line 145, in chat
+    |     types.Part.from_function_response(
+    | TypeError: Part.from_function_response() got an unexpected keyword argument 'id'
+    +------------------------------------
+2026-09-21 00:40:02,352 | WARNING | cmfit.mcp | [chat-08eb0579] MCP shutdown completed with 2 cleanup error(s)
+2026-09-21 00:40:02,352 | ERROR | cmfit.chat | [chat-08eb0579] Chat orchestration failed | error_type=TypeError | elapsed_ms=2898
+Traceback (most recent call last):
+  File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/mcp/client/stdio.py", line 204, in stdio_client
+    yield read_stream, write_stream
+  File "/home/mfsli1/cmfit/services/chat_service.py", line 80, in run_chat
+    result = await provider.chat(
+             ^^^^^^^^^^^^^^^^^^^^
+  File "/home/mfsli1/cmfit/services/gemini_provider.py", line 145, in chat
+    types.Part.from_function_response(
+TypeError: Part.from_function_response() got an unexpected keyword argument 'id'
+2026-09-21 00:40:02,353 | ERROR | app | [chat-08eb0579] CMFit chat failed | error_type=TypeError
+Traceback (most recent call last):
+  File "/home/mfsli1/cmfit/app.py", line 99, in chat
+    result = asyncio.run(
+             ^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 194, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 687, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/mcp/client/stdio.py", line 204, in stdio_client
+    yield read_stream, write_stream
+  File "/home/mfsli1/cmfit/services/chat_service.py", line 80, in run_chat
+    result = await provider.chat(
+             ^^^^^^^^^^^^^^^^^^^^
+  File "/home/mfsli1/cmfit/services/gemini_provider.py", line 145, in chat
+    types.Part.from_function_response(
+TypeError: Part.from_function_response() got an unexpected keyword argument 'id'
+2026-09-21 00:42:17,654 | INFO | app | Database initialization and migrations completed
+2026-09-21 00:42:18,855 | INFO | app | Database initialization and migrations completed
+2026-09-21 00:42:59,235 | INFO | app | [chat-67ab624a] Chat HTTP request started | mode=global | messages=7
+2026-09-21 00:42:59,235 | INFO | cmfit.chat | [chat-67ab624a] Chat orchestration started | mode=global | messages=7
+2026-09-21 00:42:59,269 | INFO | cmfit.chat | [chat-67ab624a] LLM provider initialized | provider=gemini | model=gemini-3-flash-preview
+2026-09-21 00:42:59,270 | INFO | cmfit.mcp | [chat-67ab624a] MCP server starting | python=/home/mfsli1/cmfit/venv/bin/python3
+2026-09-21 00:42:59,275 | INFO | cmfit.mcp | [chat-67ab624a] MCP stdio opened
+2026-09-21 00:43:00,491 | INFO | app | Database initialization and migrations completed
+2026-09-21 00:43:00,514 | INFO | cmfit.mcp | [chat-67ab624a] MCP session initialized
+2026-09-21 00:43:00,514 | INFO | cmfit.mcp | [chat-67ab624a] MCP tool discovery started
+2026-09-21 00:43:00,517 | INFO | cmfit.mcp | [chat-67ab624a] MCP tool discovery completed | count=21 | elapsed_ms=3
+2026-09-21 00:43:00,517 | INFO | cmfit.chat | [chat-67ab624a] MCP tools ready | count=21
+2026-09-21 00:43:00,518 | INFO | cmfit.gemini | [chat-67ab624a] Gemini request started | model=gemini-3-flash-preview | iteration=1 | tools=21 | contents=7
+2026-09-21 00:43:01,463 | INFO | cmfit.gemini | [chat-67ab624a] Gemini request completed | model=gemini-3-flash-preview | iteration=1 | function_calls=1 | elapsed_ms=945
+2026-09-21 00:43:01,464 | INFO | cmfit.gemini | [chat-67ab624a] LLM requested MCP tool | tool=list_exercises
+2026-09-21 00:43:01,464 | INFO | cmfit.mcp | [chat-67ab624a] MCP tool call started | tool=list_exercises
+2026-09-21 00:43:01,516 | INFO | cmfit.mcp | [chat-67ab624a] MCP tool call completed | tool=list_exercises | elapsed_ms=52
+2026-09-21 00:43:01,517 | INFO | cmfit.gemini | [chat-67ab624a] Gemini request started | model=gemini-3-flash-preview | iteration=2 | tools=21 | contents=9
+2026-09-21 00:43:03,522 | INFO | cmfit.gemini | [chat-67ab624a] Gemini request completed | model=gemini-3-flash-preview | iteration=2 | function_calls=0 | elapsed_ms=2004
+2026-09-21 00:43:03,523 | INFO | cmfit.mcp | [chat-67ab624a] MCP shutdown started
+2026-09-21 00:43:03,925 | INFO | cmfit.mcp | [chat-67ab624a] MCP shutdown completed
+2026-09-21 00:43:03,925 | INFO | cmfit.chat | [chat-67ab624a] Chat orchestration completed | provider=gemini | model=gemini-3-flash-preview | tool_calls=1 | elapsed_ms=4690
+2026-09-21 00:43:03,927 | INFO | app | [chat-67ab624a] Chat HTTP request completed
+2026-09-21 00:43:53,339 | INFO | app | [chat-3f8d03a4] Chat HTTP request started | mode=global | messages=9
+2026-09-21 00:43:53,340 | INFO | cmfit.chat | [chat-3f8d03a4] Chat orchestration started | mode=global | messages=9
+2026-09-21 00:43:53,362 | INFO | cmfit.chat | [chat-3f8d03a4] LLM provider initialized | provider=gemini | model=gemini-3-flash-preview
+2026-09-21 00:43:53,362 | INFO | cmfit.mcp | [chat-3f8d03a4] MCP server starting | python=/home/mfsli1/cmfit/venv/bin/python3
+2026-09-21 00:43:53,363 | INFO | cmfit.mcp | [chat-3f8d03a4] MCP stdio opened
+2026-09-21 00:43:54,553 | INFO | app | Database initialization and migrations completed
+2026-09-21 00:43:54,577 | INFO | cmfit.mcp | [chat-3f8d03a4] MCP session initialized
+2026-09-21 00:43:54,577 | INFO | cmfit.mcp | [chat-3f8d03a4] MCP tool discovery started
+2026-09-21 00:43:54,580 | INFO | cmfit.mcp | [chat-3f8d03a4] MCP tool discovery completed | count=21 | elapsed_ms=3
+2026-09-21 00:43:54,580 | INFO | cmfit.chat | [chat-3f8d03a4] MCP tools ready | count=21
+2026-09-21 00:43:54,581 | INFO | cmfit.gemini | [chat-3f8d03a4] Gemini request started | model=gemini-3-flash-preview | iteration=1 | tools=21 | contents=9
+2026-09-21 00:43:55,746 | INFO | cmfit.gemini | [chat-3f8d03a4] Gemini request completed | model=gemini-3-flash-preview | iteration=1 | function_calls=1 | elapsed_ms=1165
+2026-09-21 00:43:55,747 | INFO | cmfit.gemini | [chat-3f8d03a4] LLM requested MCP tool | tool=list_workouts
+2026-09-21 00:43:55,747 | INFO | cmfit.mcp | [chat-3f8d03a4] MCP tool call started | tool=list_workouts
+2026-09-21 00:43:55,774 | INFO | cmfit.mcp | [chat-3f8d03a4] MCP tool call completed | tool=list_workouts | elapsed_ms=27
+2026-09-21 00:43:55,774 | INFO | cmfit.gemini | [chat-3f8d03a4] Gemini request started | model=gemini-3-flash-preview | iteration=2 | tools=21 | contents=11
+2026-09-21 00:43:59,323 | INFO | cmfit.gemini | [chat-3f8d03a4] Gemini request completed | model=gemini-3-flash-preview | iteration=2 | function_calls=0 | elapsed_ms=3548
+2026-09-21 00:43:59,323 | INFO | cmfit.mcp | [chat-3f8d03a4] MCP shutdown started
+2026-09-21 00:43:59,740 | INFO | cmfit.mcp | [chat-3f8d03a4] MCP shutdown completed
+2026-09-21 00:43:59,740 | INFO | cmfit.chat | [chat-3f8d03a4] Chat orchestration completed | provider=gemini | model=gemini-3-flash-preview | tool_calls=1 | elapsed_ms=6400
+2026-09-21 00:43:59,742 | INFO | app | [chat-3f8d03a4] Chat HTTP request completed
+2026-09-21 00:44:21,799 | INFO | app | [chat-4cee3d6f] Chat HTTP request started | mode=global | messages=11
+2026-09-21 00:44:21,799 | INFO | cmfit.chat | [chat-4cee3d6f] Chat orchestration started | mode=global | messages=11
+2026-09-21 00:44:21,827 | INFO | cmfit.chat | [chat-4cee3d6f] LLM provider initialized | provider=gemini | model=gemini-3-flash-preview
+2026-09-21 00:44:21,827 | INFO | cmfit.mcp | [chat-4cee3d6f] MCP server starting | python=/home/mfsli1/cmfit/venv/bin/python3
+2026-09-21 00:44:21,828 | INFO | cmfit.mcp | [chat-4cee3d6f] MCP stdio opened
+2026-09-21 00:44:23,017 | INFO | app | Database initialization and migrations completed
+2026-09-21 00:44:23,039 | INFO | cmfit.mcp | [chat-4cee3d6f] MCP session initialized
+2026-09-21 00:44:23,039 | INFO | cmfit.mcp | [chat-4cee3d6f] MCP tool discovery started
+2026-09-21 00:44:23,043 | INFO | cmfit.mcp | [chat-4cee3d6f] MCP tool discovery completed | count=21 | elapsed_ms=4
+2026-09-21 00:44:23,044 | INFO | cmfit.chat | [chat-4cee3d6f] MCP tools ready | count=21
+2026-09-21 00:44:23,045 | INFO | cmfit.gemini | [chat-4cee3d6f] Gemini request started | model=gemini-3-flash-preview | iteration=1 | tools=21 | contents=11
+2026-09-21 00:44:24,197 | INFO | cmfit.gemini | [chat-4cee3d6f] Gemini request completed | model=gemini-3-flash-preview | iteration=1 | function_calls=1 | elapsed_ms=1152
+2026-09-21 00:44:24,198 | INFO | cmfit.gemini | [chat-4cee3d6f] LLM requested MCP tool | tool=get_recent_workouts
+2026-09-21 00:44:24,198 | INFO | cmfit.mcp | [chat-4cee3d6f] MCP tool call started | tool=get_recent_workouts
+2026-09-21 00:44:24,233 | INFO | cmfit.mcp | [chat-4cee3d6f] MCP tool call completed | tool=get_recent_workouts | elapsed_ms=34
+2026-09-21 00:44:24,233 | INFO | cmfit.gemini | [chat-4cee3d6f] Gemini request started | model=gemini-3-flash-preview | iteration=2 | tools=21 | contents=13
+2026-09-21 00:44:26,800 | INFO | cmfit.gemini | [chat-4cee3d6f] Gemini request completed | model=gemini-3-flash-preview | iteration=2 | function_calls=0 | elapsed_ms=2567
+2026-09-21 00:44:26,801 | INFO | cmfit.mcp | [chat-4cee3d6f] MCP shutdown started
+2026-09-21 00:44:27,209 | INFO | cmfit.mcp | [chat-4cee3d6f] MCP shutdown completed
+2026-09-21 00:44:27,209 | INFO | cmfit.chat | [chat-4cee3d6f] Chat orchestration completed | provider=gemini | model=gemini-3-flash-preview | tool_calls=1 | elapsed_ms=5409
+2026-09-21 00:44:27,210 | INFO | app | [chat-4cee3d6f] Chat HTTP request completed
+2026-09-21 00:44:32,337 | INFO | app | [chat-5f863b49] Chat HTTP request started | mode=global | messages=13
+2026-09-21 00:44:32,338 | INFO | cmfit.chat | [chat-5f863b49] Chat orchestration started | mode=global | messages=13
+2026-09-21 00:44:32,366 | INFO | cmfit.chat | [chat-5f863b49] LLM provider initialized | provider=gemini | model=gemini-3-flash-preview
+2026-09-21 00:44:32,366 | INFO | cmfit.mcp | [chat-5f863b49] MCP server starting | python=/home/mfsli1/cmfit/venv/bin/python3
+2026-09-21 00:44:32,367 | INFO | cmfit.mcp | [chat-5f863b49] MCP stdio opened
+2026-09-21 00:44:33,552 | INFO | app | Database initialization and migrations completed
+2026-09-21 00:44:33,574 | INFO | cmfit.mcp | [chat-5f863b49] MCP session initialized
+2026-09-21 00:44:33,575 | INFO | cmfit.mcp | [chat-5f863b49] MCP tool discovery started
+2026-09-21 00:44:33,579 | INFO | cmfit.mcp | [chat-5f863b49] MCP tool discovery completed | count=21 | elapsed_ms=4
+2026-09-21 00:44:33,579 | INFO | cmfit.chat | [chat-5f863b49] MCP tools ready | count=21
+2026-09-21 00:44:33,580 | INFO | cmfit.gemini | [chat-5f863b49] Gemini request started | model=gemini-3-flash-preview | iteration=1 | tools=21 | contents=13
+2026-09-21 00:44:34,824 | INFO | cmfit.gemini | [chat-5f863b49] Gemini request completed | model=gemini-3-flash-preview | iteration=1 | function_calls=1 | elapsed_ms=1243
+2026-09-21 00:44:34,824 | INFO | cmfit.gemini | [chat-5f863b49] LLM requested MCP tool | tool=get_latest_fitness_test_session
+2026-09-21 00:44:34,824 | INFO | cmfit.mcp | [chat-5f863b49] MCP tool call started | tool=get_latest_fitness_test_session
+2026-09-21 00:44:34,845 | INFO | cmfit.mcp | [chat-5f863b49] MCP tool call completed | tool=get_latest_fitness_test_session | elapsed_ms=20
+2026-09-21 00:44:34,845 | INFO | cmfit.gemini | [chat-5f863b49] Gemini request started | model=gemini-3-flash-preview | iteration=2 | tools=21 | contents=15
+2026-09-21 00:44:36,545 | INFO | cmfit.gemini | [chat-5f863b49] Gemini request completed | model=gemini-3-flash-preview | iteration=2 | function_calls=0 | elapsed_ms=1699
+2026-09-21 00:44:36,545 | INFO | cmfit.mcp | [chat-5f863b49] MCP shutdown started
+2026-09-21 00:44:36,963 | INFO | cmfit.mcp | [chat-5f863b49] MCP shutdown completed
+2026-09-21 00:44:36,963 | INFO | cmfit.chat | [chat-5f863b49] Chat orchestration completed | provider=gemini | model=gemini-3-flash-preview | tool_calls=1 | elapsed_ms=4625
+2026-09-21 00:44:36,965 | INFO | app | [chat-5f863b49] Chat HTTP request completed
