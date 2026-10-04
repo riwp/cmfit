@@ -965,7 +965,23 @@ input[type="checkbox"]:checked + .muscle-toggle-pill {
 .fitness-test-summary{padding:1.05rem}.fitness-current-result{display:grid;grid-template-columns:1fr auto;align-items:center;gap:.15rem .8rem;margin:.9rem 0;padding:.9rem 1rem;border-radius:.85rem;background:linear-gradient(135deg,rgba(16,185,129,.14),rgba(16,185,129,.05));border:1px solid rgba(52,211,153,.28)}.fitness-current-result-label{display:flex;align-items:center;gap:.4rem;color:#6ee7b7;font-size:.58rem;font-weight:900;text-transform:uppercase;letter-spacing:.08em}.fitness-current-result-label i{font-size:.75rem}.fitness-current-result>strong{grid-row:1 / span 2;grid-column:2;color:#ecfdf5;font-size:1.28rem;font-weight:950;letter-spacing:-.02em}.fitness-current-result>small{grid-column:1;color:#94a3b8;font-size:.55rem}.fitness-test-summary .fitness-history-stats{margin-bottom:0}.fitness-history-stats small{display:block;margin-top:.15rem;color:#64748b;font-size:.49rem;line-height:1.25}.fitness-test-summary .fitness-history-stats strong{color:#cbd5e1}.fitness-trend-title>div{display:flex;flex-direction:column;gap:.15rem}.fitness-trend-title small{color:#64748b;font-size:.52rem}.fitness-svg-grid{stroke:rgba(148,163,184,.10);stroke-width:1}.fitness-svg-y-label,.fitness-svg-x-label{fill:#94a3b8;font-size:10px;font-weight:700}.fitness-svg-axis-title{fill:#cbd5e1;font-size:10px;font-weight:850;letter-spacing:.04em}.fitness-svg-x-tick{stroke:rgba(148,163,184,.24);stroke-width:1}.fitness-trend-svg .fitness-svg-axis{stroke:rgba(148,163,184,.28);stroke-width:1.2}
 @media(max-width:639px){.fitness-current-result{grid-template-columns:1fr auto;padding:.8rem}.fitness-current-result>strong{font-size:1.05rem}.fitness-trend-chart{padding:.55rem}.fitness-trend-svg{min-height:250px}}
 
-/* ========================================================================== 
+/* Workout exercise completion */
+.workout-log-card{transition:border-color .2s ease,box-shadow .2s ease}
+.workout-log-card.exercise-is-complete{border-color:rgba(52,211,153,.35);box-shadow:0 0 0 1px rgba(16,185,129,.08),0 8px 28px rgba(16,185,129,.08)}
+.workout-log-card .set-log-form[hidden],.exercise-completion-summary[hidden],.exercise-completion-notice[hidden]{display:none}
+.exercise-completion-controls{display:flex;flex-wrap:wrap;align-items:center;gap:.75rem}
+.exercise-completion-summary{display:flex;align-items:center;gap:.75rem;flex:1;padding:.85rem;border:1px solid rgba(52,211,153,.2);border-radius:1rem;background:linear-gradient(135deg,rgba(16,185,129,.16),rgba(16,185,129,.04))}
+.exercise-completion-icon{display:flex;align-items:center;justify-content:center;flex:0 0 2.5rem;height:2.5rem;border-radius:50%;background:rgba(16,185,129,.18);color:#6ee7b7;font-size:1rem}
+.exercise-completion-summary strong{display:block;color:#d1fae5;font-size:.85rem;font-weight:900}
+.exercise-completion-summary span:not(.exercise-completion-icon){display:block;margin-top:.2rem;color:#6ee7b7;font-size:.7rem}
+.exercise-completion-toggle{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;width:100%;min-height:44px;padding:.7rem 1rem;border:1px solid rgba(52,211,153,.25);border-radius:.85rem;background:rgba(16,185,129,.08);color:#6ee7b7;font-size:.75rem;font-weight:800;cursor:pointer;touch-action:manipulation;transition:background .15s ease}
+.exercise-completion-toggle:hover{background:rgba(16,185,129,.16)}
+.exercise-completion-toggle:focus-visible{outline:2px solid #6ee7b7;outline-offset:3px}
+.exercise-is-complete .exercise-completion-toggle{background:rgba(15,23,42,.7);color:#cbd5e1;border-color:rgba(148,163,184,.2)}
+.exercise-completion-notice{width:100%;color:#94a3b8;font-size:.7rem;line-height:1.4}
+@media(prefers-reduced-motion:reduce){.workout-log-card,.exercise-completion-toggle{transition:none}}
+
+/* ==========================================================================
    CMFIT GLOBAL + CONTEXTUAL CHAT
    ========================================================================== */
 .cmfit-header-row{display:flex;align-items:center;justify-content:space-between;gap:.75rem;max-width:32rem;margin:0 auto;width:100%}

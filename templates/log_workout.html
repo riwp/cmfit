@@ -40,7 +40,7 @@
     {% endif %}
     {% set has_images = media_list | length > 0 %}
 
-    <div class="glass-card p-4 rounded-2xl space-y-4 border border-white/5" id="exercise-card-{{ item.id }}">
+    <div class="glass-card p-4 rounded-2xl space-y-4 border border-white/5 workout-log-card" id="exercise-card-{{ item.id }}">
         <div class="flex items-center justify-between gap-3">
             <div class="flex-1 min-w-0">
                 <h3 class="font-black text-slate-100 text-sm tracking-tight">{{ ex.name }} <span class="text-emerald-400">— {{ category }}</span></h3>
@@ -164,7 +164,7 @@
         </div>
 
         {% set next_set_num = card.logged_sets|length + 1 %}
-        <form class="set-log-form flex items-center gap-2 pt-1"
+        <form id="set-entry-{{ item.id }}" class="set-log-form flex items-center gap-2 pt-1"
               data-workout-exercise-id="{{ item.id }}"
               data-log-id="{{ log.id }}"
               data-rest-seconds="{{ target_rest }}">
@@ -200,6 +200,20 @@
             </button>
             <button type="submit" class="px-4 py-2 bg-slate-800 hover:bg-emerald-500 hover:text-slate-950 text-emerald-400 border border-emerald-500/30 rounded-xl font-extrabold text-xs whitespace-nowrap transition active:scale-95 flex-shrink-0">Save</button>
         </form>
+        <div class="exercise-completion-controls">
+            <div class="exercise-completion-summary" hidden>
+                <span class="exercise-completion-icon" aria-hidden="true"><i class="fa-solid fa-check"></i></span>
+                <div><strong>Exercise complete</strong><span>All sets done. Nice work!</span></div>
+            </div>
+            <button type="button" class="exercise-completion-toggle" aria-pressed="false"
+                    aria-controls="set-entry-{{ item.id }}"
+                    aria-label="Mark {{ ex.name }} — {{ category }} complete"
+                    data-exercise-label="{{ ex.name }} — {{ category }}">
+                <i class="fa-regular fa-circle-check" aria-hidden="true"></i>
+                <span>Mark exercise complete</span>
+            </button>
+            <p class="exercise-completion-notice" role="status" hidden></p>
+        </div>
     </div>
     {% endfor %}
 </div>
@@ -410,6 +424,48 @@ function skipRestTimer() {
 
 document.addEventListener('DOMContentLoaded', () => {
     const settings = getSoundSettings();
+
+    document.querySelectorAll('.workout-log-card').forEach(card => {
+        const form = card.querySelector('.set-log-form');
+        const button = card.querySelector('.exercise-completion-toggle');
+        const summary = card.querySelector('.exercise-completion-summary');
+        const notice = card.querySelector('.exercise-completion-notice');
+        const storageKey = `cmfit:exercise-complete:${form.dataset.logId}:${form.dataset.workoutExerciseId}`;
+        let complete = false;
+
+        function renderCompletion() {
+            card.classList.toggle('exercise-is-complete', complete);
+            form.hidden = complete;
+            summary.hidden = !complete;
+            button.setAttribute('aria-pressed', String(complete));
+            button.setAttribute('aria-label', complete
+                ? `Add more sets for ${button.dataset.exerciseLabel}`
+                : `Mark ${button.dataset.exerciseLabel} complete`);
+            button.querySelector('span').textContent = complete ? 'Add more sets' : 'Mark exercise complete';
+            button.querySelector('i').className = complete ? 'fa-solid fa-arrow-rotate-left' : 'fa-regular fa-circle-check';
+        }
+
+        try {
+            complete = window.localStorage.getItem(storageKey) === 'true';
+        } catch (_) {
+            // Completion still works for this page when browser storage is unavailable.
+        }
+        renderCompletion();
+
+        button.addEventListener('click', () => {
+            complete = !complete;
+            renderCompletion();
+            notice.hidden = true;
+            try {
+                if (complete) window.localStorage.setItem(storageKey, 'true');
+                else window.localStorage.removeItem(storageKey);
+            } catch (_) {
+                notice.textContent = 'Browser storage is unavailable. This change will last until the page reloads.';
+                notice.hidden = false;
+            }
+            if (!complete) form.querySelector('input:not([type="hidden"])')?.focus();
+        });
+    });
 
     // iOS Safari will not reliably autoplay this after navigation. Desktop
     // browsers may still play it as before; the Save gesture unlocks audio
