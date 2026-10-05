@@ -13,6 +13,8 @@ from models import (
 )
 from api.v1.routes import api_v1
 from services import exercise_service, workout_service, fitness_service
+from services import plan_service
+from models import WeeklyPlan
 from services.chat_service import run_chat
 
 import calendar as pycalendar
@@ -768,19 +770,54 @@ def _make_default_plan_months():
 
 @app.route('/plan')
 def plan():
-    plans = TrainingPlan.query.order_by(TrainingPlan.updated_at.desc(), TrainingPlan.id.desc()).all()
-    selected_id = safe_int(request.args.get('id'), 0)
-    selected = db.session.get(TrainingPlan, selected_id) if selected_id else (plans[0] if plans else None)
-    if selected and selected not in plans:
-        selected = None
+    try:
+        year = plan_service.validate_year(request.args.get('year', date.today().year))
+    except ValueError:
+        abort(400)
+    tab = 'weekly' if request.args.get('tab') == 'weekly' else 'annual'
     return render_template(
-        'plan.html',
-        plans=plans,
-        selected_plan=selected,
-        default_months=_make_default_plan_months(),
-        plan_categories=PLAN_CATEGORIES,
-        category_short=PLAN_CATEGORY_SHORT,
+        'plan.html', year=year, tab=tab, months=plan_service.MONTHS,
+        focuses=plan_service.FOCUSES, annual=plan_service.annual_focus(year),
+        weekly_plans=plan_service.list_weekly(), days=plan_service.DAYS,
     )
+
+
+@app.post('/plan/annual/<int:year>')
+def save_annual_focus(year):
+    try:
+        plan_service.save_annual(year, request.form)
+    except ValueError as exc:
+        flash(str(exc), 'error')
+    else:
+        flash('Annual focus saved.', 'success')
+    return redirect(url_for('plan', year=year))
+
+
+@app.route('/plan/weekly/new', methods=['GET', 'POST'])
+@app.route('/plan/weekly/<int:plan_id>/edit', methods=['GET', 'POST'])
+def edit_weekly_plan(plan_id=None):
+    weekly = WeeklyPlan.query.get_or_404(plan_id) if plan_id is not None else None
+    selections = {day: [] for day in range(7)}
+    if weekly:
+        for item in weekly.assignments:
+            if item.workout:
+                selections[item.day].append(item.workout_id)
+    name = weekly.name if weekly else ''
+    description = (weekly.description or '') if weekly else ''
+    if request.method == 'POST':
+        name = request.form.get('name', '')
+        description = request.form.get('description', '')
+        selections = {day: request.form.getlist(f'workouts_{day}') for day in range(7)}
+        try:
+            plan_service.save_weekly(request.form, weekly)
+        except ValueError as exc:
+            flash(str(exc), 'error')
+        else:
+            flash('Weekly plan saved.', 'success')
+            return redirect(url_for('plan', tab='weekly'))
+    return render_template('weekly_plan_edit.html', weekly=weekly, name=name, description=description,
+                           selections=selections, days=plan_service.DAYS,
+                           workouts=workout_service.list_workouts())
 
 
 @app.route('/plan/new', methods=['POST'])

@@ -81,7 +81,7 @@
                 </span>
 
                 <!-- Keep View Routine going to the normal workout page -->
-                <a href="{{ url_for('view_workout', workout_id=workout.id) }}" class="inline-flex items-center gap-1 text-xs font-bold text-emerald-400 hover:text-emerald-300 transition group-hover:translate-x-0.5 transform duration-150">
+                <a data-routine-link href="{{ url_for('view_workout', workout_id=workout.id, return_to=request.full_path.rstrip('?')) }}" class="inline-flex items-center gap-1 text-xs font-bold text-emerald-400 hover:text-emerald-300 transition group-hover:translate-x-0.5 transform duration-150">
                     <span>View Routine</span>
                     <i class="fa-solid fa-chevron-right text-xs"></i>
                 </a>
@@ -376,4 +376,5 @@
 })();
 </script>
 {% endif %}
+<script src="{{ url_for('static', filename='js/routine_navigation.js') }}" defer></script>
 {% endblock %}

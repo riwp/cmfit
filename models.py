@@ -146,6 +146,32 @@ class TrainingPlanMonth(db.Model):
     notes = db.Column(db.Text, nullable=True)
 
 
+class AnnualMonthFocus(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    year = db.Column(db.Integer, nullable=False)
+    month = db.Column(db.Integer, nullable=False)
+    focus = db.Column(db.String(20), nullable=False)
+    __table_args__ = (db.UniqueConstraint('year', 'month'),)
+
+
+class WeeklyPlan(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(120), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    assignments = db.relationship('WeeklyPlanWorkout', backref='plan', cascade='all, delete-orphan',
+                                 order_by='(WeeklyPlanWorkout.day, WeeklyPlanWorkout.position)')
+
+
+class WeeklyPlanWorkout(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    plan_id = db.Column(db.Integer, db.ForeignKey('weekly_plan.id'), nullable=False)
+    day = db.Column(db.Integer, nullable=False)
+    workout_id = db.Column(db.Integer, db.ForeignKey('workout.id'), nullable=False)
+    position = db.Column(db.Integer, nullable=False, default=0)
+    workout = db.relationship('Workout')
+
+
 def run_migrations(app):
     """Bring an existing SQLite database up to the schema expected by CMFit."""
     inspector = inspect(db.engine)

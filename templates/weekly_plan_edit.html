@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="schedule-page">
+  <a class="schedule-edit-link" href="{{ url_for('plan', tab='weekly') }}">← Weekly plans</a>
+  <header class="schedule-header glass-card"><h1>{{ 'Edit weekly plan' if weekly else 'New weekly plan' }}</h1><p>Add workouts to each day. Empty days are rest days.</p></header>
+  {% include 'plan_messages.html' %}
+  <form method="post" class="schedule-editor">
+    <section class="schedule-details glass-card">
+      <label>Plan name<input name="name" value="{{ name }}" maxlength="120" placeholder="e.g. Strength & conditioning" required></label>
+      <label>Description<textarea name="description" rows="3" placeholder="Goals or notes for this weekly routine">{{ description }}</textarea></label>
+    </section>
+    {% if not workouts %}<div class="schedule-message">Create a workout first, then add it to your week. <a href="{{ url_for('add_workout') }}">Create workout</a></div>{% endif %}
+    {% for day in days %}{% set day_index = loop.index0 %}
+    <section class="schedule-day-editor glass-card" data-day="{{ day_index }}">
+      <div class="schedule-section-heading"><h2>{{ day }}</h2><button type="button" class="schedule-add" {% if not workouts %}disabled{% endif %}>+ Workout</button></div>
+      <div class="schedule-assignments">
+      {% for selected in selections[day_index] %}
+        <div class="schedule-assignment"><select name="workouts_{{ day_index }}" aria-label="{{ day }} workout" required>
+          <option value="">Choose workout</option>
+          {% for workout in workouts %}<option value="{{ workout.id }}" {% if selected|string == workout.id|string %}selected{% endif %}>{{ workout.title }}</option>{% endfor %}
+        </select><button type="button" class="schedule-remove" aria-label="Remove workout from {{ day }}">×</button></div>
+      {% endfor %}
+      </div><p class="schedule-day-empty" {% if selections[day_index] %}hidden{% endif %}>Rest day · Add a workout whenever you like.</p>
+    </section>
+    {% endfor %}
+    <div class="schedule-save"><a href="{{ url_for('plan', tab='weekly') }}">Cancel</a><button class="schedule-primary" type="submit" {% if not workouts %}disabled{% endif %}>Save weekly plan</button></div>
+  </form>
+</div>
+<template id="workout-assignment-template"><div class="schedule-assignment"><select required><option value="">Choose workout</option>{% for workout in workouts %}<option value="{{ workout.id }}">{{ workout.title }}</option>{% endfor %}</select><button type="button" class="schedule-remove">×</button></div></template>
+<script>
+const editor = document.querySelector('.schedule-editor');
+let dirty = false;
+editor.addEventListener('input', () => { dirty = true; });
+document.querySelectorAll('.schedule-day-editor').forEach(day => {
+  const assignments = day.querySelector('.schedule-assignments');
+  const empty = day.querySelector('.schedule-day-empty');
+  day.querySelector('.schedule-add').addEventListener('click', () => {
+    const row = document.getElementById('workout-assignment-template').content.cloneNode(true);
+    const select = row.querySelector('select');
+    select.name = `workouts_${day.dataset.day}`;
+    select.setAttribute('aria-label', `${day.querySelector('h2').textContent} workout`);
+    row.querySelector('button').setAttribute('aria-label', `Remove workout from ${day.querySelector('h2').textContent}`);
+    assignments.appendChild(row); empty.hidden = true; dirty = true; select.focus();
+  });
+  assignments.addEventListener('click', event => {
+    const button = event.target.closest('.schedule-remove');
+    if (!button) return;
+    button.closest('.schedule-assignment').remove();
+    empty.hidden = assignments.children.length > 0; dirty = true;
+    day.querySelector('.schedule-add').focus();
+  });
+});
+editor.addEventListener('submit', () => { dirty = false; });
+window.addEventListener('beforeunload', event => { if (dirty) { event.preventDefault(); event.returnValue = ''; } });
+</script>
+{% endblock %}

@@ -1,0 +1,3 @@
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% for category, message in messages %}<div class="schedule-message {% if category == 'error' %}schedule-error{% endif %}" role="status">{{ message }}</div>{% endfor %}
+{% endwith %}
