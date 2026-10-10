@@ -213,6 +213,11 @@
                 <span>Mark exercise complete</span>
             </button>
             <p class="exercise-completion-notice" role="status" hidden></p>
+            <button type="button" class="exercise-session-remove"
+                    aria-label="Remove {{ ex.name }} — {{ category }} from this session">
+                <i class="fa-solid fa-minus-circle" aria-hidden="true"></i>
+                <span>Remove from this session</span>
+            </button>
         </div>
     </div>
     {% endfor %}
@@ -431,6 +436,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const summary = card.querySelector('.exercise-completion-summary');
         const notice = card.querySelector('.exercise-completion-notice');
         const storageKey = `cmfit:exercise-complete:${form.dataset.logId}:${form.dataset.workoutExerciseId}`;
+        const removalKey = `cmfit:exercise-removed:${form.dataset.logId}:${form.dataset.workoutExerciseId}`;
+        const removeButton = card.querySelector('.exercise-session-remove');
         let complete = false;
 
         function renderCompletion() {
@@ -447,10 +454,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             complete = window.localStorage.getItem(storageKey) === 'true';
+            card.hidden = window.localStorage.getItem(removalKey) === 'true';
         } catch (_) {
             // Completion still works for this page when browser storage is unavailable.
         }
         renderCompletion();
+
+        removeButton.addEventListener('click', () => {
+            try {
+                window.localStorage.setItem(removalKey, 'true');
+            } catch (_) {
+                alert('This exercise will be hidden until the page reloads. Browser storage is unavailable.');
+            }
+            card.hidden = true;
+            const nextCard = Array.from(document.querySelectorAll('.workout-log-card'))
+                .find(other => !other.hidden && other !== card);
+            if (nextCard) nextCard.querySelector('.exercise-completion-toggle').focus();
+            else document.querySelector('button[type="submit"]').focus();
+        });
 
         button.addEventListener('click', () => {
             complete = !complete;

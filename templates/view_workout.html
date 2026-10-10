@@ -2,10 +2,17 @@
 
 {% block content %}
 <div class="space-y-5">
+    <div class="routine-top-actions">
     <a class="routine-back-button" data-routine-back data-workouts-url="{{ url_for('workout_list') }}"
        data-plan-url="{{ url_for('plan') }}" href="{{ url_for('workout_list') }}">
         <i class="fa-solid fa-arrow-left" aria-hidden="true"></i><span>Back to Workouts</span>
     </a>
+    {% if sorted_exercises %}
+    <a href="{{ url_for('start_workout', workout_id=workout.id) }}" class="routine-start-button">
+        <i class="fa-solid fa-play" aria-hidden="true"></i><span>Start Workout</span>
+    </a>
+    {% endif %}
+    </div>
     <div class="glass-card p-4 rounded-2xl border border-emerald-500/20 shadow-lg shadow-emerald-500/10">
         <div class="flex items-start justify-between gap-3">
             <div>
@@ -57,9 +64,6 @@
 
     {% if sorted_exercises %}
     <div id="reorder-status" class="min-h-[1.25rem] text-center text-[11px] font-bold text-slate-500" aria-live="polite"></div>
-    <a href="{{ url_for('start_workout', workout_id=workout.id) }}" class="btn-emerald-full">
-        <i class="fa-solid fa-play text-xs"></i><span>Start Workout</span>
-    </a>
     {% endif %}
 </div>
 

@@ -50,7 +50,12 @@ def save_weekly(form, plan=None):
     selections = []
     available = {row.id for row in Workout.query.all()}
     for day in range(7):
-        for position, raw_id in enumerate(form.getlist(f'workouts_{day}')):
+        day_values = form.getlist(f'workouts_{day}')
+        if 'rest' in day_values:
+            if any(value != 'rest' for value in day_values):
+                raise ValueError(f'{DAYS[day]}: choose Rest Day or workouts, not both.')
+            continue
+        for position, raw_id in enumerate(day_values):
             try:
                 workout_id = int(raw_id)
             except (ValueError, TypeError):

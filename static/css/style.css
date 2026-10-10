@@ -976,6 +976,10 @@ input[type="checkbox"]:checked + .muscle-toggle-pill {
 .exercise-completion-summary span:not(.exercise-completion-icon){display:block;margin-top:.2rem;color:#6ee7b7;font-size:.7rem}
 .exercise-completion-toggle{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;width:100%;min-height:44px;padding:.7rem 1rem;border:1px solid rgba(52,211,153,.25);border-radius:.85rem;background:rgba(16,185,129,.08);color:#6ee7b7;font-size:.75rem;font-weight:800;cursor:pointer;touch-action:manipulation;transition:background .15s ease}
 .exercise-completion-toggle:hover{background:rgba(16,185,129,.16)}
+.workout-log-card[hidden]{display:none}
+.exercise-session-remove{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;width:100%;min-height:44px;padding:.7rem 1rem;border:1px solid rgba(251,113,133,.2);border-radius:.85rem;background:rgba(244,63,94,.05);color:#fda4af;font-size:.75rem;font-weight:800;cursor:pointer;touch-action:manipulation}
+.exercise-session-remove:hover{background:rgba(244,63,94,.12)}
+.exercise-session-remove:focus-visible{outline:2px solid #fda4af;outline-offset:3px}
 .exercise-completion-toggle:focus-visible{outline:2px solid #6ee7b7;outline-offset:3px}
 .exercise-is-complete .exercise-completion-toggle{background:rgba(15,23,42,.7);color:#cbd5e1;border-color:rgba(148,163,184,.2)}
 .exercise-completion-notice{width:100%;color:#94a3b8;font-size:.7rem;line-height:1.4}
@@ -1007,6 +1011,11 @@ input[type="checkbox"]:checked + .muscle-toggle-pill {
 @media(min-width:640px){.cmfit-chat-drawer{bottom:1rem;border-bottom:1px solid rgba(255,255,255,.1);border-radius:1.25rem}}
 
 .routine-back-button{display:inline-flex;align-items:center;gap:.6rem;min-height:44px;padding:.6rem .9rem;border:1px solid rgba(52,211,153,.22);border-radius:.8rem;background:rgba(16,185,129,.07);color:#6ee7b7;font-size:.8rem;font-weight:800;touch-action:manipulation}
+.routine-top-actions{display:flex;align-items:stretch;justify-content:space-between;gap:.5rem}
+.routine-top-actions .routine-back-button{min-width:0;padding:.6rem .65rem;font-size:.72rem}
+.routine-start-button{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;min-height:44px;flex-shrink:0;padding:.6rem .75rem;border-radius:.8rem;background:#10b981;color:#022c22;font-size:.72rem;font-weight:900;touch-action:manipulation}
+.routine-start-button:hover{background:#34d399}
+.routine-start-button:focus-visible{outline:2px solid #6ee7b7;outline-offset:3px}
 .routine-back-button:hover{background:rgba(16,185,129,.14)}
 .routine-back-button:focus-visible{outline:2px solid #6ee7b7;outline-offset:3px}
 

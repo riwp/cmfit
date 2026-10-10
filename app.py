@@ -252,7 +252,7 @@ def inject_sound_config():
 # Routes
 @app.route('/')
 def index():
-    return redirect(url_for('workout_list'))
+    return redirect(url_for('plan', tab='weekly'))
 
 
 @app.route('/exercises')
@@ -802,6 +802,9 @@ def edit_weekly_plan(plan_id=None):
         for item in weekly.assignments:
             if item.workout:
                 selections[item.day].append(item.workout_id)
+    for day in range(7):
+        if not selections[day]:
+            selections[day] = ['rest']
     name = weekly.name if weekly else ''
     description = (weekly.description or '') if weekly else ''
     if request.method == 'POST':
@@ -817,7 +820,8 @@ def edit_weekly_plan(plan_id=None):
             return redirect(url_for('plan', tab='weekly'))
     return render_template('weekly_plan_edit.html', weekly=weekly, name=name, description=description,
                            selections=selections, days=plan_service.DAYS,
-                           workouts=workout_service.list_workouts())
+                           workouts=sorted(workout_service.list_workouts(),
+                                           key=lambda workout: workout.title.casefold()))
 
 
 @app.route('/plan/new', methods=['POST'])

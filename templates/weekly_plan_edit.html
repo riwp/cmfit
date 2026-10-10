@@ -17,6 +17,7 @@
       {% for selected in selections[day_index] %}
         <div class="schedule-assignment"><select name="workouts_{{ day_index }}" aria-label="{{ day }} workout" required>
           <option value="">Choose workout</option>
+          <option value="rest" {% if selected == 'rest' %}selected{% endif %}>Rest Day</option>
           {% for workout in workouts %}<option value="{{ workout.id }}" {% if selected|string == workout.id|string %}selected{% endif %}>{{ workout.title }}</option>{% endfor %}
         </select><button type="button" class="schedule-remove" aria-label="Remove workout from {{ day }}">×</button></div>
       {% endfor %}
@@ -26,7 +27,7 @@
     <div class="schedule-save"><a href="{{ url_for('plan', tab='weekly') }}">Cancel</a><button class="schedule-primary" type="submit" {% if not workouts %}disabled{% endif %}>Save weekly plan</button></div>
   </form>
 </div>
-<template id="workout-assignment-template"><div class="schedule-assignment"><select required><option value="">Choose workout</option>{% for workout in workouts %}<option value="{{ workout.id }}">{{ workout.title }}</option>{% endfor %}</select><button type="button" class="schedule-remove">×</button></div></template>
+<template id="workout-assignment-template"><div class="schedule-assignment"><select required><option value="">Choose workout</option><option value="rest">Rest Day</option>{% for workout in workouts %}<option value="{{ workout.id }}">{{ workout.title }}</option>{% endfor %}</select><button type="button" class="schedule-remove">×</button></div></template>
 <script>
 const editor = document.querySelector('.schedule-editor');
 let dirty = false;
@@ -37,6 +38,10 @@ document.querySelectorAll('.schedule-day-editor').forEach(day => {
   day.querySelector('.schedule-add').addEventListener('click', () => {
     const row = document.getElementById('workout-assignment-template').content.cloneNode(true);
     const select = row.querySelector('select');
+    // Adding a workout replaces the day's rest placeholder.
+    assignments.querySelectorAll('.schedule-assignment').forEach(existing => {
+      if (existing.querySelector('select').value === 'rest') existing.remove();
+    });
     select.name = `workouts_${day.dataset.day}`;
     select.setAttribute('aria-label', `${day.querySelector('h2').textContent} workout`);
     row.querySelector('button').setAttribute('aria-label', `Remove workout from ${day.querySelector('h2').textContent}`);
