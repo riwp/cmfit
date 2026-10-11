@@ -81,6 +81,11 @@
                 </span>
 
                 <!-- Keep View Routine going to the normal workout page -->
+                {% if workout.link %}
+                <a href="{{ workout.link }}" target="_blank" rel="noopener noreferrer" class="workout-url-button" aria-label="Open link for {{ workout.title }}">
+                    <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i><span>Open link</span>
+                </a>
+                {% endif %}
                 <a data-routine-link href="{{ url_for('view_workout', workout_id=workout.id, return_to=request.full_path.rstrip('?')) }}" class="inline-flex items-center gap-1 text-xs font-bold text-emerald-400 hover:text-emerald-300 transition group-hover:translate-x-0.5 transform duration-150">
                     <span>View Routine</span>
                     <i class="fa-solid fa-chevron-right text-xs"></i>

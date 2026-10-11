@@ -63,19 +63,19 @@
                 <span class="text-[10px] tracking-wider uppercase">Workouts</span>
             </a>
 
+            <!-- Plan -->
+            <a href="{{ url_for('plan', tab='weekly') }}"
+               class="flex-1 flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all duration-200 active:scale-95 {{ 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.15)] font-bold' if request.endpoint in ['plan', 'create_plan', 'save_plan', 'delete_plan'] else 'text-slate-400 hover:text-slate-200 hover:bg-white/5 font-medium' }}">
+                <i class="fa-solid fa-route text-base mb-1"></i>
+                <span class="text-[10px] tracking-wider uppercase">Plan</span>
+            </a>
+
             <!-- Progress -->
             {% set progress_endpoint = 'progress' if 'progress' in url_map else ('workout_progress' if 'workout_progress' in url_map else 'progress') %}
             <a href="{{ url_for(progress_endpoint) }}" 
                class="flex-1 flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all duration-200 active:scale-95 {{ 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.15)] font-bold' if request.endpoint in ['progress', 'workout_progress', 'history', 'logs'] else 'text-slate-400 hover:text-slate-200 hover:bg-white/5 font-medium' }}">
                 <i class="fa-solid fa-chart-line text-base mb-1"></i>
                 <span class="text-[10px] tracking-wider uppercase">Progress</span>
-            </a>
-
-            <!-- Plan -->
-            <a href="{{ url_for('plan', tab='weekly') }}"
-               class="flex-1 flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all duration-200 active:scale-95 {{ 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.15)] font-bold' if request.endpoint in ['plan', 'create_plan', 'save_plan', 'delete_plan'] else 'text-slate-400 hover:text-slate-200 hover:bg-white/5 font-medium' }}">
-                <i class="fa-solid fa-route text-base mb-1"></i>
-                <span class="text-[10px] tracking-wider uppercase">Plan</span>
             </a>
 
             <!-- Admin -->
@@ -254,7 +254,8 @@
             backdrop.classList.remove('hidden');
             backdrop.setAttribute('aria-hidden', 'false');
             render();
-            if (startVoice) setTimeout(startListening, 220); else setTimeout(() => input.focus(), 220);
+            if (startVoice) setTimeout(startListening, 220);
+            else input.focus({ preventScroll: true });
         }
         function closeChat() {
             stopListening();
@@ -326,6 +327,11 @@
         window.CMFitChat = {
             open: () => openChat({ mode: 'global' }, false),
             openWorkoutVoice: data => openChat({ mode: 'workout_set', ...data }, true),
+            openWorkoutKeyboard: data => {
+                stopListening();
+                openChat({ mode: 'workout_set', ...data }, false);
+                contextEl.textContent += ' Tap your keyboard microphone to dictate, then tap Send.';
+            },
             close: closeChat
         };
     })();

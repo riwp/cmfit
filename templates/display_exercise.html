@@ -12,7 +12,7 @@
         <div class="w-10"></div>
     </div>
 
-    <form action="{{ url_for('display_exercise', id=exercise.id) if exercise else url_for('add_new_exercise') }}"
+    <form action="{{ url_for('display_exercise', id=exercise.id) if exercise else url_for('add_new_exercise', log_id=request.args.get('log_id')) }}"
           method="POST" enctype="multipart/form-data" class="space-y-4">
         <input type="hidden" name="return_workout_id" value="{{ return_workout_id or '' }}">
         <input type="hidden" name="next_url" value="{{ next_url or '' }}">

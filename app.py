@@ -310,7 +310,8 @@ def add_new_exercise():
         })
 
         if return_workout_id:
-            return redirect(url_for('add_exercise', workout_id=return_workout_id))
+            return redirect(url_for('add_exercise', workout_id=return_workout_id,
+                                    log_id=request.args.get('log_id')))
         return redirect(url_for('exercise_list'))
 
     muscle_groups = ['Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps', 'Legs', 'Abs', 'Cardio']
@@ -467,6 +468,7 @@ def add_workout():
     if request.method == 'POST':
         title = request.form.get('title', '').strip()
         description = request.form.get('description', '').strip()
+        link = request.form.get('link', '').strip()
 
         if not title:
             flash('Workout title is required.', 'error')
@@ -477,6 +479,7 @@ def add_workout():
                 is_edit=is_edit,
                 title=title,
                 description=description,
+                link=link,
             )
 
         try:
@@ -486,12 +489,14 @@ def add_workout():
                     {
                         'title': title,
                         'description': description,
+                        'link': link,
                     }
                 )
             else:
                 workout = workout_service.create_workout({
                     'title': title,
                     'description': description,
+                    'link': link,
                 })
 
         except ValueError as exc:
@@ -503,6 +508,7 @@ def add_workout():
                 is_edit=is_edit,
                 title=title,
                 description=description,
+                link=link,
             )
 
         if is_edit:
@@ -522,6 +528,7 @@ def add_workout():
         is_edit=is_edit,
         title=workout.title if workout else '',
         description=workout.description or '' if workout else '',
+        link=workout.link or '' if workout else '',
     )
 
 @app.route('/workout/<int:workout_id>')
@@ -530,8 +537,10 @@ def view_workout(workout_id):
     if not workout:
         abort(404)
     sorted_exercises = sorted(workout.exercises, key=lambda x: x.order)
+    active_log = workout_service.get_active_workout_log(workout_id, request.args.get('log_id'))
     return render_template(
-        'view_workout.html', workout=workout, sorted_exercises=sorted_exercises
+        'view_workout.html', workout=workout, sorted_exercises=sorted_exercises,
+        active_log=active_log,
     )
 
 
@@ -572,10 +581,16 @@ def add_exercise(workout_id):
     if not workout:
         abort(404)
 
+    active_log = workout_service.get_active_workout_log(
+        workout_id, request.form.get('log_id') or request.args.get('log_id')
+    )
+
     if request.method == 'POST':
         selections = _workout_composition_from_form(request.form.getlist('exercise_ids'))
         workout_service.replace_workout_exercises(workout.id, selections)
-        return redirect(url_for('view_workout', workout_id=workout.id))
+        return redirect(url_for('view_workout', workout_id=workout.id,
+                                log_id=active_log.id if active_log else None,
+                                return_to=request.args.get('return_to')))
 
     state = workout_service.get_composition_state(workout.id, VALID_EXERCISE_TYPES)
     return render_template(
@@ -583,6 +598,7 @@ def add_exercise(workout_id):
         workout=state['workout'],
         all_exercises=state['all_exercises'],
         existing_map=state['existing_map'],
+        active_log=active_log,
     )
 
 

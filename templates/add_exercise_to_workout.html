@@ -7,7 +7,7 @@
         <h2 class="text-xl font-black text-slate-100 tracking-tight">Select Exercises</h2>
         <p class="text-xs text-slate-400 font-medium mt-0.5">Choose exercises and the categories you want to train</p>
     </div>
-    <a href="{{ url_for('add_new_exercise', return_workout_id=workout.id) }}" class="btn-emerald-sm">
+    <a href="{{ url_for('add_new_exercise', return_workout_id=workout.id, log_id=active_log.id if active_log else None) }}" class="btn-emerald-sm">
         <i class="fa-solid fa-plus text-xs mr-1.5"></i> Create New
     </a>
 </div>
@@ -29,6 +29,7 @@
 </div>
 
 <form method="POST" id="exerciseSelectionForm">
+    {% if active_log %}<input type="hidden" name="log_id" value="{{ active_log.id }}">{% endif %}
     <div id="exerciseList" class="space-y-3 mb-6">
         {% for ex in all_exercises %}
         {% set existing = existing_map.get(ex.id, {}) %}

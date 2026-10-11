@@ -28,6 +28,7 @@ class Workout(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text, nullable=True)
+    link = db.Column(db.String(255), nullable=True)
     order = db.Column('order', db.Integer, default=0, nullable=False)
     exercises = db.relationship('WorkoutExercise', backref='workout', cascade='all, delete-orphan')
 
@@ -186,6 +187,7 @@ def run_migrations(app):
             'category_targets': "ALTER TABLE exercise ADD COLUMN category_targets JSON",
         },
         'workout': {
+            'link': 'ALTER TABLE workout ADD COLUMN link VARCHAR(255)',
             'order': 'ALTER TABLE workout ADD COLUMN "order" INTEGER DEFAULT 0 NOT NULL',
         },
         'workout_exercise': {

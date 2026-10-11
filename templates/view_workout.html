@@ -7,9 +7,9 @@
        data-plan-url="{{ url_for('plan') }}" href="{{ url_for('workout_list') }}">
         <i class="fa-solid fa-arrow-left" aria-hidden="true"></i><span>Back to Workouts</span>
     </a>
-    {% if sorted_exercises %}
-    <a href="{{ url_for('start_workout', workout_id=workout.id) }}" class="routine-start-button">
-        <i class="fa-solid fa-play" aria-hidden="true"></i><span>Start Workout</span>
+    {% if sorted_exercises or active_log %}
+    <a href="{{ url_for('log_exercise', log_id=active_log.id) if active_log else url_for('start_workout', workout_id=workout.id) }}" class="routine-start-button">
+        <i class="fa-solid fa-play" aria-hidden="true"></i><span>{{ 'Continue Workout' if active_log else 'Start Workout' }}</span>
     </a>
     {% endif %}
     </div>
@@ -20,7 +20,7 @@
                 {% if workout.description %}<p class="text-xs text-slate-400 mt-1">{{ workout.description }}</p>{% endif %}
             </div>
             <div class="flex gap-1.5">
-                <a href="{{ url_for('add_exercise', workout_id=workout.id) }}" class="btn-emerald-sm"><i class="fa-solid fa-pen text-xs mr-1"></i>Edit</a>
+                <a href="{{ url_for('add_exercise', workout_id=workout.id, log_id=active_log.id if active_log else None, return_to=request.args.get('return_to')) }}" class="btn-emerald-sm"><i class="fa-solid fa-pen text-xs mr-1"></i>Edit</a>
             </div>
         </div>
     </div>
@@ -28,6 +28,11 @@
     <div id="workout-exercise-list" class="space-y-3" data-reorder-url="{{ url_for('reorder_workout_exercises', workout_id=workout.id) }}">
         {% for item in sorted_exercises %}
         {% set ex = item.exercise %}
+        {% set media = namespace(images=[]) %}
+        {% set candidates = ex.image_urls.split(',') if ex.image_urls is string else (ex.image_urls or ([ex.image] if ex.image else [])) %}
+        {% for image in candidates %}
+            {% if image and image.strip() %}{% set media.images = media.images + [image.strip()] %}{% endif %}
+        {% endfor %}
         {% set category = item.category or (item.categories[0] if item.categories else ex.exercise_type) %}
         {% set target = item.category_targets.get(category, {}) if item.category_targets else {} %}
         {% set sets = target.get('sets', item.custom_sets or ex.sets or 3) %}
@@ -54,6 +59,26 @@
                     <button type="submit" class="p-2 rounded-xl bg-slate-950 border border-white/10 text-slate-400 hover:text-red-400 transition" title="Remove"><i class="fa-regular fa-trash-can text-xs"></i></button>
                 </form>
             </div>
+            {% if media.images %}
+            <div class="routine-media">
+                <button type="button" class="routine-media-toggle" aria-expanded="false"
+                        aria-controls="routine-media-{{ item.id }}" aria-label="Show images for {{ ex.name }}">
+                    <i class="fa-regular fa-image" aria-hidden="true"></i><span>Media</span>
+                    <i class="fa-solid fa-chevron-down" aria-hidden="true"></i>
+                </button>
+                <div id="routine-media-{{ item.id }}" class="routine-gallery" hidden>
+                    <span class="routine-gallery-label">Demonstration Gallery</span>
+                    <div class="routine-gallery-grid">
+                        {% for image in media.images %}
+                        {% set src = image if image.startswith('http://') or image.startswith('https://') or image.startswith('/') else url_for('static', filename='uploads/' + image) %}
+                        <button type="button" class="routine-image-preview" data-image-src="{{ src }}" data-image-alt="{{ ex.name }} demonstration" aria-label="Enlarge {{ ex.name }} image {{ loop.index }}">
+                            <img src="{{ src }}" alt="{{ ex.name }} demonstration" loading="lazy">
+                        </button>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
         </div>
         {% else %}
         <div class="glass-card p-8 text-center rounded-2xl border border-white/5">
@@ -65,6 +90,11 @@
     {% if sorted_exercises %}
     <div id="reorder-status" class="min-h-[1.25rem] text-center text-[11px] font-bold text-slate-500" aria-live="polite"></div>
     {% endif %}
+</div>
+
+<div id="routine-image-lightbox" class="lightbox-overlay routine-lightbox" role="dialog" aria-modal="true" aria-label="Exercise demonstration" hidden>
+    <button type="button" class="btn-lightbox-close" aria-label="Close image"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+    <div class="lightbox-content-wrapper"><img class="lightbox-img" src="" alt=""></div>
 </div>
 
 {% if sorted_exercises %}
@@ -322,4 +352,5 @@
 </script>
 {% endif %}
 <script src="{{ url_for('static', filename='js/routine_navigation.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/routine_media.js') }}" defer></script>
 {% endblock %}

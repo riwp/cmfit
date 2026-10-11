@@ -26,7 +26,7 @@ def workout_exercise_to_dict(we, include_logs=False):
 
 def workout_to_dict(workout):
     return {
-        'id': workout.id, 'title': workout.title, 'description': workout.description,
+        'id': workout.id, 'title': workout.title, 'description': workout.description, 'link': workout.link,
         'exercises': [workout_exercise_to_dict(we) for we in sorted(workout.exercises, key=lambda x: x.order or 0)],
     }
 

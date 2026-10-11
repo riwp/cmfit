@@ -1015,6 +1015,20 @@ input[type="checkbox"]:checked + .muscle-toggle-pill {
 .routine-top-actions .routine-back-button{min-width:0;padding:.6rem .65rem;font-size:.72rem}
 .routine-start-button{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;min-height:44px;flex-shrink:0;padding:.6rem .75rem;border-radius:.8rem;background:#10b981;color:#022c22;font-size:.72rem;font-weight:900;touch-action:manipulation}
 .routine-start-button:hover{background:#34d399}
+.routine-media{margin-top:.75rem}
+.workout-url-button{display:inline-flex;align-items:center;justify-content:center;gap:.35rem;min-height:44px;padding:.5rem;color:#6ee7b7;font-size:.7rem;font-weight:800;touch-action:manipulation}
+.workout-url-button:focus-visible{outline:2px solid #6ee7b7;outline-offset:3px;border-radius:.5rem}
+.routine-image-open{overflow:hidden}
+.routine-media-toggle{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;min-height:44px;padding:.6rem .85rem;border-radius:.8rem;border:1px solid rgba(148,163,184,.2);background:#0f172a;color:#cbd5e1;font-size:.75rem;font-weight:800;cursor:pointer;touch-action:manipulation}
+.routine-media-toggle[aria-expanded="true"]{color:#6ee7b7;border-color:rgba(52,211,153,.3)}
+.routine-media-toggle[aria-expanded="true"] .fa-chevron-down{transform:rotate(180deg)}
+.routine-gallery{margin-top:.75rem;padding-top:.75rem;border-top:1px solid rgba(255,255,255,.08)}
+.routine-gallery[hidden],.routine-lightbox[hidden]{display:none}
+.routine-gallery-label{display:block;margin-bottom:.5rem;color:#94a3b8;font-size:.65rem;font-weight:850;text-transform:uppercase;letter-spacing:.05em}
+.routine-gallery-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.5rem}
+.routine-image-preview{width:100%;aspect-ratio:16/9;overflow:hidden;border-radius:.75rem;border:1px solid rgba(148,163,184,.2);background:#020617;cursor:pointer}
+.routine-image-preview img{width:100%;height:100%;object-fit:cover}
+.routine-media-toggle:focus-visible,.routine-image-preview:focus-visible{outline:2px solid #6ee7b7;outline-offset:3px}
 .routine-start-button:focus-visible{outline:2px solid #6ee7b7;outline-offset:3px}
 .routine-back-button:hover{background:rgba(16,185,129,.14)}
 .routine-back-button:focus-visible{outline:2px solid #6ee7b7;outline-offset:3px}

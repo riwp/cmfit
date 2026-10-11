@@ -646,3 +646,72 @@ TypeError: Part.from_function_response() got an unexpected keyword argument 'id'
 2026-10-10 16:13:08,778 | INFO | app | Database initialization and migrations completed
 2026-10-10 16:13:10,732 | INFO | app | Database initialization and migrations completed
 2026-10-10 16:13:11,942 | INFO | app | Database initialization and migrations completed
+2026-10-10 16:56:20,328 | INFO | app | Database initialization and migrations completed
+2026-10-10 16:56:40,329 | INFO | app | Database initialization and migrations completed
+2026-10-10 16:57:43,592 | INFO | app | Database initialization and migrations completed
+2026-10-10 16:57:44,817 | INFO | app | Database initialization and migrations completed
+2026-10-10 17:31:57,406 | INFO | app | Database initialization and migrations completed
+2026-10-10 17:31:58,636 | INFO | app | Database initialization and migrations completed
+2026-10-10 18:00:43,793 | INFO | app | Database initialization and migrations completed
+2026-10-10 18:00:45,030 | INFO | app | Database initialization and migrations completed
+2026-10-10 18:00:59,086 | INFO | app | Database initialization and migrations completed
+2026-10-10 18:01:10,990 | INFO | app | Adding missing database column workout.link
+2026-10-10 18:01:10,998 | INFO | app | Database initialization and migrations completed
+2026-10-10 18:01:58,320 | INFO | app | Database initialization and migrations completed
+2026-10-10 18:02:08,196 | INFO | app | Database initialization and migrations completed
+2026-10-10 18:03:12,920 | INFO | app | Database initialization and migrations completed
+2026-10-10 18:03:14,156 | INFO | app | Database initialization and migrations completed
+2026-10-10 18:26:16,688 | INFO | app | Database initialization and migrations completed
+2026-10-10 18:26:17,929 | INFO | app | Database initialization and migrations completed
+2026-10-10 18:26:23,059 | INFO | app | Database initialization and migrations completed
+2026-10-10 18:26:24,281 | INFO | app | Database initialization and migrations completed
+2026-10-10 20:34:24,039 | INFO | app | Database initialization and migrations completed
+2026-10-10 20:34:25,269 | INFO | app | Database initialization and migrations completed
+2026-10-11 11:09:03,782 | INFO | app | Database initialization and migrations completed
+2026-10-11 11:09:05,045 | INFO | app | Database initialization and migrations completed
+2026-10-11 11:17:15,299 | INFO | app | Database initialization and migrations completed
+2026-10-11 11:17:16,533 | INFO | app | Database initialization and migrations completed
+2026-10-11 11:23:38,711 | INFO | app | Database initialization and migrations completed
+2026-10-11 11:23:39,935 | INFO | app | Database initialization and migrations completed
+2026-10-11 11:24:16,715 | INFO | app | [chat-adda4387] Chat HTTP request started | mode=workout_set | messages=1
+2026-10-11 11:24:16,716 | INFO | cmfit.chat | [chat-adda4387] Chat orchestration started | mode=workout_set | messages=1
+2026-10-11 11:24:16,818 | INFO | cmfit.chat | [chat-adda4387] LLM provider initialized | provider=gemini | model=gemini-3-flash-preview
+2026-10-11 11:24:16,818 | INFO | cmfit.mcp | [chat-adda4387] MCP server starting | python=/home/mfsli1/cmfit/venv/bin/python
+2026-10-11 11:24:16,825 | INFO | cmfit.mcp | [chat-adda4387] MCP stdio opened
+2026-10-11 11:24:18,030 | INFO | app | Database initialization and migrations completed
+2026-10-11 11:24:18,059 | INFO | cmfit.mcp | [chat-adda4387] MCP session initialized
+2026-10-11 11:24:18,059 | INFO | cmfit.mcp | [chat-adda4387] MCP tool discovery started
+2026-10-11 11:24:18,063 | INFO | cmfit.mcp | [chat-adda4387] MCP tool discovery completed | count=21 | elapsed_ms=3
+2026-10-11 11:24:18,063 | INFO | cmfit.chat | [chat-adda4387] MCP tools ready | count=21
+2026-10-11 11:24:18,064 | INFO | cmfit.gemini | [chat-adda4387] Gemini request started | model=gemini-3-flash-preview | iteration=1 | tools=21 | contents=1
+2026-10-11 11:24:25,409 | INFO | cmfit.gemini | [chat-adda4387] Gemini request completed | model=gemini-3-flash-preview | iteration=1 | function_calls=1 | elapsed_ms=7345
+2026-10-11 11:24:25,409 | INFO | cmfit.gemini | [chat-adda4387] LLM requested MCP tool | tool=log_set
+2026-10-11 11:24:25,409 | INFO | cmfit.mcp | [chat-adda4387] MCP tool call started | tool=log_set
+2026-10-11 11:24:25,449 | INFO | cmfit.mcp | [chat-adda4387] MCP tool call completed | tool=log_set | elapsed_ms=39
+2026-10-11 11:24:25,449 | INFO | cmfit.gemini | [chat-adda4387] Gemini request started | model=gemini-3-flash-preview | iteration=2 | tools=21 | contents=3
+2026-10-11 11:24:26,141 | INFO | cmfit.gemini | [chat-adda4387] Gemini request completed | model=gemini-3-flash-preview | iteration=2 | function_calls=0 | elapsed_ms=692
+2026-10-11 11:24:26,142 | INFO | cmfit.mcp | [chat-adda4387] MCP shutdown started
+2026-10-11 11:24:26,580 | INFO | cmfit.mcp | [chat-adda4387] MCP shutdown completed
+2026-10-11 11:24:26,581 | INFO | cmfit.chat | [chat-adda4387] Chat orchestration completed | provider=gemini | model=gemini-3-flash-preview | tool_calls=1 | elapsed_ms=9864
+2026-10-11 11:24:26,583 | INFO | app | [chat-adda4387] Chat HTTP request completed
+2026-10-11 11:27:31,861 | INFO | app | [chat-a371e7d9] Chat HTTP request started | mode=workout_set | messages=3
+2026-10-11 11:27:31,862 | INFO | cmfit.chat | [chat-a371e7d9] Chat orchestration started | mode=workout_set | messages=3
+2026-10-11 11:27:31,883 | INFO | cmfit.chat | [chat-a371e7d9] LLM provider initialized | provider=gemini | model=gemini-3-flash-preview
+2026-10-11 11:27:31,883 | INFO | cmfit.mcp | [chat-a371e7d9] MCP server starting | python=/home/mfsli1/cmfit/venv/bin/python
+2026-10-11 11:27:31,885 | INFO | cmfit.mcp | [chat-a371e7d9] MCP stdio opened
+2026-10-11 11:27:33,099 | INFO | app | Database initialization and migrations completed
+2026-10-11 11:27:33,123 | INFO | cmfit.mcp | [chat-a371e7d9] MCP session initialized
+2026-10-11 11:27:33,123 | INFO | cmfit.mcp | [chat-a371e7d9] MCP tool discovery started
+2026-10-11 11:27:33,127 | INFO | cmfit.mcp | [chat-a371e7d9] MCP tool discovery completed | count=21 | elapsed_ms=3
+2026-10-11 11:27:33,127 | INFO | cmfit.chat | [chat-a371e7d9] MCP tools ready | count=21
+2026-10-11 11:27:33,127 | INFO | cmfit.gemini | [chat-a371e7d9] Gemini request started | model=gemini-3-flash-preview | iteration=1 | tools=21 | contents=3
+2026-10-11 11:27:34,660 | INFO | cmfit.gemini | [chat-a371e7d9] Gemini request completed | model=gemini-3-flash-preview | iteration=1 | function_calls=1 | elapsed_ms=1532
+2026-10-11 11:27:34,660 | INFO | cmfit.gemini | [chat-a371e7d9] LLM requested MCP tool | tool=log_set
+2026-10-11 11:27:34,660 | INFO | cmfit.mcp | [chat-a371e7d9] MCP tool call started | tool=log_set
+2026-10-11 11:27:34,690 | INFO | cmfit.mcp | [chat-a371e7d9] MCP tool call completed | tool=log_set | elapsed_ms=30
+2026-10-11 11:27:34,691 | INFO | cmfit.gemini | [chat-a371e7d9] Gemini request started | model=gemini-3-flash-preview | iteration=2 | tools=21 | contents=5
+2026-10-11 11:27:35,465 | INFO | cmfit.gemini | [chat-a371e7d9] Gemini request completed | model=gemini-3-flash-preview | iteration=2 | function_calls=0 | elapsed_ms=774
+2026-10-11 11:27:35,465 | INFO | cmfit.mcp | [chat-a371e7d9] MCP shutdown started
+2026-10-11 11:27:35,926 | INFO | cmfit.mcp | [chat-a371e7d9] MCP shutdown completed
+2026-10-11 11:27:35,926 | INFO | cmfit.chat | [chat-a371e7d9] Chat orchestration completed | provider=gemini | model=gemini-3-flash-preview | tool_calls=1 | elapsed_ms=4064
+2026-10-11 11:27:35,928 | INFO | app | [chat-a371e7d9] Chat HTTP request completed

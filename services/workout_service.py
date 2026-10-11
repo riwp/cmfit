@@ -1,4 +1,5 @@
 from datetime import datetime
+from urllib.parse import urlsplit
 from models import db, Workout, WorkoutExercise, WorkoutLog, SetLog, ExerciseHistory, Exercise
 from .serializers import workout_to_dict, workout_log_to_dict, set_log_to_dict
 
@@ -40,11 +41,26 @@ def get_workout(workout_id):
     return db.session.get(Workout, workout_id)
 
 
+def _workout_link(value):
+    link = (value or '').strip()
+    if not link:
+        return None
+    try:
+        parsed = urlsplit(link)
+        valid = parsed.scheme.lower() in {'http', 'https'} and bool(parsed.hostname)
+    except ValueError:
+        valid = False
+    if not valid or len(link) > 255 or any(char.isspace() for char in link):
+        raise ValueError('Enter a valid http:// or https:// workout URL (up to 255 characters).')
+    return link
+
+
 def create_workout(data):
     """Create a workout at the top while preserving existing workout order."""
     title = (data.get('title') or '').strip()
     if not title:
         raise ValueError('Workout title is required.')
+    link = _workout_link(data.get('link'))
 
     existing_workouts = (
         Workout.query
@@ -58,6 +74,7 @@ def create_workout(data):
     workout = Workout(
         title=title,
         description=(data.get('description') or '').strip() or None,
+        link=link,
         order=0,
     )
     db.session.add(workout)
@@ -70,10 +87,15 @@ def update_workout(workout_id, data):
     if not workout:
         return None
 
+    link = _workout_link(data['link']) if 'link' in data else workout.link
+    if 'title' in data and not (data.get('title') or '').strip():
+        raise ValueError('Workout title is required.')
+
     if 'title' in data:
         workout.title = (data.get('title') or '').strip()
     if 'description' in data:
         workout.description = (data.get('description') or '').strip() or None
+    workout.link = link
 
     if not workout.title:
         raise ValueError('Workout title is required.')
@@ -526,6 +548,14 @@ def start_workout(workout_id):
 
 def get_workout_log(log_id):
     return db.session.get(WorkoutLog, log_id)
+
+
+def get_active_workout_log(workout_id, log_id):
+    """Resolve an explicitly selected unfinished session belonging to this workout."""
+    log_id = _safe_int(log_id)
+    if log_id is None:
+        return None
+    return WorkoutLog.query.filter_by(id=log_id, workout_id=workout_id, end_time=None).first()
 
 
 def _optional_int(value):

@@ -2,6 +2,17 @@
 
 {% block content %}
 <div class="space-y-5">
+    <div class="routine-top-actions">
+    <a class="routine-back-button" href="{{ url_for('view_workout', workout_id=log.workout_id, log_id=log.id) }}">
+        <i class="fa-solid fa-arrow-left" aria-hidden="true"></i><span>Back to workout</span>
+    </a>
+    {% if log.workout.link %}
+    <a href="{{ log.workout.link }}" target="_blank" rel="noopener noreferrer" class="workout-url-button"
+       aria-label="Open link for {{ log.workout.title }}">
+        <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i><span>Open link</span>
+    </a>
+    {% endif %}
+    </div>
     <div class="glass-card p-4 rounded-2xl flex items-center justify-between border border-emerald-500/20 shadow-lg shadow-emerald-500/10">
         <div>
             <h1 class="text-base font-black text-slate-100 tracking-tight flex items-center gap-2">
@@ -188,8 +199,8 @@
                    class="w-20 bg-slate-950 border border-white/10 rounded-xl px-2 py-2 text-xs text-slate-100 font-bold text-center placeholder-slate-600 focus:outline-none focus:border-emerald-500/50 transition" title="Rest (seconds)">
 
             <button type="button" class="cmfit-set-voice-btn"
-                    aria-label="Log this set by voice"
-                    onclick='window.CMFitChat.openWorkoutVoice({
+                    aria-label="Open chat to dictate this set using your keyboard microphone"
+                    onclick='window.CMFitChat.openWorkoutKeyboard({
                         workout_log_id: {{ log.id|tojson }},
                         workout_exercise_id: {{ item.id|tojson }},
                         exercise_name: {{ ex.name|tojson }},

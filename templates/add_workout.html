@@ -77,6 +77,14 @@
             </div>
 
             <!-- Action Button Wrapper -->
+            <div>
+                <label for="link" class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">Workout URL (Optional)</label>
+                <input type="url" id="link" name="link" value="{{ link or '' }}" maxlength="255"
+                       placeholder="https://example.com/workout" inputmode="url" autocomplete="url"
+                       class="form-input w-full bg-slate-950/80 border border-white/10 rounded-xl px-3.5 py-3 text-slate-100 placeholder-slate-500 text-xs font-medium focus:outline-none transition">
+            </div>
+
+            <!-- Action Button Wrapper -->
             <div class="pt-2 p-1 overflow-visible">
                 <button type="submit" class="btn-emerald-full">
 
