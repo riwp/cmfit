@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block content %}
+<section id="voice-poc" class="voice-poc glass-card" data-chat-url="{{ url_for('chat') }}">
+    <span class="schedule-kicker">SAFARI VOICE PROOF OF CONCEPT</span>
+    <h1>Speak. Finish. Submit.</h1>
+    <p>Tap the microphone and speak one command. When recognition finishes, your final words are sent automatically to CMFit chat.</p>
+    {% if voice_context.mode == 'workout_set' %}<p>Active set: <strong>{{ voice_context.exercise_name }} · {{ voice_context.category }} · #{{ voice_context.set_number }}</strong></p>{% else %}<p>Global chat. Try: “What workouts do I have?”</p>{% endif %}
+    <p>Commands use the live MCP tools and can save changes you request.</p>
+    <div class="voice-poc-actions">
+        <button id="voice-poc-mic" type="button" aria-label="Start recording"><i class="fa-solid fa-microphone" aria-hidden="true"></i><span>Start recording</span></button>
+        <button id="voice-poc-cancel" type="button" hidden>Cancel</button>
+    </div>
+    <p id="voice-poc-status" role="status" aria-live="polite">Checking speech recognition…</p>
+    <div class="voice-poc-result"><h2>Transcript</h2><p id="voice-poc-transcript">Your words will appear here.</p></div>
+    <div class="voice-poc-result"><h2>Chat response</h2><p id="voice-poc-response" aria-live="polite">Waiting for a command.</p></div>
+    <details><summary>Recognition events</summary><pre id="voice-poc-events"></pre></details>
+    <p class="voice-poc-help">Test in Safari over HTTPS, allow microphone/speech permissions, and enable Siri/Dictation if recognition is unavailable. The keyboard microphone is not used here.</p>
+</section>
+<script id="voice-poc-context" type="application/json">{{ voice_context|tojson }}</script>
+<script src="{{ url_for('static', filename='js/voice_poc.js') }}" defer></script>
+{% endblock %}

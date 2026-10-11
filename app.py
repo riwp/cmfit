@@ -112,6 +112,30 @@ def chat():
         return jsonify({'error': str(exc), 'request_id': request_id}), 500
 
 
+@app.get('/voice-poc')
+def voice_poc():
+    context = {'mode': 'global'}
+    log_id = request.args.get('log_id', type=int)
+    item_id = request.args.get('workout_exercise_id', type=int)
+    if 'log_id' in request.args or 'workout_exercise_id' in request.args:
+        if log_id is None or item_id is None:
+            abort(400)
+        state = workout_service.get_log_view_state(log_id)
+        if not state:
+            abort(404)
+        if state['log'].end_time is not None:
+            abort(400)
+        card = next((card for card in state['exercise_cards'] if card['item'].id == item_id), None)
+        if card is None:
+            abort(404)
+        context = {
+            'mode': 'workout_set', 'workout_log_id': log_id, 'workout_exercise_id': item_id,
+            'exercise_name': card['exercise'].name, 'category': card['category'],
+            'set_number': max((row.set_number for row in card['logged_sets']), default=0) + 1,
+        }
+    return render_template('voice_poc.html', voice_context=context)
+
+
 # Valid Exercise Types
 VALID_EXERCISE_TYPES = [
     'Movement',

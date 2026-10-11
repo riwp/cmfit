@@ -715,3 +715,4 @@ TypeError: Part.from_function_response() got an unexpected keyword argument 'id'
 2026-10-11 11:27:35,926 | INFO | cmfit.mcp | [chat-a371e7d9] MCP shutdown completed
 2026-10-11 11:27:35,926 | INFO | cmfit.chat | [chat-a371e7d9] Chat orchestration completed | provider=gemini | model=gemini-3-flash-preview | tool_calls=1 | elapsed_ms=4064
 2026-10-11 11:27:35,928 | INFO | app | [chat-a371e7d9] Chat HTTP request completed
+2026-10-11 11:38:11,022 | INFO | app | Database initialization and migrations completed
