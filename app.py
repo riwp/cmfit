@@ -16,6 +16,7 @@ from services import exercise_service, workout_service, fitness_service
 from services import plan_service
 from models import WeeklyPlan
 from services.chat_service import run_chat
+from services.voice_service import transcribe_audio, MAX_AUDIO_BYTES, AUDIO_TYPES
 
 import calendar as pycalendar
 from datetime import date, timedelta
@@ -110,6 +111,23 @@ def chat():
             type(exc).__name__,
         )
         return jsonify({'error': str(exc), 'request_id': request_id}), 500
+
+
+@app.post('/voice-poc/transcribe')
+def voice_transcribe():
+    # A raw bounded request avoids multipart temporary audio files.
+    request.max_content_length = MAX_AUDIO_BYTES
+    if request.mimetype not in AUDIO_TYPES:
+        return jsonify({'error': 'Unsupported audio format.'}), 415
+    audio = request.get_data(cache=False)
+    if not audio:
+        return jsonify({'error': 'No audio received.'}), 400
+    try:
+        text = transcribe_audio(audio, request.mimetype)
+        return jsonify({'transcript': text})
+    except Exception as exc:
+        app.logger.error('Voice transcription failed | error_type=%s', type(exc).__name__)
+        return jsonify({'error': 'Transcription failed. Nothing was sent to chat. Check server provider configuration and connection.'}), 502
 
 
 @app.get('/voice-poc')
