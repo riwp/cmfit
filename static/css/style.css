@@ -1044,7 +1044,8 @@ input[type="checkbox"]:checked + .muscle-toggle-pill {
 .schedule-header,.schedule-details,.schedule-week-card,.schedule-day-editor,.schedule-empty{padding:1rem;border-radius:1rem;border:1px solid rgba(255,255,255,.08)}
 .schedule-header h1{font-size:1.3rem;font-weight:900;color:#f8fafc}.schedule-header p,.schedule-section-heading p,.schedule-description{color:#94a3b8;font-size:.75rem;line-height:1.5;margin-top:.35rem;overflow-wrap:anywhere}
 .schedule-kicker{font-size:.6rem;letter-spacing:.1em;color:#34d399;font-weight:900}
-.schedule-tabs{display:grid;grid-template-columns:1fr 1fr;padding:.25rem;background:#0f172a;border-radius:.9rem;gap:.25rem}
+.schedule-tabs{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);padding:.25rem;background:#0f172a;border-radius:.9rem;gap:.25rem}
+@media(max-width:639px){.schedule-page .schedule-tabs a{font-size:.75rem;padding:.5rem .2rem;white-space:nowrap;min-width:0}}
 .schedule-tabs a{display:flex;align-items:center;justify-content:center;min-height:44px;border-radius:.7rem;color:#94a3b8;font-size:.85rem;font-weight:850}.schedule-tabs a[aria-current]{background:rgba(16,185,129,.16);color:#6ee7b7;border:1px solid rgba(16,185,129,.25)}
 .schedule-year{display:grid;grid-template-columns:44px 1fr 44px;align-items:center;padding:.75rem;border-radius:1rem;text-align:center}.schedule-year h2{font-size:1.5rem;font-weight:900}.schedule-year p{color:#94a3b8;font-size:.7rem}.schedule-year-arrow{display:flex;align-items:center;justify-content:center;min-height:44px;border-radius:.75rem;background:#0f172a;color:#6ee7b7}
 .schedule-month-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.65rem}.schedule-month{display:flex;flex-direction:column;gap:.75rem;padding:1rem .75rem;border-radius:1rem;border:1px solid rgba(255,255,255,.08)}.schedule-month>span{font-size:1rem;font-weight:900;color:#e2e8f0}

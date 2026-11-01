@@ -4,7 +4,8 @@
   <header class="schedule-header glass-card"><div><span class="schedule-kicker">YOUR TRAINING</span><h1>Plan</h1><p>A clear focus for your year. A routine for your week.</p></div></header>
   <nav class="schedule-tabs" aria-label="Plan views">
     <a href="{{ url_for('plan', year=year) }}" {% if tab == 'annual' %}aria-current="page"{% endif %}>Annual</a>
-    <a href="{{ url_for('plan', tab='weekly', year=year) }}" {% if tab == 'weekly' %}aria-current="page"{% endif %}>Weekly</a>
+    <a href="{{ url_for('plan', tab='weekly', year=year) }}" {% if tab == 'weekly' %}aria-current="page"{% endif %}>Weekly Plans</a>
+    <a href="{{ url_for('week_actual') }}">Week Actual</a>
   </nav>
   {% include 'plan_messages.html' %}
   {% if tab == 'annual' %}

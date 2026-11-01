@@ -173,6 +173,17 @@ class WeeklyPlanWorkout(db.Model):
     workout = db.relationship('Workout')
 
 
+class WeekActual(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    week_start = db.Column(db.Date, nullable=False, unique=True)
+    plan_id = db.Column(db.Integer, nullable=True)
+    plan_name = db.Column(db.String(120), nullable=False, default='')
+    planned = db.Column(db.JSON, nullable=False, default=list)
+    actuals = db.Column(db.JSON, nullable=False, default=list)
+    notes = db.Column(db.Text, nullable=False, default='')
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 def run_migrations(app):
     """Bring an existing SQLite database up to the schema expected by CMFit."""
     inspector = inspect(db.engine)

@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="schedule-page week-actual-page">
+  <header class="schedule-header glass-card"><div><span class="schedule-kicker">YOUR TRAINING</span><h1>Plan</h1><p>Track your week against your original plan.</p></div></header>
+  <nav class="schedule-tabs" aria-label="Plan views">
+    <a href="{{ url_for('plan') }}">Annual</a>
+    <a href="{{ url_for('plan', tab='weekly') }}">Weekly Plans</a>
+    <a href="{{ url_for('week_actual', week=row.week_start.isoformat()) }}" aria-current="page">Week Actual</a>
+  </nav>
+  {% include 'plan_messages.html' %}
+  <div class="glass-card actual-controls">
+    <form method="get" id="week-picker"><label for="week">Week of <span>(Sunday)</span></label>
+      <input type="date" id="week" name="week" value="{{ row.week_start.isoformat() }}" step="7" min="1970-01-04" required>
+    </form>
+    <form method="post" id="plan-picker">
+      <input type="hidden" name="week" value="{{ row.week_start.isoformat() }}">
+      <input type="hidden" name="action" value="select_plan">
+      <label for="plan-id">Weekly plan</label>
+      <select name="plan_id" id="plan-id" required>
+        {% if not row.plan_id %}<option value="">Choose weekly plan</option>{% endif %}
+        {% for plan in weekly_plans %}<option value="{{ plan.id }}" {% if row.plan_id == plan.id %}selected{% endif %}>{{ plan.name }}</option>{% endfor %}
+      </select>
+    </form>
+    <p class="actual-plan-help">Changing plans resets workout progress. Week notes are kept.</p>
+  </div>
+  <form method="post" id="actual-progress">
+    <input type="hidden" name="week" value="{{ row.week_start.isoformat() }}">
+    <article class="schedule-week-card glass-card">
+      <h2>{{ row.plan_name or 'Choose a weekly plan to get started' }}</h2>
+      <div class="schedule-week-days">
+      {% for day in days %}{% set day_index = loop.index0 %}
+        <div class="schedule-day"><h3>{{ day }}</h3><div>
+        {% for item in row.planned %}{% set index = loop.index0 %}
+          {% if item.day == day_index %}{% set actual = row.actuals[index] %}
+          <div class="actual-workout-row">
+            <div><small>Planned</small><div>{{ item.title }}</div></div>
+            <div><label for="status-{{ index }}">Actual</label>
+              <select id="status-{{ index }}" name="progress_{{ index }}" data-progress-select data-planned-workout="{{ item.workout_id }}">
+                {% for value, label in [('pending','Not yet completed'),('complete','Complete'),('skipped','Skipped')] %}
+                <option value="{{ value }}" {% if actual.status == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+                <optgroup label="Different workout">
+                  {% for workout in workouts %}<option value="workout_{{ workout.id }}" {% if actual.status == 'changed' and actual.workout_id == workout.id %}selected{% endif %}>{{ workout.title }}</option>{% endfor %}
+                </optgroup>
+              </select>
+            </div>
+          </div>
+          {% endif %}
+        {% endfor %}
+        {% if not row.planned|selectattr('day', 'equalto', day_index)|list %}<span class="schedule-rest">Rest day</span>{% endif %}
+        </div></div>
+      {% endfor %}
+      </div>
+      <label for="week-notes">Week notes</label>
+      <textarea id="week-notes" name="notes" rows="5">{{ request.form.get('notes', row.notes) }}</textarea>
+      <div class="schedule-save"><span id="actual-save-status" role="status">Progress is saved for {{ row.week_start.isoformat() }}.</span><button class="schedule-primary" type="submit">Save Progress</button></div>
+    </article>
+  </form>
+</div>
+<style>
+.actual-controls { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 12px; padding: 16px; border-radius: 1rem; border: 1px solid rgba(255,255,255,.08); }
+.actual-controls form { min-width: 0; }
+.actual-controls label { font-size: .75rem; font-weight: 700; color: #cbd5e1; }
+.actual-controls label span { color: #94a3b8; font-weight: 400; }
+.actual-plan-help { grid-column: 1 / -1; font-size: .7rem; line-height: 1.5; color: #94a3b8; }
+.actual-controls label, .actual-workout-row label, .actual-workout-row small { display: block; margin-bottom: 6px; }
+.actual-workout-row { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 16px; margin-bottom: 16px; }
+.actual-workout-row select, #week-notes { width: 100%; box-sizing: border-box; }
+.actual-workout-row select[data-progress-select] { border-width: 2px; border-style: solid; }
+.actual-workout-row select[data-progress-state="same"] { border-color: #22c55e; }
+.actual-workout-row select[data-progress-state="different"] { border-color: #f59e0b; }
+.actual-workout-row select[data-progress-state="skipped"] { border-color: #ef4444; }
+.actual-workout-row > div { min-width: 0; overflow-wrap: anywhere; }
+.actual-workout-row small, .actual-workout-row label { font-size: .7rem; color: #94a3b8; }
+.week-actual-page .schedule-week-card > h2 { font-size: 1.05rem; font-weight: 800; overflow-wrap: anywhere; }
+.week-actual-page #week-notes { margin-top: .5rem; }
+@media (max-width: 639px) {
+  .week-actual-page { gap: .75rem; }
+  .actual-controls { gap: .65rem; padding: .75rem; }
+  .actual-controls input, .actual-controls select { padding: .6rem .4rem; box-sizing: border-box; max-width: 100%; }
+  .week-actual-page .schedule-day { grid-template-columns: minmax(0,1fr); gap: .4rem; padding: .85rem 0; }
+  .week-actual-page .schedule-day h3 { padding-top: 0; color: #cbd5e1; }
+  .actual-workout-row { grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); gap: .65rem; margin-bottom: .65rem; align-items: start; }
+  .actual-workout-row:last-child { margin-bottom: 0; }
+  .actual-workout-row > div:first-child > div { font-size: .85rem; line-height: 1.5; }
+  .actual-workout-row select { padding: .65rem .35rem; }
+  .week-actual-page .schedule-save { align-items: stretch; flex-direction: column; }
+  .week-actual-page .schedule-save button { width: 100%; min-height: 48px; }
+}
+</style>
+<script>
+const progressForm = document.getElementById('actual-progress');
+document.querySelectorAll('[data-progress-select]').forEach(select => {
+  function updateProgressColor() {
+    const value = select.value;
+    select.dataset.progressState = value === 'skipped' ? 'skipped'
+      : value === 'complete' || value === `workout_${select.dataset.plannedWorkout}` ? 'same'
+      : value.startsWith('workout_') ? 'different' : 'pending';
+  }
+  select.addEventListener('change', updateProgressColor);
+  updateProgressColor();
+});
+let dirty = false;
+progressForm.addEventListener('input', () => {
+  dirty = true;
+  document.getElementById('actual-save-status').textContent = 'You have unsaved changes.';
+});
+progressForm.addEventListener('submit', () => { dirty = false; });
+window.addEventListener('beforeunload', event => { if (dirty) { event.preventDefault(); event.returnValue = ''; } });
+const weekInput = document.getElementById('week');
+weekInput.addEventListener('input', () => {
+  const value = new Date(weekInput.value + 'T12:00:00');
+  weekInput.setCustomValidity(value.getDay() === 0 ? '' : 'Choose a Sunday.');
+});
+weekInput.addEventListener('change', () => {
+  if (weekInput.reportValidity()) {
+    document.getElementById('week-picker').requestSubmit();
+  }
+});
+document.getElementById('plan-id').addEventListener('change', event => {
+  if (event.target.reportValidity()) {
+    document.getElementById('plan-picker').requestSubmit();
+  }
+});
+</script>
+{% endblock %}

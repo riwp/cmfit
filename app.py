@@ -832,12 +832,44 @@ def plan():
         year = plan_service.validate_year(request.args.get('year', date.today().year))
     except ValueError:
         abort(400)
-    tab = 'weekly' if request.args.get('tab') == 'weekly' else 'annual'
+    tab = request.args.get('tab', 'annual')
+    if tab == 'actual':
+        return redirect(url_for('week_actual', week=request.args.get('week')))
+    tab = 'weekly' if tab == 'weekly' else 'annual'
     return render_template(
         'plan.html', year=year, tab=tab, months=plan_service.MONTHS,
         focuses=plan_service.FOCUSES, annual=plan_service.annual_focus(year),
         weekly_plans=plan_service.list_weekly(), days=plan_service.DAYS,
     )
+
+
+@app.route('/plan/actual', methods=['GET', 'POST'])
+def week_actual():
+    from services import week_actual_service as actual_service
+    try:
+        week_start = actual_service.sunday(request.values.get('week'))
+    except ValueError as exc:
+        flash(str(exc), 'error')
+        return redirect(url_for('week_actual'))
+    row = actual_service.load_week(week_start)
+    if request.method == 'POST':
+        try:
+            if request.form.get('action') == 'select_plan':
+                selected = db.session.get(WeeklyPlan, safe_int(request.form.get('plan_id')))
+                if not selected:
+                    raise ValueError('Choose an available weekly plan.')
+                if selected.id != row.plan_id:
+                    actual_service.select_plan(row, selected)
+                    db.session.commit()
+            else:
+                actual_service.save_progress(row, request.form)
+            flash('Week progress saved.', 'success')
+            return redirect(url_for('week_actual', week=week_start.isoformat()))
+        except ValueError as exc:
+            flash(str(exc), 'error')
+    return render_template('week_actual.html', row=row, days=plan_service.DAYS,
+                           weekly_plans=plan_service.list_weekly(),
+                           workouts=sorted(workout_service.list_workouts(), key=lambda w: w.title.casefold()))
 
 
 @app.post('/plan/annual/<int:year>')
