@@ -1133,3 +1133,33 @@ Traceback (most recent call last):
   File "/home/mfsli1/cmfit/venv/lib/python3.12/site-packages/google/genai/errors.py", line 186, in raise_error
     raise ServerError(status_code, response_json, response)
 google.genai.errors.ServerError: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+2026-10-24 15:18:17,332 | INFO | app | Database initialization and migrations completed
+2026-10-24 15:18:18,584 | INFO | app | Database initialization and migrations completed
+2026-10-24 21:07:48,278 | INFO | app | Database initialization and migrations completed
+2026-10-24 21:07:49,528 | INFO | app | Database initialization and migrations completed
+2026-10-24 21:24:34,279 | INFO | app | Database initialization and migrations completed
+2026-10-24 21:24:35,510 | INFO | app | Database initialization and migrations completed
+2026-10-24 21:33:10,314 | INFO | app | Database initialization and migrations completed
+2026-10-24 21:33:11,552 | INFO | app | Database initialization and migrations completed
+2026-10-24 21:40:29,730 | INFO | app | Database initialization and migrations completed
+2026-10-24 21:40:30,949 | INFO | app | Database initialization and migrations completed
+2026-10-24 21:59:17,934 | INFO | app | Database initialization and migrations completed
+2026-10-24 21:59:19,172 | INFO | app | Database initialization and migrations completed
+2026-10-24 22:32:47,708 | INFO | app | Database initialization and migrations completed
+2026-10-24 22:32:48,947 | INFO | app | Database initialization and migrations completed
+2026-10-24 22:41:17,356 | INFO | app | Database initialization and migrations completed
+2026-10-24 22:41:18,576 | INFO | app | Database initialization and migrations completed
+2026-10-25 06:35:11,877 | INFO | app | Database initialization and migrations completed
+2026-10-25 06:35:13,123 | INFO | app | Database initialization and migrations completed
+2026-10-25 06:35:17,825 | INFO | app | Database initialization and migrations completed
+2026-10-25 06:35:19,069 | INFO | app | Database initialization and migrations completed
+2026-10-25 15:42:20,765 | INFO | app | Database initialization and migrations completed
+2026-10-25 15:42:22,023 | INFO | app | Database initialization and migrations completed
+2026-10-31 00:47:01,546 | INFO | app | Database initialization and migrations completed
+2026-10-31 00:47:02,762 | INFO | app | Database initialization and migrations completed
+2026-10-31 00:50:14,347 | INFO | app | Database initialization and migrations completed
+2026-10-31 00:50:15,596 | INFO | app | Database initialization and migrations completed
+2026-10-31 00:53:38,111 | INFO | app | Database initialization and migrations completed
+2026-10-31 00:53:39,335 | INFO | app | Database initialization and migrations completed
+2026-10-31 02:20:56,459 | INFO | app | Database initialization and migrations completed
+2026-10-31 02:20:57,701 | INFO | app | Database initialization and migrations completed
